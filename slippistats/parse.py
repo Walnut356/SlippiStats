@@ -1,3 +1,8 @@
+from __future__ import annotations
+import io
+import os
+from pathlib import Path
+from typing import BinaryIO, Callable, Union
 
 import ubjson
 
@@ -100,7 +105,7 @@ def _parse_event(event_stream, payload_sizes):
                 event = Start._parse(stream)
             case EventType.GAME_END:
                 event = End._parse(stream)
-            case default:
+            case _:
                 event = None
 
         return (1 + size, event)
@@ -208,41 +213,41 @@ def _parse(stream, handlers, skip_frames):
     expect_bytes(b'}', stream)
 
 
-def _parse_try(input: BinaryIO, handlers, skip_frames):
+def _parse_try(source: BinaryIO, handlers, skip_frames):
     """Wrap parsing exceptions with additional information."""
 
     try:
-        _parse(input, handlers, skip_frames)
-    except Exception as e:
-        e = e if isinstance(e, ParseError) else ParseError(str(e))
+        _parse(source, handlers, skip_frames)
+    except Exception as exception:
+        exception = exception if isinstance(exception, ParseError) else ParseError(str(exception))
 
-        try: e.filename = input.name # type: ignore
+        try: exception.filename = source.name # type: ignore
         except AttributeError: pass
 
         try:
             # prefer provided position info, as it will be more accurate
-            if not e.pos and input.seekable(): # type: ignore
-                e.pos = input.tell() # type: ignore
+            if not exception.pos and source.seekable(): # type: ignore
+                exception.pos = source.tell() # type: ignore
         # not all stream-like objects support `seekable` (e.g. HTTP requests)
         except AttributeError: pass
 
-        raise e
+        raise exception
 
 
-def _parse_open(input: os.PathLike, handlers, skip_frames) -> None:
-    with open(input, 'rb') as f:
+def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
+    with open(source, 'rb') as f:
         _parse_try(f, handlers, skip_frames)
 
 
-def parse(input: Union[BinaryIO, str, os.PathLike], handlers: Dict[ParseEvent, Callable[..., None]], skip_frames: bool = False) -> None:
+def parse(source: Union[BinaryIO, str, os.PathLike], handlers: dict[ParseEvent, Callable[..., None]], skip_frames: bool = False) -> None:
     """Parse a Slippi replay.
     :param input: replay file object or path
     :param handlers: dict of parse event keys to handler functions. Each event will be passed to the corresponding handler as it occurs.
     :param skip_frames: when true, skip past all frame data. Requires input to be seekable."""
 
-    if isinstance(input, str):
-        _parse_open(pathlib.Path(input), handlers, skip_frames)
-    elif isinstance(input, os.PathLike):
-        _parse_open(input, handlers, skip_frames)
+    if isinstance(source, str):
+        _parse_open(Path(source), handlers, skip_frames)
+    elif isinstance(source, os.PathLike):
+        _parse_open(source, handlers, skip_frames)
     else:
-        _parse_try(input, handlers, skip_frames)
+        _parse_try(source, handlers, skip_frames)

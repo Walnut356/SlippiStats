@@ -1,13 +1,14 @@
-from pathlib import Path
 import os
-from slippi import *
-import polars as pl
 import timeit
-import slippi.enums
+from pathlib import Path
+
+import polars as pl
+
+from slippistats import *
 
 replay = Game(Path(r'Modern Replays/Game_20221227T194333.slp'))
 
-thing = StatsComputer(replay)
+thing = StatsComputer().prime_replay(replay)
 
 # frames = []
 # flags = []
@@ -26,8 +27,6 @@ thing = StatsComputer(replay)
 #r'Modern Replays/Game_20221227T194333.slp'
 
 # dir_path = Path(r'Modern Replays')
-
-
 
 # with os.scandir(Path(r'Modern Replays')) as dir:
 #     for entry in dir:

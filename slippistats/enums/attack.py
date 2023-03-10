@@ -1,5 +1,6 @@
 from ..util import IntEnum
 
+
 class Attack(IntEnum):
     NON_STALING = 1
     JAB_1 = 2

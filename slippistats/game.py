@@ -28,11 +28,11 @@ class Game(Base):
         self.metadata_raw = None
 
         parse(input, {
-            ParseEvent.START: lambda x: setattr(self, 'start', x),
-            ParseEvent.FRAME: self._add_frame,
-            ParseEvent.END: lambda x: setattr(self, 'end', x),
-            ParseEvent.METADATA: lambda x: setattr(self, 'metadata', x),
-            ParseEvent.METADATA_RAW: lambda x: setattr(self, 'metadata_raw', x)},
+            Start: lambda x: setattr(self, 'start', x),
+            Frame: self._add_frame,
+            End: lambda x: setattr(self, 'end', x),
+            Metadata: lambda x: setattr(self, 'metadata', x),
+            dict: lambda x: setattr(self, 'metadata_raw', x)},
             skip_frames)
 
     def _add_frame(self, f):

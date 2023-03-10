@@ -1,9 +1,6 @@
-import enum, os, re, struct, sys
-
-import numpy as np
+import enum, re, struct
 
 from .log import log
-
 
 PORTS = range(4)
 
@@ -25,7 +22,8 @@ unpack_float = struct.Struct('>f').unpack
 
 unpack_bool = struct.Struct('>?').unpack
 
-unpack_matchid = struct.Struct('>50s').unpack # this one is special =)
+unpack_matchid = struct.Struct('>50s').unpack  # this one is special =)
+
 
 def _indent(s):
     return re.sub(r'^', '    ', s, flags=re.MULTILINE)
@@ -95,11 +93,13 @@ class Base:
 
 
 class Enum(enum.Enum):
+
     def __repr__(self):
         return '%r:%s' % (self._value_, self._name_)
 
 
 class IntEnum(enum.IntEnum):
+
     def __repr__(self):
         return '%d:%s' % (self._value_, self._name_)
 
@@ -117,5 +117,6 @@ class IntEnum(enum.IntEnum):
 
 
 class EOFError(IOError):
+
     def __init__(self):
         super().__init__('unexpected end of file')
