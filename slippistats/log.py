@@ -2,16 +2,17 @@ import logging, os
 
 from termcolor import colored
 
-
 COLORS = {
     'WARNING': 'yellow',
     'INFO': 'white',
     'DEBUG': 'grey',
     'CRITICAL': 'red',
-    'ERROR': 'red'}
-
+    'ERROR': 'red',
+    }
 
 _old_factory = logging.getLogRecordFactory()
+
+
 def record_factory(*args, **kwargs):
     record = _old_factory(*args, **kwargs)
     l = record.levelname
@@ -22,5 +23,6 @@ def record_factory(*args, **kwargs):
 logging.setLogRecordFactory(record_factory)
 logging.basicConfig(
     level=os.environ.get('LOG_LEVEL', 'WARNING').upper(),
-    format="%(levelname_colored)s: %(message)s")
+    format="%(levelname_colored)s: %(message)s",
+    )
 log = logging.getLogger()

@@ -2,7 +2,7 @@ from __future__ import annotations
 import io
 import os
 from pathlib import Path
-from typing import BinaryIO, Callable, Union
+from typing import BinaryIO, Callable
 
 import ubjson
 
@@ -32,10 +32,8 @@ class ParseError(IOError):
         self.pos = pos
 
     def __str__(self):
-        return 'Parse error (%s %s): %s' % (
-            self.filename or '?',
-            '@0x%x' % self.pos if self.pos else '?',
-            super().__str__())
+        return f'Parse error ({self.filename or "?"} {self.pos if self.pos else "?":#0x}): {super().__str__()}'
+            
 
 
 def _parse_event_payloads(stream):
@@ -44,12 +42,12 @@ def _parse_event_payloads(stream):
 
     event_type = EventType(code)
     if event_type is not EventType.EVENT_PAYLOADS:
-        raise Exception(f'expected event payloads, but got {event_type}')
+        raise ValueError(f'expected event payloads, but got {event_type}')
 
     this_size -= 1 # includes size byte for some reason
     command_count = this_size // 3
     if command_count * 3 != this_size:
-        raise Exception(f'payload size not divisible by 3: {this_size}')
+        raise ValueError(f'payload size not divisible by 3: {this_size}')
 
     sizes = {}
     for i in range(command_count):
@@ -109,7 +107,7 @@ def _parse_event(event_stream, payload_sizes):
                 event = None
 
         return (1 + size, event)
-    except Exception as e:
+    except Exception as exc:
         # Calculate the stream position of the exception as best we can.
         # This won't be perfect: for an invalid enum, the calculated position
         # will be *after* the value at minimum, and may be farther than that
@@ -117,7 +115,7 @@ def _parse_event(event_stream, payload_sizes):
         # leaving it up to the `catch` clause in `parse`, because that will
         # always report a position that's at the end of an event (due to
         # `event_stream.read` above).
-        raise ParseError(str(e)) # pos = base_pos + stream.tell() if base_pos else None)
+        raise ParseError(str(exc)) # pos = base_pos + stream.tell() if base_pos else None)
 
 
 def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
@@ -171,7 +169,7 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
                     case Frame.Event.Type.END:
                         current_frame.end = Frame.End._parse(event.data)
                     case _:
-                        raise Exception('unknown frame data type: %s' % event.data)
+                        raise Exception(f'unknown frame data type: {event.data}')
             # Start/End events are put at the end for optimization purposes - frame events happen far more frequently.
             case Start():
                 handlers[Start](event)
@@ -239,7 +237,7 @@ def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
         _parse_try(f, handlers, skip_frames)
 
 
-def parse(source: Union[BinaryIO, str, os.PathLike], handlers: dict[ParseEvent, Callable[..., None]], skip_frames: bool = False) -> None:
+def parse(source: BinaryIO | str | os.PathLike, handlers: dict[ParseEvent, Callable[..., None]], skip_frames: bool = False) -> None:
     """Parse a Slippi replay.
     :param input: replay file object or path
     :param handlers: dict of parse event keys to handler functions. Each event will be passed to the corresponding handler as it occurs.

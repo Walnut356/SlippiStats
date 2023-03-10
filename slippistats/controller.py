@@ -1,7 +1,7 @@
 from __future__ import annotations
 from enum import IntFlag
 
-from .util import *
+from .util import Base
 
 
 class Triggers(Base):
@@ -32,7 +32,8 @@ class Triggers(Base):
         def __eq__(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
-            # Should we add an epsilon to these comparisons? When are people going to be comparing trigger states for equality, other than in our tests?
+            # Should we add an epsilon to these comparisons?
+            # When are people going to be comparing trigger states for equality, other than in our tests?
             return other.l == self.l and other.r == self.r
 
 
@@ -93,7 +94,7 @@ class Buttons(Base):
         def pressed(self):
             """Returns a list of all buttons being pressed."""
             pressed = []
-            for b in self.__class__:
-                if self & b:
-                    pressed.append(b)
+            for button in self.__class__:
+                if self & button:
+                    pressed.append(button)
             return pressed

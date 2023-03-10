@@ -199,7 +199,7 @@ class Start(Base):
             if isinstance(other, self.__class__):
                 return self.version == other.version
 
-            if isinstance(other, str) or isinstance(other, Start.Slippi.Version):
+            if isinstance(other, (str, Start.Slippi.Version)):
                 return self.version == other
 
             raise NotImplementedError(
@@ -210,7 +210,7 @@ class Start(Base):
             if isinstance(other, self.__class__):
                 return self.version >= other.version
 
-            if isinstance(other, str) or isinstance(other, Start.Slippi.Version):
+            if isinstance(other, (str, Start.Slippi.Version)):
                 return self.version >= other
 
             raise NotImplementedError(

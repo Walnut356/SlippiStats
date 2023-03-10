@@ -18,12 +18,14 @@ class Metadata(Base):
     players: tuple[Optional[Metadata.Player]]  #: Player metadata by port (port 1 is at index 0; empty ports will contain None)
     console_name: Optional[str]  #: Name of the console the game was played on, if any
 
-    def __init__(self,
-                 date: datetime,
-                 duration: int,
-                 platform: Metadata.Platform,
-                 players: tuple[Optional[Metadata.Player]],
-                 console_name: Optional[str] = None):
+    def __init__(
+        self,
+        date: datetime,
+        duration: int,
+        platform: Metadata.Platform,
+        players: tuple[Optional[Metadata.Player]],
+        console_name: Optional[str] = None,
+        ):
         self.date = date
         self.duration = duration
         self.platform = platform
@@ -38,7 +40,7 @@ class Metadata(Base):
         raw_date = [
             int(g or '0')
             for g in re.search(r'(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|\+(\d{2})(\d{2}))?$', raw_date).groups()
-        ]
+            ]
 
         date = datetime(*raw_date[:7], timezone(timedelta(hours=raw_date[7], minutes=raw_date[8])))
         #Duration is stored as the final frame index + the "pre-Go" frames.
@@ -61,13 +63,21 @@ class Metadata(Base):
                 players[i] = cls.Player._parse(json['players'][str(i)])
             except KeyError:
                 pass
-        return cls(date=date, duration=duration, platform=platform, players=tuple(players), console_name=console_name)
+        return cls(
+            date=date,
+            duration=duration,
+            platform=platform,
+            players=tuple(players),
+            console_name=console_name,
+            )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return (self.date == other.date and self.duration == other.duration and self.platform == other.platform and
-                self.players == other.players and self.console_name == other.console_name)
+        return (
+            self.date == other.date and self.duration == other.duration and self.platform == other.platform and
+            self.players == other.players and self.console_name == other.console_name
+            )
 
     class Player(Base):
         """Contains metadata from the perspective of slippi, including character usage, netplay info, connect code, and display name"""

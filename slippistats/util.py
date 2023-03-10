@@ -71,7 +71,7 @@ def unpack(fmt, stream):
 def expect_bytes(expected_bytes, stream):
     read_bytes = stream.read(len(expected_bytes))
     if read_bytes != expected_bytes:
-        raise Exception(f'expected {expected_bytes}, but got: {read_bytes}')
+        raise AssertionError(f'expected {expected_bytes}, but got: {read_bytes}')
 
 
 class Base:
@@ -95,13 +95,13 @@ class Base:
 class Enum(enum.Enum):
 
     def __repr__(self):
-        return '%r:%s' % (self._value_, self._name_)
+        return f'{self.value}:{self.name}'
 
 
 class IntEnum(enum.IntEnum):
 
     def __repr__(self):
-        return '%d:%s' % (self._value_, self._name_)
+        return f'{self.value}:{self.name}'
 
     @classmethod
     def _missing_(cls, value):
