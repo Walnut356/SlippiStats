@@ -1,0 +1,218 @@
+{
+  "mode": "queue",
+  "replay": "",
+  "isRealTimeMode": false,
+  "outputOverlayFiles": true,
+  "queue": [
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T173304.slp",
+      "gameStartAt": "01/22/23 10:33 PM",
+      "startFrame": 5402,
+      "endFrame": 6247
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181447.slp",
+      "gameStartAt": "01/22/23 11:14 PM",
+      "startFrame": 1985,
+      "endFrame": 2948
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181447.slp",
+      "gameStartAt": "01/22/23 11:14 PM",
+      "startFrame": 4848,
+      "endFrame": 5569
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181742.slp",
+      "gameStartAt": "01/22/23 11:17 PM",
+      "startFrame": 1845,
+      "endFrame": 2673
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181742.slp",
+      "gameStartAt": "01/22/23 11:17 PM",
+      "startFrame": 10676,
+      "endFrame": 11476
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181742.slp",
+      "gameStartAt": "01/22/23 11:17 PM",
+      "startFrame": 716,
+      "endFrame": 1737
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T181742.slp",
+      "gameStartAt": "01/22/23 11:17 PM",
+      "startFrame": 3185,
+      "endFrame": 4793
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T182208.slp",
+      "gameStartAt": "01/22/23 11:22 PM",
+      "startFrame": 4073,
+      "endFrame": 5465
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T182208.slp",
+      "gameStartAt": "01/22/23 11:22 PM",
+      "startFrame": 1635,
+      "endFrame": 2916
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T183143.slp",
+      "gameStartAt": "01/22/23 11:31 PM",
+      "startFrame": 1547,
+      "endFrame": 2551
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T184304.slp",
+      "gameStartAt": "01/22/23 11:43 PM",
+      "startFrame": 144,
+      "endFrame": 833
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T184619.slp",
+      "gameStartAt": "01/22/23 11:46 PM",
+      "startFrame": 2711,
+      "endFrame": 3761
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T184916.slp",
+      "gameStartAt": "01/22/23 11:49 PM",
+      "startFrame": 6217,
+      "endFrame": 7219
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T184916.slp",
+      "gameStartAt": "01/22/23 11:49 PM",
+      "startFrame": 4128,
+      "endFrame": 5018
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T184916.slp",
+      "gameStartAt": "01/22/23 11:49 PM",
+      "startFrame": 7974,
+      "endFrame": 8698
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T191504.slp",
+      "gameStartAt": "01/23/23 12:15 AM",
+      "startFrame": 7548,
+      "endFrame": 8356
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T191504.slp",
+      "gameStartAt": "01/23/23 12:15 AM",
+      "startFrame": 4651,
+      "endFrame": 5558
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T191740.slp",
+      "gameStartAt": "01/23/23 12:17 AM",
+      "startFrame": 1839,
+      "endFrame": 2570
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T201540.slp",
+      "gameStartAt": "01/23/23 01:15 AM",
+      "startFrame": 43,
+      "endFrame": 752
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T201827.slp",
+      "gameStartAt": "01/23/23 01:18 AM",
+      "startFrame": 4886,
+      "endFrame": 5537
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T201827.slp",
+      "gameStartAt": "01/23/23 01:18 AM",
+      "startFrame": 3832,
+      "endFrame": 4648
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T202143.slp",
+      "gameStartAt": "01/23/23 01:21 AM",
+      "startFrame": 277,
+      "endFrame": 1315
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T202143.slp",
+      "gameStartAt": "01/23/23 01:21 AM",
+      "startFrame": 4413,
+      "endFrame": 5299
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T202143.slp",
+      "gameStartAt": "01/23/23 01:21 AM",
+      "startFrame": 2197,
+      "endFrame": 3052
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T202143.slp",
+      "gameStartAt": "01/23/23 01:21 AM",
+      "startFrame": 5806,
+      "endFrame": 6632
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T202426.slp",
+      "gameStartAt": "01/23/23 01:24 AM",
+      "startFrame": 1818,
+      "endFrame": 2510
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T203212.slp",
+      "gameStartAt": "01/23/23 01:32 AM",
+      "startFrame": 3023,
+      "endFrame": 3784
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T203511.slp",
+      "gameStartAt": "01/23/23 01:35 AM",
+      "startFrame": 7098,
+      "endFrame": 8088
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T203511.slp",
+      "gameStartAt": "01/23/23 01:35 AM",
+      "startFrame": 4452,
+      "endFrame": 5514
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T205016.slp",
+      "gameStartAt": "01/23/23 01:50 AM",
+      "startFrame": 618,
+      "endFrame": 1760
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T205016.slp",
+      "gameStartAt": "01/23/23 01:50 AM",
+      "startFrame": 11955,
+      "endFrame": 13167
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T205418.slp",
+      "gameStartAt": "01/23/23 01:54 AM",
+      "startFrame": 6553,
+      "endFrame": 7613
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T205744.slp",
+      "gameStartAt": "01/23/23 01:57 AM",
+      "startFrame": 9537,
+      "endFrame": 10578
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T210107.slp",
+      "gameStartAt": "01/23/23 02:01 AM",
+      "startFrame": 528,
+      "endFrame": 1907
+    },
+    {
+      "path": "E:\\downloads\\g9-streams\\Game_20230122T210107.slp",
+      "gameStartAt": "01/23/23 02:01 AM",
+      "startFrame": 3473,
+      "endFrame": 4105
+    }
+  ]
+}
