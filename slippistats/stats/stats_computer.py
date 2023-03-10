@@ -1,14 +1,12 @@
-from typing import Optional
-from math import dist
 from dataclasses import dataclass, field
+from typing import Optional
 
-from ..util import Base, try_enum
 from ..enums.state import ActionState
-from ..event import Position, Buttons, Direction, Attack
+from ..event import Attack, Buttons
 from ..stats.common import *
-
+from ..util import Base, try_enum
+from .computer import ComputerBase
 from .stat_types import *
-
 
 
 @dataclass
@@ -52,12 +50,12 @@ class StatsComputer(ComputerBase):
 
     def wavedash_compute(self, connect_code:Optional[str]=None) -> list[WavedashData]:
         player_ports: list[int]
-        
+
         if connect_code:
             player_ports, _ = self.generate_player_ports(connect_code)
         else:
             player_ports = self.generate_player_ports()
-            
+
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
                 _ = player_ports[port_index - 1] # Only works for 2 ports
@@ -70,7 +68,7 @@ class StatsComputer(ComputerBase):
                 #TODO add wavesurf logic?
                 if player_state != ActionState.LAND_FALL_SPECIAL:
                     continue
-                    
+
                 if prev_player_frame.post.state == ActionState.LAND_FALL_SPECIAL:
                     continue
 
@@ -90,10 +88,10 @@ class StatsComputer(ComputerBase):
                         self.data.wavedash.append(self.wavedash_state)
                         break
         return self.data.wavedash
-    
+
     def dash_compute(self, connect_code:Optional[str]=None) -> list[DashData]:
         player_ports = None
-        
+
         if connect_code:
             player_ports, _ = self.generate_player_ports(connect_code)
         else:
@@ -102,9 +100,9 @@ class StatsComputer(ComputerBase):
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
                 _ = player_ports[port_index - 1] # Only works for 2 ports
-            
+
             self.dash_state = DashState(player_port, connect_code)
-            
+
             for i, frame in enumerate(self.all_frames):
                 player_frame = self.port_frame(player_port, frame)
                 player_state = player_frame.post.state
@@ -112,7 +110,7 @@ class StatsComputer(ComputerBase):
                 prev_player_state = prev_player_frame.post.state
                 prev_prev_player_frame = self.port_frame_by_index(player_port, i - 2)
                 prev_prev_player_state = prev_prev_player_frame.post.state
-                
+
                 # if last 2 states weren't dash and curr state is dash, start dash event
                 # if the state pattern dash -> wait -> dash occurs, mark as dashdance
                 # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
@@ -123,7 +121,7 @@ class StatsComputer(ComputerBase):
                         self.dash_state.active_dash = True
                         self.dash_state.dash.direction = player_frame.post.facing_direction.name
                         self.dash_state.dash.start_pos = player_frame.post.position.x
-                    
+
                     if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
                         # if a dashdance pattern (dash -> turn -> dash) is detected, first we need to finalize and record the previous dash
                         self.dash_state.dash.end_pos = prev_prev_player_frame.post.position.x
@@ -134,7 +132,7 @@ class StatsComputer(ComputerBase):
                         self.dash_state.dash.direction = player_frame.post.facing_direction.name
                         self.dash_state.dash.start_pos = player_frame.post.position.x
                         self.dash_state.dash.is_dashdance = True
-                    
+
                 else:
                     # If not dashing for 2 consecutive frames, finalize the dash and reset the state
                     if (self.dash_state.active_dash and
@@ -148,9 +146,9 @@ class StatsComputer(ComputerBase):
     def tech_compute(self, connect_code:Optional[str]=None) -> list[TechData]:
         player_ports: list[int]
         opponent_port: int
-        
+
         if connect_code:
-                player_ports, opponent_port = self.generate_player_ports(connect_code)
+            player_ports, opponent_port = self.generate_player_ports(connect_code)
         else:
             player_ports = self.generate_player_ports()
 
@@ -164,11 +162,11 @@ class StatsComputer(ComputerBase):
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1).post
                 prev_player_state = prev_player_frame.state
 
-                
+
                 #TODO logical error: false positive on raw walljump. Check if they were in walltech beforehand?
                 curr_teching = is_teching(player_state)
                 was_teching = is_teching(prev_player_state)
-            
+
             # Close out active techs if we were teching, and save some processing power if we weren't
                 if not curr_teching:
                     if was_teching and self.tech_state is not None:
@@ -189,7 +187,7 @@ class StatsComputer(ComputerBase):
                 tech_type = get_tech_type(player_state, player_frame.facing_direction)
 
                 self.tech_state.tech.tech_type = tech_type.name
-                
+
                 if player_state == self.tech_state.last_state:
                     continue
 
@@ -202,7 +200,7 @@ class StatsComputer(ComputerBase):
 
                     case TechType.JAB_RESET:
                         self.tech_state.tech.jab_reset = True
-                    
+
                     case TechType.TECH_LEFT:
                         opnt_relative_position = opponent_frame.position.x - player_frame.position.x
                         if player_frame.facing_direction > 0:
@@ -223,7 +221,7 @@ class StatsComputer(ComputerBase):
                             self.tech_state.tech.towards_opponent = False
                         else:
                             self.tech_state.tech.towards_opponent = True
-                    
+
                     case _: # Tech in place, getup attack
                         pass
         return self.data.tech
@@ -232,7 +230,7 @@ class StatsComputer(ComputerBase):
     def take_hit_compute(self, connect_code: Optional[str]=None) -> list[TakeHitData]:
         player_ports: list[int]
         opponent_port: int
-        
+
         if connect_code:
             player_ports, opponent_port = self.generate_player_ports(connect_code)
             self.did_win = self.is_winner(connect_code)
@@ -261,15 +259,15 @@ class StatsComputer(ComputerBase):
                         self.take_hit_state.final_knockback_angle = get_angle(player_frame.post.knockback_speed)
                         self.take_hit_state.di_angle = player_frame.pre.joystick
                         self.take_hit_state.final_knockback_velocity = player_frame.post.knockback_speed
-                        
+
                         stick = get_joystick_region(player_frame.pre.cstick)
                         if stick != JoystickRegion.DEAD_ZONE:
                             self.take_hit_state.asdi = stick
                         else:
                             self.take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
-                        
+
                         self.take_hit_state.find_valid_sdi()
-                        
+
                         self.data.take_hit.append(self.take_hit_state)
                     continue
 
@@ -291,9 +289,9 @@ class StatsComputer(ComputerBase):
 
 
     def l_cancel_compute(self, connect_code: Optional[str]=None):
-        
+
         player_ports: list[int]
-        
+
         if connect_code:
             player_ports, _ = self.generate_player_ports(connect_code)
             self.did_win = self.is_winner(connect_code)
@@ -312,11 +310,11 @@ class StatsComputer(ComputerBase):
                     case 0: pass
                     case 1: self.data.l_cancel.successful += 1
                     case 2: self.data.l_cancel.failed += 1
-    
+
     # def recovery_compute(self, connect_code: Optional[str]=None):
     #     player_ports: list[int]
     #     opponent_port: int
-        
+
     #     if connect_code:
     #         player_ports, opponent_port = self.generate_player_ports(connect_code)
     #         self.did_win = self.is_winner(connect_code)

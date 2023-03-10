@@ -1,21 +1,23 @@
 from dataclasses import dataclass
-from typing import Optional
-from .common import *
 from math import dist
+from typing import Optional
 
+from .common import *
 
 
 @dataclass
 class WavedashData():
     physical_port: int
     connect_code: Optional[str]
-    r_frame: int # which airborne frame was the airdodge input on?
-    angle: Optional[float] # in degrees
+    r_frame: int  # which airborne frame was the airdodge input on?
+    angle: Optional[float]  # in degrees
     airdodge_frames: int
     waveland: bool
     direction: Optional[str]
 
-    def __init__(self, port, connect_code:Optional[str], r_input_frame:int=0, stick:Optional[Position]=None, airdodge_frames:int=0):
+    def __init__(
+            self, port, connect_code: Optional[str], r_input_frame: int = 0, stick: Optional[Position] = None, airdodge_frames: int = 0
+        ):
         self.physical_port = port + 1
         self.connect_code = connect_code
         self.r_frame = r_input_frame
@@ -57,7 +59,7 @@ class DashData():
     direction: str
     is_dashdance: bool
 
-    def __init__(self, port, connect_code:Optional[str], start_pos=0, end_pos = 0):
+    def __init__(self, port, connect_code: Optional[str], start_pos=0, end_pos=0):
         self.physical_port = port + 1
         self.connect_code = connect_code
         self.start_pos = start_pos
@@ -66,14 +68,14 @@ class DashData():
 
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
-    
+
 
 @dataclass
 class DashState():
     dash: DashData
     active_dash: bool
-    
-    def __init__(self, port, connect_code:Optional[str]=None):
+
+    def __init__(self, port, connect_code: Optional[str] = None):
         self.dash = DashData(port, connect_code)
         self.active_dash = False
 
@@ -92,7 +94,7 @@ class TechData():
     jab_reset: Optional[bool]
     last_hit_by: str
 
-    def __init__(self, port, connect_code:Optional[str]=None):
+    def __init__(self, port, connect_code: Optional[str] = None):
         self.physical_port = port + 1
         self.connect_code = connect_code
         self.tech_type = None
@@ -106,8 +108,8 @@ class TechData():
 class TechState():
     tech: TechData
     last_state: Optional[ActionState | int]
-    
-    def __init__(self, port, connect_code:Optional[str]=None):
+
+    def __init__(self, port, connect_code: Optional[str] = None):
         self.tech = TechData(port, connect_code)
         self.last_state = None
 
@@ -132,7 +134,7 @@ class TakeHitData():
     start_position: Optional[Position]
     end_position: Optional[Position]
 
-    def __init__(self, port, connect_code:Optional[str]=None):
+    def __init__(self, port, connect_code: Optional[str] = None):
         self.physical_port = port + 1
         self.connect_code = connect_code
         self.last_hit_by = None
@@ -143,13 +145,14 @@ class TakeHitData():
         self.asdi = None
         self.start_position = None
         self.start_position = None
-    
+
     def find_valid_sdi(self):
         for i, stick_region in enumerate(self.stick_regions_during_hitlag):
             # Obviously the first stick position and any deadzone input cannot be SDI inputs so we skip those
-            if i == 0 or stick_region == JoystickRegion.DEAD_ZONE: continue
+            if i == 0 or stick_region == JoystickRegion.DEAD_ZONE:
+                continue
 
-            prev_stick_region = self.stick_regions_during_hitlag[i-1]
+            prev_stick_region = self.stick_regions_during_hitlag[i - 1]
 
             # If we haven't changed regions, it can't be an SDI input
             if stick_region == prev_stick_region:
@@ -165,7 +168,7 @@ class TakeHitData():
             if prev_stick_region % 2 == 0:
                 self.sdi_inputs.append(stick_region)
                 continue
-            
+
             # Diagonal -> cardinal will NOT result in a second SDI input unless the cardinal borders the opposite quadrant
             if prev_stick_region % 2 == 1:
                 if stick_region % 2 == 1:
@@ -179,24 +182,23 @@ class TakeHitData():
 
     def change_in_position(self) -> tuple:
         return self.start_position - self.end_position
-    
+
     def distance(self) -> float:
         return dist(self.end_position, self.start_position)
- 
-    
+
+
 @dataclass
-class LCancelData(Base):
+class LCancelData():
     physical_port: Optional[int]
     connect_code: Optional[str]
     successful: int
     failed: int
 
-    def __init__(self, port, connect_code:Optional[str]=None):
+    def __init__(self, port, connect_code: Optional[str] = None):
         self.physical_port = port + 1
         self.connect_code = connect_code
         self.successful = 0
         self.failed = 0
-    
-    def percentage(self):
-        return (self.successful/(self.successful + self.failed)) * 100
 
+    def percentage(self):
+        return (self.successful / (self.successful + self.failed)) * 100
