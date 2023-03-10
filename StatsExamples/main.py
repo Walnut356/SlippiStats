@@ -8,7 +8,11 @@ from slippistats import *
 
 replay = Game(Path(r'Modern Replays/Game_20221227T194333.slp'))
 
-thing = StatsComputer().prime_replay(replay)
+thing = StatsComputer()
+
+thing.prime_replay(replay)
+
+
 
 # frames = []
 # flags = []
