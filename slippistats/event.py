@@ -40,17 +40,19 @@ class Start(Base):
     game_number: Optional[int]  #: `added(3.14.0)` The game number for consecutive games
     tiebreak_number: Optional[int]
 
-    def __init__(self,
-                 is_teams: bool,
-                 players: tuple[Optional[Start.Player]],
-                 random_seed: int,
-                 slippi: Start.Slippi,
-                 stage: Stage,
-                 is_pal: Optional[bool] = None,
-                 is_frozen_ps: Optional[bool] = None,
-                 match_id: Optional[str] = None,
-                 game_number: Optional[int] = None,
-                 tiebreak_number: Optional[int] = None):
+    def __init__(
+            self,
+            is_teams: bool,
+            players: tuple[Optional[Start.Player]],
+            random_seed: int,
+            slippi: Start.Slippi,
+            stage: Stage,
+            is_pal: Optional[bool] = None,
+            is_frozen_ps: Optional[bool] = None,
+            match_id: Optional[str] = None,
+            game_number: Optional[int] = None,
+            tiebreak_number: Optional[int] = None
+        ):
         self.is_teams = is_teams
         self.players = players
         self.random_seed = random_seed
@@ -164,22 +166,26 @@ class Start(Base):
         except struct.error:
             tiebreak_number = None
 
-        return cls(is_teams=is_teams,
-                   players=tuple(players),
-                   random_seed=random_seed,
-                   slippi=slippi_,
-                   stage=stage,
-                   is_pal=is_pal,
-                   is_frozen_ps=is_frozen_ps,
-                   match_id=match_id,
-                   game_number=game_number,
-                   tiebreak_number=tiebreak_number)
+        return cls(
+            is_teams=is_teams,
+            players=tuple(players),
+            random_seed=random_seed,
+            slippi=slippi_,
+            stage=stage,
+            is_pal=is_pal,
+            is_frozen_ps=is_frozen_ps,
+            match_id=match_id,
+            game_number=game_number,
+            tiebreak_number=tiebreak_number
+            )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return (self.is_teams == other.is_teams and self.players == other.players and self.random_seed == other.random_seed and
-                self.slippi == other.slippi and self.stage is other.stage)
+        return (
+            self.is_teams == other.is_teams and self.players == other.players and self.random_seed == other.random_seed and
+            self.slippi == other.slippi and self.stage is other.stage
+            )
 
     class Slippi(Base):
         """Information about the Slippi recorder that generated this replay."""
@@ -204,7 +210,7 @@ class Start(Base):
 
             raise NotImplementedError(
                 "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-            )
+                )
 
         def __ge__(self, other: Start.Slippi | Start.Slippi.Version | str):
             if isinstance(other, self.__class__):
@@ -215,7 +221,7 @@ class Start(Base):
 
             raise NotImplementedError(
                 "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-            )
+                )
 
         def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
             return not self.__ge__(other)
@@ -245,7 +251,7 @@ class Start(Base):
 
                 raise NotImplementedError(
                     "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
+                    )
 
             def __ge__(self, other: Start.Slippi.Version | str):
                 if isinstance(other, self.__class__):
@@ -274,7 +280,7 @@ class Start(Base):
 
                 raise NotImplementedError(
                     "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
+                    )
 
     class Player(Base):
         """Contains metadata about the player from the console's perspective including:
@@ -284,17 +290,19 @@ class Start(Base):
         stocks: int  #: Starting stock count
         costume: int  #: Costume ID
         team: Optional[Start.Player.Team]  #: Team, if this was a teams game
-        ucf: Start.Player.UCF  #: UCF feature toggles
+        ucf: Optional[Start.Player.UCF]  #: UCF feature toggles
         tag: Optional[str]  #: Name tag
 
-        def __init__(self,
-                     character: CSSCharacter,
-                     type: Start.Player.Type,
-                     stocks: int,
-                     costume: int,
-                     team: Optional[Start.Player.Team],
-                     ucf: Start.Player.UCF = None,
-                     tag: Optional[str] = None):
+        def __init__(
+                self,
+                character: CSSCharacter,
+                type: Start.Player.Type,
+                stocks: int,
+                costume: int,
+                team: Optional[Start.Player.Team],
+                ucf: Optional[Start.Player.UCF] = None,
+                tag: Optional[str] = None
+            ):
             self.character = character
             self.type = type
             self.stocks = stocks
@@ -306,8 +314,10 @@ class Start(Base):
         def __eq__(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
-            return (self.character is other.character and self.type is other.type and self.stocks == other.stocks and
-                    self.costume == other.costume and self.team is other.team and self.ucf == other.ucf)
+            return (
+                self.character is other.character and self.type is other.type and self.stocks == other.stocks and
+                self.costume == other.costume and self.team is other.team and self.ucf == other.ucf
+                )
 
         class Type(IntEnum):
             """Human vs CPU"""
@@ -322,10 +332,12 @@ class Start(Base):
 
         class UCF(Base):
             """UCF Dashback and shield drop, off, on, or arduino"""
-            dash_back: Start.Player.UCF.DashBack  #: UCF dashback status
-            shield_drop: Start.Player.UCF.ShieldDrop  #: UCF shield drop status
+            dash_back: Optional[Start.Player.UCF.DashBack]  #: UCF dashback status
+            shield_drop: Optional[Start.Player.UCF.ShieldDrop]  #: UCF shield drop status
 
-            def __init__(self, dash_back: Start.Player.UCF.DashBack = None, shield_drop: Start.Player.UCF.ShieldDrop = None):
+            def __init__(
+                    self, dash_back: Optional[Start.Player.UCF.DashBack] = None, shield_drop: Optional[Start.Player.UCF.ShieldDrop] = None
+                ):
                 self.dash_back = dash_back or self.DashBack.OFF
                 self.shield_drop = shield_drop or self.ShieldDrop.OFF
 
@@ -465,17 +477,19 @@ class Frame(Base):
                 raw_analog_x: Optional[int]
                 percent: Optional[float]
 
-                def __init__(self,
-                             state: Union[ActionState, int],
-                             position: Position,
-                             direction: Direction,
-                             joystick: Position,
-                             cstick: Position,
-                             triggers: Triggers,
-                             buttons: Buttons,
-                             random_seed: int,
-                             raw_analog_x: Optional[int] = None,
-                             damage: Optional[float] = None):
+                def __init__(
+                        self,
+                        state: Union[ActionState, int],
+                        position: Position,
+                        direction: Direction,
+                        joystick: Position,
+                        cstick: Position,
+                        triggers: Triggers,
+                        buttons: Buttons,
+                        random_seed: int,
+                        raw_analog_x: Optional[int] = None,
+                        damage: Optional[float] = None
+                    ):
                     self.state = state  #: :py:class:`slippi.id.ActionState` | int: Character's action state
                     self.position = position  #: :py:class:`Position`: Character's position
                     self.facing_direction = direction  #: :py:class:`Direction`: Direction the character is facing
@@ -516,25 +530,29 @@ class Frame(Base):
                     except struct.error:
                         damage = None
 
-                    return cls(state=try_enum(ActionState, state),
-                               position=Position(position_x, position_y),
-                               direction=Direction(direction),
-                               joystick=Position(joystick_x, joystick_y),
-                               cstick=Position(cstick_x, cstick_y),
-                               triggers=Triggers(trigger_logical, trigger_physical_l, trigger_physical_r),
-                               buttons=Buttons(buttons_logical, buttons_physical),
-                               random_seed=random_seed,
-                               raw_analog_x=raw_analog_x,
-                               damage=damage)
+                    return cls(
+                        state=try_enum(ActionState, state),
+                        position=Position(position_x, position_y),
+                        direction=Direction(direction),
+                        joystick=Position(joystick_x, joystick_y),
+                        cstick=Position(cstick_x, cstick_y),
+                        triggers=Triggers(trigger_logical, trigger_physical_l, trigger_physical_r),
+                        buttons=Buttons(buttons_logical, buttons_physical),
+                        random_seed=random_seed,
+                        raw_analog_x=raw_analog_x,
+                        damage=damage
+                        )
 
             class Post(Base):
                 """Post-frame update data, for making decisions about game states (such as computing stats).
                 Information is collected at the end of collision detection, which is the last consideration of the game engine."""
 
-                __slots__ = ('character', 'state', 'position', 'facing_direction', 'percent', 'shield_size', 'stocks_remaining',
-                             'most_recent_hit', 'last_hit_by', 'combo_count', 'state_age', 'flags', 'maybe_hitstun_remaining',
-                             'is_airborne', 'last_ground_id', 'jumps_remaining', 'l_cancel', 'hurtbox_status', 'self_ground_speed',
-                             'self_air_speed', 'knockback_speed', 'hitlag_remaining', 'animation_index')
+                __slots__ = (
+                    'character', 'state', 'position', 'facing_direction', 'percent', 'shield_size', 'stocks_remaining', 'most_recent_hit',
+                    'last_hit_by', 'combo_count', 'state_age', 'flags', 'maybe_hitstun_remaining', 'is_airborne', 'last_ground_id',
+                    'jumps_remaining', 'l_cancel', 'hurtbox_status', 'self_ground_speed', 'self_air_speed', 'knockback_speed',
+                    'hitlag_remaining', 'animation_index'
+                    )
 
                 character: InGameCharacter  # In-game character (can only change for Zelda/Sheik).
                 state: Union[ActionState, int]  # Character's action state
@@ -562,30 +580,32 @@ class Frame(Base):
                 hitlag_remaining: Optional[float]  # 0 means "not in hitlag"
                 animation_index: Optional[int]  # Indicates the animation the character is in, animation derived from state.
 
-                def __init__(self,
-                             character: InGameCharacter,
-                             state: Union[ActionState, int],
-                             position: Position,
-                             direction: Direction,
-                             damage: float,
-                             shield: float,
-                             stocks: int,
-                             most_recent_hit: Union[Attack, int],
-                             last_hit_by: Optional[int],
-                             combo_count: int,
-                             state_age: Optional[float] = None,
-                             flags: Optional[StateFlags] = None,
-                             hit_stun: Optional[float] = None,
-                             airborne: Optional[bool] = None,
-                             ground: Optional[int] = None,
-                             jumps: Optional[int] = None,
-                             l_cancel: Optional[LCancel] = None,
-                             hurtbox_status: Optional[Hurtbox] = None,
-                             self_ground_speed: Optional[Velocity] = None,
-                             self_air_speed: Optional[Velocity] = None,
-                             knockback_speed: Optional[Velocity] = None,
-                             hitlag_remaining: Optional[float] = None,
-                             animation_index: Optional[int] = None):
+                def __init__(
+                        self,
+                        character: InGameCharacter,
+                        state: Union[ActionState, int],
+                        position: Position,
+                        direction: Direction,
+                        damage: float,
+                        shield: float,
+                        stocks: int,
+                        most_recent_hit: Union[Attack, int],
+                        last_hit_by: Optional[int],
+                        combo_count: int,
+                        state_age: Optional[float] = None,
+                        flags: Optional[StateFlags] = None,
+                        hit_stun: Optional[float] = None,
+                        airborne: Optional[bool] = None,
+                        ground: Optional[int] = None,
+                        jumps: Optional[int] = None,
+                        l_cancel: Optional[LCancel] = None,
+                        hurtbox_status: Optional[Hurtbox] = None,
+                        self_ground_speed: Optional[Velocity] = None,
+                        self_air_speed: Optional[Velocity] = None,
+                        knockback_speed: Optional[Velocity] = None,
+                        hitlag_remaining: Optional[float] = None,
+                        animation_index: Optional[int] = None
+                    ):
                     self.character = character
                     self.state = state
                     self.position = position
@@ -676,29 +696,31 @@ class Frame(Base):
                     except struct.error:
                         animation_index = None
 
-                    return cls(character=InGameCharacter(character),
-                               state=try_enum(ActionState, state),
-                               state_age=state_age,
-                               position=Position(position_x, position_y),
-                               direction=Direction(direction),
-                               damage=damage,
-                               shield=shield,
-                               stocks=stocks,
-                               most_recent_hit=try_enum(Attack, last_attack_landed),
-                               last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                               combo_count=combo_count,
-                               flags=flags,
-                               hit_stun=hit_stun,
-                               airborne=airborne,
-                               ground=ground,
-                               jumps=jumps,
-                               l_cancel=l_cancel,
-                               hurtbox_status=hurtbox_status,
-                               self_ground_speed=self_ground_speed,
-                               self_air_speed=self_air_speed,
-                               knockback_speed=knockback_speed,
-                               hitlag_remaining=hitlag_remaining,
-                               animation_index=animation_index)
+                    return cls(
+                        character=InGameCharacter(character),
+                        state=try_enum(ActionState, state),
+                        state_age=state_age,
+                        position=Position(position_x, position_y),
+                        direction=Direction(direction),
+                        damage=damage,
+                        shield=shield,
+                        stocks=stocks,
+                        most_recent_hit=try_enum(Attack, last_attack_landed),
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                        flags=flags,
+                        hit_stun=hit_stun,
+                        airborne=airborne,
+                        ground=ground,
+                        jumps=jumps,
+                        l_cancel=l_cancel,
+                        hurtbox_status=hurtbox_status,
+                        self_ground_speed=self_ground_speed,
+                        self_air_speed=self_air_speed,
+                        knockback_speed=knockback_speed,
+                        hitlag_remaining=hitlag_remaining,
+                        animation_index=animation_index
+                        )
 
     class Item(Base):
         """An active item (includes projectiles)."""
@@ -707,20 +729,23 @@ class Frame(Base):
 
         type: Item  #: Item type
         state: int  #: Item's action state
-        direction: Direction  #: Direction item is facing
+        direction: Optional[Direction]  #: Direction item is facing
         velocity: Velocity  #: Item's velocity
         position: Position  #: Item's position
         damage: int  #: Amount of damage item has taken
         timer: int  #: Frames remaining until item expires
         spawn_id: int  #: Unique ID per item spawned (0, 1, 2, ...)
-        missile_type: int
-        turnip_type: TurnipFace
-        is_shot_launched: bool
-        charge_power: int
-        owner: int
+        missile_type: Optional[int]
+        turnip_type: Optional[TurnipFace]
+        is_shot_launched: Optional[bool]
+        charge_power: Optional[int]
+        owner: Optional[int]
 
-        def __init__(self, type: Item, state: int, direction: Direction, velocity: Velocity, position: Position, damage: int, timer: int,
-                     spawn_id: int, missile_type: int, turnip_type: TurnipFace, is_shot_launched: bool, charge_power: int, owner: int):
+        def __init__(
+                self, type: Item, state: int, direction: Optional[Direction], velocity: Velocity, position: Position, damage: int,
+                timer: int, spawn_id: int, missile_type: Optional[int], turnip_type: Optional[TurnipFace], is_shot_launched: Optional[bool],
+                charge_power: Optional[int], owner: Optional[int]
+            ):
             self.type = type
             self.state = state
             self.direction = direction
@@ -761,26 +786,30 @@ class Frame(Base):
                 charge_power = None
                 owner = None
 
-            return cls(type=try_enum(Item, type),
-                       state=state,
-                       direction=Direction(direction) if direction != 0 else None,
-                       velocity=Velocity(x_vel, y_vel),
-                       position=Position(x_pos, y_pos),
-                       damage=damage,
-                       timer=timer,
-                       spawn_id=spawn_id,
-                       missile_type=missile_type,
-                       turnip_type=try_enum(TurnipFace, turnip_type),
-                       is_shot_launched=is_shot_launched,
-                       charge_power=charge_power,
-                       owner=owner)
+            return cls(
+                type=try_enum(Item, type),
+                state=state,
+                direction=Direction(direction) if direction != 0 else None,
+                velocity=Velocity(x_vel, y_vel),
+                position=Position(x_pos, y_pos),
+                damage=damage,
+                timer=timer,
+                spawn_id=spawn_id,
+                missile_type=missile_type,
+                turnip_type=try_enum(TurnipFace, turnip_type),
+                is_shot_launched=is_shot_launched,
+                charge_power=charge_power,
+                owner=owner
+                )
 
         def __eq__(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
-            return (self.type == other.type and self.state == other.state and self.direction == other.direction and
-                    self.velocity == other.velocity and self.position == other.position and self.damage == other.damage and
-                    self.timer == other.timer and self.spawn_id == other.spawn_id)
+            return (
+                self.type == other.type and self.state == other.state and self.direction == other.direction and
+                self.velocity == other.velocity and self.position == other.position and self.damage == other.damage and
+                self.timer == other.timer and self.spawn_id == other.spawn_id
+                )
 
     class Start(Base):
         """Start-of-frame data."""
@@ -795,7 +824,7 @@ class Frame(Base):
         @classmethod
         def _parse(cls, stream):
             (random_seed,) = unpack_uint32(stream.read(4))
-            random_seed = random_seed
+            # random_seed = random_seed ??? why was this here?
             return cls(random_seed)
 
         def __eq__(self, other):

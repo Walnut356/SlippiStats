@@ -2,7 +2,7 @@ from __future__ import annotations
 import io
 import os
 from pathlib import Path
-from typing import BinaryIO, Callable
+from typing import BinaryIO, Callable, Any
 
 import ubjson
 
@@ -33,7 +33,7 @@ class ParseError(IOError):
 
     def __str__(self):
         return f'Parse error ({self.filename or "?"} {self.pos if self.pos else "?":#0x}): {super().__str__()}'
-            
+
 
 
 def _parse_event_payloads(stream):
@@ -127,7 +127,7 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
     while (total_size == 0 or bytes_read < total_size) and not isinstance(event, End):
         (b, event) = _parse_event(stream, payload_sizes)
         bytes_read += b
-        
+
         # pattern matching a type requires type constructor, probably doesn't actually construct the type?
         # see: https://stackoverflow.com/questions/70815197
         match event:
@@ -169,7 +169,7 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
                     case Frame.Event.Type.END:
                         current_frame.end = Frame.End._parse(event.data)
                     case _:
-                        raise Exception(f'unknown frame data type: {event.data}')
+                        raise ValueError(f'unknown frame data type: {event.data}')
             # Start/End events are put at the end for optimization purposes - frame events happen far more frequently.
             case Start():
                 handlers[Start](event)
@@ -237,7 +237,7 @@ def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
         _parse_try(f, handlers, skip_frames)
 
 
-def parse(source: BinaryIO | str | os.PathLike, handlers: dict[ParseEvent, Callable[..., None]], skip_frames: bool = False) -> None:
+def parse(source: BinaryIO | str | os.PathLike, handlers: dict[Any, Callable[..., None]], skip_frames: bool = False) -> None:
     """Parse a Slippi replay.
     :param input: replay file object or path
     :param handlers: dict of parse event keys to handler functions. Each event will be passed to the corresponding handler as it occurs.
