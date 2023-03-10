@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from .common import *
+from .computer import ComputerBase
 from ..event import Position
 from ..util import Enum
 
@@ -67,7 +68,7 @@ class ComboData():
 
 
 @dataclass
-class ComboState(Base):
+class ComboState():
     """Contains info used during combo calculation to build the final combo"""
     combo: Optional[ComboData] = field(default_factory=ComboData())
     move: MoveLanded = field(default_factory=MoveLanded())
@@ -120,7 +121,7 @@ class ComboComputer(ComputerBase):
             shield_break_check=True,
             ledge_check=True
         ) -> None:
-        """Generates list of combos from the replay information parsed using prime_replay(), returns nothing. Output is accessible as a list 
+        """Generates list of combos from the replay information parsed using prime_replay(), returns nothing. Output is accessible as a list
         through ComboComputer.combos"""
         # Most people want combos from a specific player, so forcing a connect code requirement
         # will cover most usecases
