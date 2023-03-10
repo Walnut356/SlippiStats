@@ -1,14 +1,31 @@
-import enum
-import os
-import re
-import struct
-import sys
+import enum, os, re, struct, sys
+
+import numpy as np
 
 from .log import log
 
 
 PORTS = range(4)
 
+# Pre-allocating these prevents python from recreating the object on every struct.unpack() call
+# which saves a non-negligable amount of processing time.
+unpack_uint8 = struct.Struct('>B').unpack
+
+unpack_uint16 = struct.Struct('>H').unpack
+
+unpack_uint32 = struct.Struct('>I').unpack
+
+unpack_int8 = struct.Struct('>b').unpack
+
+unpack_int16 = struct.Struct('>h').unpack
+
+unpack_int32 = struct.Struct('>i').unpack
+
+unpack_float = struct.Struct('>f').unpack
+
+unpack_bool = struct.Struct('>?').unpack
+
+unpack_matchid = struct.Struct('>50s').unpack # this one is special =)
 
 def _indent(s):
     return re.sub(r'^', '    ', s, flags=re.MULTILINE)
@@ -43,6 +60,7 @@ def try_enum(enum_type, val):
         return val
 
 
+# Depreciated for performance reasons. See unpack_type objects in util.py
 def unpack(fmt, stream):
     fmt = '>' + fmt
     size = struct.calcsize(fmt)
