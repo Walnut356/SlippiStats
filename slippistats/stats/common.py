@@ -1,12 +1,18 @@
 from enum import Enum
 from math import atan2, degrees
 from typing import Optional
+import datetime
+import polars as pl
 
 # from ..enums.character import InGameCharacter
 from ..enums.stage import Stage
 from ..enums.state import ActionRange, ActionState
 from ..event import Frame, Position, StateFlags, Velocity
 from ..util import IntEnum
+
+# ---------------------------------------------------------------------------- #
+#                                 State Helpers                                #
+# ---------------------------------------------------------------------------- #
 
 def just_entered_state(action_state: int, curr: Frame.Port.Data | int, prev: Frame.Port.Data | int) -> bool:
     # TODO test this
@@ -110,13 +116,6 @@ def did_lose_stock(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data
     if not curr_frame or  not prev_frame:
         return False
     return prev_frame.stocks_remaining - curr_frame.stocks_remaining > 0
-
-def calc_damage_taken(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> float:
-    """Recieves current and previous frames, returns float of the difference in damage between the two"""
-    percent = curr_frame.percent
-    prev_percent = prev_frame.percent
-
-    return percent - prev_percent
 
 def is_ledge_action(action_state: int):
     """Recieves action state, returns whether or not player is currently hanging from the ledge, or doing any ledge action."""
@@ -232,6 +231,10 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
             return None
 # yapf: enable
 
+# ---------------------------------------------------------------------------- #
+#                                 Calc Helpers                                 #
+# ---------------------------------------------------------------------------- #
+
 class JoystickRegion(IntEnum):
     """Deadzone is -1, directions start at 1. Cardinals are even, diagonals are odd"""
     DEAD_ZONE = -1
@@ -298,3 +301,48 @@ def max_di_angles(angle):
     if angles[1] > 180:
         angles[1] -= 360
     return angles
+
+def calc_damage_taken(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> float:
+    """Recieves current and previous frames, returns float of the difference in damage between the two"""
+    percent = curr_frame.percent
+    prev_percent = prev_frame.percent
+
+    return percent - prev_percent
+
+# ---------------------------------------------------------------------------- #
+#                                Output Helpers                                #
+# ---------------------------------------------------------------------------- #
+
+def get_playback_header():
+    header: dict = {
+        "mode": "queue",
+        "replay": "",
+        "isRealTimeMode": False,
+        "outputOverlayFiles": True,
+        "queue": []
+        }
+    return header
+
+def get_dataframe_header(stats_computer: StatsComputer, connect_code: str) -> dict:
+
+    formatted_date = stats_computer.metadata.date.replace(tzinfo=None)
+    # total number of frames, starting when the player has control, in seconds
+    formatted_time = datetime.timedelta(seconds=((stats_computer.metadata.duration)/60))
+
+    [player_port], opponent_port = stats_computer.generate_player_ports(connect_code)
+
+    header = {
+            "match_id" : stats_computer.rules.match_id,
+            "date_time" : formatted_date,
+            "duration" : formatted_time,
+            "ranked" : stats_computer.rules.is_ranked,
+            "win" : stats_computer.is_winner(player_port),
+            "char" : id.InGameCharacter(list(stats_computer.players[player_port].characters.keys())[0]).name, #lmao
+            "opnt_Char" : id.InGameCharacter(list(stats_computer.players[opponent_port].characters.keys())[0]).name
+            }
+
+    return header
+
+def to_dataframe(stats: list) -> pl.DataFrame:
+    #TODO refactor so passing stats computer isn't required?
+    return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats] #TODO if isinstance(stat)

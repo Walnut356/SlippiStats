@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+from os import PathLike
 
 from .common import *
 from .computer import ComputerBase
 from ..event import Position
+from ..game import Game
 from ..util import Enum
 
 COMBO_LENIENCY = 45
@@ -86,7 +88,7 @@ class ComboComputer(ComputerBase):
     queue: list[dict]
     replay_path: Path
 
-    def __init__(self):
+    def __init__(self, replay: Optional[PathLike | Game | str] = None):
         self.rules = None
         self.combos = []
         self.players = []
@@ -94,14 +96,15 @@ class ComboComputer(ComputerBase):
         self.combo_state = None
         self.metadata = None
         self.queue = []
+        if replay is not None:
+            self.prime_replay(replay, False)
 
     def reset_data(self):
         self.combos = []
         self.combo_state = ComboState()
         self.queue = []
 
-    def json_export(self, combo: ComboData):
-        self.queue.append({})
+    def to_json(self, combo: ComboData):
         self.queue[-1]["path"] = self.replay_path
         self.queue[-1]["gameStartAt"] = self.metadata.date.strftime("%m/%d/%y %I:%M %p")
         self.queue[-1]["startFrame"] = combo.start_frame - PRE_COMBO_BUFFER_FRAMES
@@ -129,9 +132,9 @@ class ComboComputer(ComputerBase):
         opponent_port = None
 
         if connect_code:
-            player_ports, opponent_port = self.generate_player_ports(connect_code)
+            player_ports, opponent_port = self.get_player_ports(connect_code)
         else:
-            player_ports = self.generate_player_ports(connect_code)
+            player_ports = self.get_player_ports(connect_code)
 
         for port_index, player_port in enumerate(player_ports):
             # This is super gross but the c++ in me says this is the least annoying way to do this for now
@@ -303,14 +306,3 @@ class ComboComputer(ComputerBase):
 
                     self.combo_state.combo = None
                     self.combo_state.move = None
-
-
-def generate_clippi_header():
-    header: dict = {
-        "mode": "queue",
-        "replay": "",
-        "isRealTimeMode": False,
-        "outputOverlayFiles": True,
-        "queue": []
-        }
-    return header

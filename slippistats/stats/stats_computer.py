@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Optional
+from os import PathLike
 
 from ..enums.state import ActionState
 from ..event import Attack, Buttons
+from ..game import Game
 from ..stats.common import *
 from ..util import Base, try_enum
 from .computer import ComputerBase
@@ -26,12 +28,14 @@ class StatsComputer(ComputerBase):
     dash_state: Optional[DashState]
     take_hit_state: Optional[TakeHitData]
 
-    def __init__(self):
+    def __init__(self, replay: Optional[PathLike | Game | str]=None):
         self.data = Data()
         self.wavedash_state = None
         self.tech_state = None
         self.dash_state = None
         self.take_hit_state = None
+        if replay is not None:
+            self.prime_replay(replay, False)
 
     def reset_data(self):
         self.data = Data()
@@ -52,9 +56,9 @@ class StatsComputer(ComputerBase):
         player_ports: list[int]
 
         if connect_code:
-            player_ports, _ = self.generate_player_ports(connect_code)
+            player_ports, _ = self.get_player_ports(connect_code)
         else:
-            player_ports = self.generate_player_ports()
+            player_ports = self.get_player_ports()
 
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
@@ -93,9 +97,9 @@ class StatsComputer(ComputerBase):
         player_ports = None
 
         if connect_code:
-            player_ports, _ = self.generate_player_ports(connect_code)
+            player_ports, _ = self.get_player_ports(connect_code)
         else:
-            player_ports = self.generate_player_ports()
+            player_ports = self.get_player_ports()
 
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
@@ -148,9 +152,9 @@ class StatsComputer(ComputerBase):
         opponent_port: int
 
         if connect_code:
-            player_ports, opponent_port = self.generate_player_ports(connect_code)
+            player_ports, opponent_port = self.get_player_ports(connect_code)
         else:
-            player_ports = self.generate_player_ports()
+            player_ports = self.get_player_ports()
 
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
@@ -232,10 +236,10 @@ class StatsComputer(ComputerBase):
         opponent_port: int
 
         if connect_code:
-            player_ports, opponent_port = self.generate_player_ports(connect_code)
+            player_ports, opponent_port = self.get_player_ports(connect_code)
             self.did_win = self.is_winner(connect_code)
         else:
-            player_ports = self.generate_player_ports()
+            player_ports = self.get_player_ports()
 
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:
@@ -293,10 +297,10 @@ class StatsComputer(ComputerBase):
         player_ports: list[int]
 
         if connect_code:
-            player_ports, _ = self.generate_player_ports(connect_code)
+            player_ports, _ = self.get_player_ports(connect_code)
             self.did_win = self.is_winner(connect_code)
         else:
-            player_ports = self.generate_player_ports()
+            player_ports = self.get_player_ports()
 
         for port_index, player_port in enumerate(player_ports):
             if len(player_ports) == 2:

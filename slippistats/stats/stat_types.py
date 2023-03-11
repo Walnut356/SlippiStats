@@ -22,7 +22,7 @@ class WavedashData():
         self.connect_code = connect_code
         self.r_frame = r_input_frame
         if stick:
-            # atan2 converts coordinates to degrees without losing information (tan quadrent 1 and 3 are both positive)
+            # atan2 converts coordinates to degrees without losing information (with tan quadrent 1 and 3 are both positive)
             self.angle = get_angle(stick)
             # then we need to normalize the values to degrees-below-horizontal and assign a direction
             if self.angle < -90 and self.angle > -180:

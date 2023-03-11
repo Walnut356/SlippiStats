@@ -17,6 +17,9 @@ class ComputerBase():
     queue: list[dict]
     replay_path: PathLike | str
 
+    #TODO store whole game object instead of just pieces of it
+    #TODO adopt peppi "port frames" model, aggregate all player data (e.g. connect code, in-game info, placement, etc.)
+
     def prime_replay(self, replay: PathLike | Game | str, retain_data=False) -> None:
         """Parses a replay and loads the relevant data into the combo computer. Call combo_compute(connect_code) to extract combos
         from parsed replay"""
@@ -40,7 +43,7 @@ class ComputerBase():
             self.reset_data()
 
     #FIXME the entry/return on this is dumb and I need to restructure it so it's useable anywhere outside of the stats calc
-    def generate_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
+    def get_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
         player_port = -1
         opponent_port = -1
         if connect_code:
@@ -74,5 +77,5 @@ class ComputerBase():
 
     def is_winner(self, identifier: int | str) -> bool:
         if isinstance(identifier, str):
-            identifier = self.generate_player_ports(identifier)[0][0]
+            identifier = self.get_player_ports(identifier)[0][0]
         return True if self.placements[identifier] == 0 else False
