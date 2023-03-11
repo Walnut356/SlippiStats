@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 from ..event import Frame, Start
 from ..game import Game
@@ -20,10 +20,10 @@ class ComputerBase():
     #TODO store whole game object instead of just pieces of it
     #TODO adopt peppi "port frames" model, aggregate all player data (e.g. connect code, in-game info, placement, etc.)
 
-    def prime_replay(self, replay: PathLike | Game | str, retain_data=False) -> None:
+    def prime_replay(self, replay: PathLike | Game | str, retain_data=False) -> Self:
         """Parses a replay and loads the relevant data into the combo computer. Call combo_compute(connect_code) to extract combos
         from parsed replay"""
-        if isinstance(replay, PathLike) or isinstance(replay, str):
+        if isinstance(replay, (PathLike, str)):
             parsed_replay = Game(replay)
             self.replay_path = replay
         elif isinstance(replay, Game):
@@ -41,6 +41,8 @@ class ComputerBase():
 
         if not retain_data:
             self.reset_data()
+
+        return self
 
     #FIXME the entry/return on this is dumb and I need to restructure it so it's useable anywhere outside of the stats calc
     def get_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
