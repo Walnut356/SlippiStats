@@ -2,8 +2,6 @@ import enum, re, struct
 
 from .log import log
 
-PORTS = range(4)
-
 # Pre-allocating these prevents python from recreating the object on every struct.unpack() call
 # which saves a non-negligable amount of processing time.
 unpack_uint8 = struct.Struct('>B').unpack
@@ -120,3 +118,9 @@ class EOFError(IOError):
 
     def __init__(self):
         super().__init__('unexpected end of file')
+
+class Ports(IntEnum):
+    P1 = 0
+    P2 = 1
+    P3 = 2
+    P4 = 3

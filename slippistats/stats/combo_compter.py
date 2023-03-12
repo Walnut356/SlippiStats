@@ -72,8 +72,8 @@ class ComboData():
 @dataclass
 class ComboState():
     """Contains info used during combo calculation to build the final combo"""
-    combo: Optional[ComboData] = field(default_factory=ComboData())
-    move: MoveLanded = field(default_factory=MoveLanded())
+    combo: Optional[ComboData] = field(default_factory=ComboData)
+    move: Optional[MoveLanded] = field(default_factory=MoveLanded)
     reset_counter: int = 0
     last_hit_animation: Optional[int] = None
     event: Optional[ComboEvent] = None
@@ -84,7 +84,7 @@ class ComboComputer(ComputerBase):
     and .combo_compute(connect_code) to populate the computer's .combos list. """
 
     combos: list[ComboData]
-    combo_state: Optional[ComboState]
+    combo_state: ComboState
     queue: list[dict]
     replay_path: Path
 
@@ -93,7 +93,7 @@ class ComboComputer(ComputerBase):
         self.combos = []
         self.players = []
         self.all_frames = []
-        self.combo_state = None
+        self.combo_state = ComboState()
         self.metadata = None
         self.queue = []
         if replay is not None:
@@ -106,7 +106,7 @@ class ComboComputer(ComputerBase):
 
     def to_json(self, combo: ComboData):
         self.queue[-1]["path"] = self.replay_path
-        self.queue[-1]["gameStartAt"] = self.metadata.date.strftime("%m/%d/%y %I:%M %p")
+        self.queue[-1]["gameStartAt"] = getattr(getattr(self, "metadata"), "date").strftime("%m/%d/%y %I:%M %p")
         self.queue[-1]["startFrame"] = combo.start_frame - PRE_COMBO_BUFFER_FRAMES
         self.queue[-1]["endFrame"] = combo.end_frame + POST_COMBO_BUFFER_FRAMES
         return self.queue
@@ -129,7 +129,7 @@ class ComboComputer(ComputerBase):
         # Most people want combos from a specific player, so forcing a connect code requirement
         # will cover most usecases
         player_ports = None
-        opponent_port = None
+        opponent_port = -1
 
         if connect_code:
             player_ports, opponent_port = self.get_player_ports(connect_code)
@@ -143,13 +143,13 @@ class ComboComputer(ComputerBase):
             for i, frame in enumerate(self.all_frames):
                 # player data is stored as list of frames -> individual frame -> port -> leader/follower -> pre/post frame data
                 # we make an interface as soon as possible because that's awful
-                player_frame = self.port_frame(player_port, frame).post
-                opponent_frame = self.port_frame(opponent_port, frame).post
+                player_frame: Frame.Port.Data.Post = self.port_frame(player_port, frame).post
+                opponent_frame: Frame.Port.Data.Post = self.port_frame(opponent_port, frame).post
 
                 # Frames are -123 indexed, so we can't just pull the frame's .index to acquire the previous frame
                 # this is the sole reason for enumerating self.all_frames
-                prev_player_frame = self.port_frame_by_index(player_port, i - 1).post
-                prev_opponent_frame = self.port_frame_by_index(opponent_port, i - 1).post
+                prev_player_frame: Frame.Port.Data.Post = self.port_frame_by_index(player_port, i - 1).post
+                prev_opponent_frame: Frame.Port.Data.Post = self.port_frame_by_index(opponent_port, i - 1).post
 
                 opnt_action_state = opponent_frame.state
                 opnt_is_damaged = is_damaged(opnt_action_state)
@@ -245,7 +245,9 @@ class ComboComputer(ComputerBase):
                 opnt_did_lose_stock = did_lose_stock(opponent_frame, prev_opponent_frame)
                 opnt_is_ledge_action = is_ledge_action(opnt_action_state) and ledge_check
                 opnt_is_maybe_juggled = is_maybe_juggled(
-                    opponent_frame.position, opponent_frame.is_airborne, self.rules.stage
+                    opponent_frame.position,
+                    getattr(opponent_frame, "is_airborne"),
+                    self.rules.stage,
                     )  #TODO and juggled check
                 opnt_is_special_fall = is_special_fall(opnt_action_state)
                 opnt_is_upb_lag = is_upb_lag(opnt_action_state, prev_opponent_frame.state)

@@ -24,7 +24,7 @@ class EventType(IntEnum):
     ITEM = 0x3B
     FRAME_END = 0x3C
 
-
+#TODO make as many of these as possible dataclasses/recordclasses.
 class Start(Base):
     """Information used to initialize the game such as the game mode, settings, characters & stage."""
 
@@ -61,6 +61,7 @@ class Start(Base):
         self.is_pal = is_pal
         self.is_frozen_ps = is_frozen_ps
         self.match_id = match_id
+        #TODO is_ranked -> match_type, enum[ranked, unranked, direct, other]
         if match_id:
             self.is_ranked = match_id[5] == "r"  #it's lazy, but it seems like a waste to import regex for this
         else:
@@ -81,7 +82,7 @@ class Start(Base):
 
         stream.read(80)  # skip game timer, item spawn bitfields, and damage ratio
         players = []
-        for i in PORTS:
+        for i in range(4):
             (character,) = unpack_uint8(stream.read(1))
             (type,) = unpack_uint8(stream.read(1))
             (stocks,) = unpack_uint8(stream.read(1))
@@ -109,7 +110,7 @@ class Start(Base):
         (random_seed,) = unpack_uint32(stream.read(4))
 
         try:  # v1.0.0
-            for i in PORTS:
+            for i in range(4):
                 (dash_back,) = unpack_uint32(stream.read(4))
                 (shield_drop,) = unpack_uint32(stream.read(4))
                 dash_back = cls.Player.UCF.DashBack(dash_back)
@@ -120,7 +121,7 @@ class Start(Base):
             pass
 
         try:  # v1.3.0
-            for i in PORTS:
+            for i in range(4):
                 tag_bytes = stream.read(16)
                 if players[i]:
                     try:
@@ -375,7 +376,7 @@ class End(Base):
         (method,) = unpack_uint8(stream.read(1))
         try:  # v2.0.0
             (lras,) = unpack_uint8(stream.read(1))
-            lras_initiator = lras if lras < len(PORTS) else None
+            lras_initiator = lras if lras < 4 else None
         except struct.error:
             lras_initiator = None
 

@@ -4,6 +4,7 @@ from typing import Optional
 import datetime
 import polars as pl
 
+from .stat_types import Stat
 # from ..enums.character import InGameCharacter
 from ..enums.stage import Stage
 from ..enums.state import ActionRange, ActionState
@@ -345,4 +346,4 @@ def get_dataframe_header(stats_computer: StatsComputer, connect_code: str) -> di
 
 def to_dataframe(stats: list) -> pl.DataFrame:
     #TODO refactor so passing stats computer isn't required?
-    return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats] #TODO if isinstance(stat)
+    return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats if isinstance(stat, Stat)]

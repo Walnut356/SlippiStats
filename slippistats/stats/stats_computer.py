@@ -65,15 +65,16 @@ class StatsComputer(ComputerBase):
                 _ = player_ports[port_index - 1] # Only works for 2 ports
 
             for i, frame in enumerate(self.all_frames):
-                player_frame = self.port_frame(player_port, frame)
-                player_state = player_frame.post.state
+                player_frame: Frame.Port.Data = self.port_frame(player_port, frame)
+                player_state: ActionState | int = player_frame.post.state
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1)
+                prev_player_state: ActionState | int = prev_player_frame.post.state
 
                 #TODO add wavesurf logic?
                 if player_state != ActionState.LAND_FALL_SPECIAL:
                     continue
 
-                if prev_player_frame.post.state == ActionState.LAND_FALL_SPECIAL:
+                if prev_player_state == ActionState.LAND_FALL_SPECIAL:
                     continue
 
                 # If we're in landfallspecial and weren't previously in landfallspecial:

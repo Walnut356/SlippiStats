@@ -6,7 +6,7 @@ from typing import Optional
 
 from . import event as evt
 from .enums import InGameCharacter
-from .util import Base, PORTS, Enum
+from .util import Base, Enum
 
 
 class Metadata(Base):
@@ -58,7 +58,7 @@ class Metadata(Base):
 
         players = [None, None, None, None]
 
-        for i in PORTS:
+        for i in range(4):
             try:
                 players[i] = cls.Player._parse(json['players'][str(i)])
             except KeyError:

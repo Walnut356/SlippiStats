@@ -5,15 +5,12 @@ from ..event import Frame, Start
 from ..game import Game
 from ..metadata import Metadata
 
-
+#TODO abstract base class?
 class ComputerBase():
 
-    rules: Optional[Start]
-    players: list[Metadata.Player]
-    placements: Optional[list[int]]
+    replay: Optional[Game]
+    replay_path: Optional[str]
     did_win: Optional[bool]
-    all_frames: list[Frame]
-    metadata: Optional[Metadata]
     queue: list[dict]
     replay_path: PathLike | str
 
@@ -32,12 +29,13 @@ class ComputerBase():
         else:
             raise TypeError("prime_replay accepts only PathLikes, strings, and Game objects.")
 
-        self.rules = parsed_replay.start
-        self.players = [player for player in parsed_replay.metadata.players if player is not None]
-        self.all_frames = parsed_replay.frames
-        self.metadata = parsed_replay.metadata
-        self.placements = parsed_replay.end.player_placements
-        self.did_win = None
+        # self.replay = parsed_replay
+        # self.rules = parsed_replay.start
+        # self.players = [player for player in parsed_replay.metadata.players if player is not None]
+        # self.all_frames = parsed_replay.frames
+        # self.metadata = parsed_replay.metadata
+        # self.placements = parsed_replay.end.player_placements
+        # self.did_win = None
 
         if not retain_data:
             self.reset_data()

@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 from math import dist
 from typing import Optional
+from abc import ABC
 
 from .common import *
 
+#TODO abstract base class:
+class Stat(ABC):
+    pass
 
 @dataclass
-class WavedashData():
+class WavedashData(Stat):
     physical_port: int
     connect_code: Optional[str]
     r_frame: int  # which airborne frame was the airdodge input on?
@@ -51,7 +55,7 @@ class WavedashData():
 
 
 @dataclass
-class DashData():
+class DashData(Stat):
     physical_port: int
     connect_code: Optional[str]
     start_pos: float
@@ -81,7 +85,7 @@ class DashState():
 
 
 @dataclass
-class TechData():
+class TechData(Stat):
     physical_port: int
     connect_code: Optional[str]
     tech_type: Optional[TechType]
@@ -115,7 +119,7 @@ class TechState():
 
 
 @dataclass
-class TakeHitData():
+class TakeHitData(Stat):
     physical_port: int
     connect_code: Optional[str]
     last_hit_by: Optional[int]
@@ -188,7 +192,7 @@ class TakeHitData():
 
 
 @dataclass
-class LCancelData():
+class LCancelData(Stat):
     physical_port: Optional[int]
     connect_code: Optional[str]
     successful: int
