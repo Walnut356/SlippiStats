@@ -4,7 +4,6 @@ from typing import Optional
 import datetime
 import polars as pl
 
-from .stat_types import Stat
 # from ..enums.character import InGameCharacter
 from ..enums.stage import Stage
 from ..enums.state import ActionRange, ActionState
@@ -324,26 +323,26 @@ def get_playback_header():
         }
     return header
 
-def get_dataframe_header(stats_computer: StatsComputer, connect_code: str) -> dict:
+# def get_dataframe_header(stats_computer: StatsComputer, connect_code: str) -> dict:
 
-    formatted_date = stats_computer.metadata.date.replace(tzinfo=None)
-    # total number of frames, starting when the player has control, in seconds
-    formatted_time = datetime.timedelta(seconds=((stats_computer.metadata.duration)/60))
+#     formatted_date = stats_computer.metadata.date.replace(tzinfo=None)
+#     # total number of frames, starting when the player has control, in seconds
+#     formatted_time = datetime.timedelta(seconds=((stats_computer.metadata.duration)/60))
 
-    [player_port], opponent_port = stats_computer.generate_player_ports(connect_code)
+#     [player_port], opponent_port = stats_computer.generate_player_ports(connect_code)
 
-    header = {
-            "match_id" : stats_computer.rules.match_id,
-            "date_time" : formatted_date,
-            "duration" : formatted_time,
-            "ranked" : stats_computer.rules.is_ranked,
-            "win" : stats_computer.is_winner(player_port),
-            "char" : id.InGameCharacter(list(stats_computer.players[player_port].characters.keys())[0]).name, #lmao
-            "opnt_Char" : id.InGameCharacter(list(stats_computer.players[opponent_port].characters.keys())[0]).name
-            }
+#     header = {
+#             "match_id" : stats_computer.rules.match_id,
+#             "date_time" : formatted_date,
+#             "duration" : formatted_time,
+#             "ranked" : stats_computer.rules.is_ranked,
+#             "win" : stats_computer.is_winner(player_port),
+#             "char" : id.InGameCharacter(list(stats_computer.players[player_port].characters.keys())[0]).name, #lmao
+#             "opnt_Char" : id.InGameCharacter(list(stats_computer.players[opponent_port].characters.keys())[0]).name
+#             }
 
-    return header
+#     return header
 
-def to_dataframe(stats: list) -> pl.DataFrame:
-    #TODO refactor so passing stats computer isn't required?
-    return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats if isinstance(stat, Stat)]
+# def to_dataframe(stats: list) -> pl.DataFrame:
+#     #TODO refactor so passing stats computer isn't required?
+#     return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats] #TODO if isinstance(stat)

@@ -79,3 +79,6 @@ class InGameCharacter(IntEnum):
     WIREFRAME_FEMALE = 30
     GIGA_BOWSER = 31
     SANDBAG = 32
+
+
+#TODO add costume enums?

@@ -1,10 +1,12 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from os import PathLike
 
 from ..enums.state import ActionState
 from ..event import Attack, Buttons
-from ..game import Game
+if TYPE_CHECKING:
+    from ..game import Game
 from ..stats.common import *
 from ..util import Base, try_enum
 from .computer import ComputerBase
@@ -22,6 +24,7 @@ class Data(Base):
 
 class StatsComputer(ComputerBase):
 
+    replay: Game
     data: Data
     wavedash_state: Optional[WavedashData]
     tech_state: Optional[TechState]
@@ -64,7 +67,7 @@ class StatsComputer(ComputerBase):
             if len(player_ports) == 2:
                 _ = player_ports[port_index - 1] # Only works for 2 ports
 
-            for i, frame in enumerate(self.all_frames):
+            for i, frame in enumerate(self.replay.frames):
                 player_frame: Frame.Port.Data = self.port_frame(player_port, frame)
                 player_state: ActionState | int = player_frame.post.state
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1)
@@ -108,7 +111,7 @@ class StatsComputer(ComputerBase):
 
             self.dash_state = DashState(player_port, connect_code)
 
-            for i, frame in enumerate(self.all_frames):
+            for i, frame in enumerate(self.replay.frames):
                 player_frame = self.port_frame(player_port, frame)
                 player_state = player_frame.post.state
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1)
@@ -161,7 +164,7 @@ class StatsComputer(ComputerBase):
             if len(player_ports) == 2:
                 opponent_port = player_ports[port_index - 1] # Only works for 2 ports
 
-            for i, frame in enumerate(self.all_frames):
+            for i, frame in enumerate(self.replay.frames):
                 player_frame = self.port_frame(player_port, frame).post
                 player_state = player_frame.state
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1).post
@@ -246,7 +249,7 @@ class StatsComputer(ComputerBase):
             if len(player_ports) == 2:
                 opponent_port = player_ports[port_index - 1] # Only works for 2 ports
 
-            for i, frame in enumerate(self.all_frames):
+            for i, frame in enumerate(self.replay.frames):
                 player_frame = self.port_frame(player_port, frame)
                 prev_player_frame = self.port_frame_by_index(player_port, i - 1)
                 opponent_frame = self.port_frame(opponent_port, frame)
@@ -277,7 +280,7 @@ class StatsComputer(ComputerBase):
                     continue
 
                 if not was_in_hitlag:
-                    self.take_hit_state = TakeHitData(player_port, self.metadata.players[player_port].connect_code)
+                    self.take_hit_state = TakeHitData(player_port, self.replay.metadata.players[player_port].connect_code)
                     self.take_hit_state.start_position = player_frame.post.position
                     self.take_hit_state.percent = player_frame.post.percent
                     self.take_hit_state.grounded = not player_frame.post.is_airborne
@@ -308,7 +311,7 @@ class StatsComputer(ComputerBase):
                 _ = player_ports[port_index - 1] # Only works for 2 ports
             self.data.l_cancel = LCancelData(player_port, connect_code)
 
-            for i, frame in enumerate(self.all_frames):
+            for i, frame in enumerate(self.replay.frames):
                 player_frame = self.port_frame(player_port, frame)
 
                 match player_frame.post.l_cancel:

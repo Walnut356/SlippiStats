@@ -5,9 +5,11 @@ from abc import ABC
 
 from .common import *
 
+
 #TODO abstract base class:
 class Stat(ABC):
     pass
+
 
 @dataclass
 class WavedashData(Stat):
