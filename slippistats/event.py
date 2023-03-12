@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Sequence, Union
+from enum import StrEnum
 
 from .controller import Triggers, Buttons
 from .enums import (Stage, CSSCharacter, InGameCharacter, ActionState, StateFlags, Direction, Hurtbox, LCancel, Attack, Item, TurnipFace)
@@ -24,6 +25,13 @@ class EventType(IntEnum):
     ITEM = 0x3B
     FRAME_END = 0x3C
 
+class MatchType(StrEnum):
+    OTHER = "OTHER"
+    RANKED = "RANKED"
+    UNRANKED = "UNRANKED"
+    DIRECT = "DIRECT"
+
+
 #TODO make as many of these as possible dataclasses/recordclasses.
 class Start(Base):
     """Information used to initialize the game such as the game mode, settings, characters & stage."""
@@ -36,7 +44,7 @@ class Start(Base):
     is_pal: Optional[bool]  #: `added(1.5.0)` True if this was a PAL version of Melee
     is_frozen_ps: Optional[bool]  #: `added(2.0.0)` True if frozen Pokemon Stadium was enabled
     match_id: Optional[str]  #: `added(3.14.0)` Mode (ranked/unranked) and time the match started
-    is_ranked: bool
+    match_type: bool
     game_number: Optional[int]  #: `added(3.14.0)` The game number for consecutive games
     tiebreak_number: Optional[int]
 
@@ -61,11 +69,14 @@ class Start(Base):
         self.is_pal = is_pal
         self.is_frozen_ps = is_frozen_ps
         self.match_id = match_id
-        #TODO is_ranked -> match_type, enum[ranked, unranked, direct, other]
-        if match_id:
-            self.is_ranked = match_id[5] == "r"  #it's lazy, but it seems like a waste to import regex for this
+        if match_id: #it's lazy, but it WORKS
+            match match_id[5]:
+                case "r": self.match_type = MatchType.RANKED
+                case "u": self.match_type = MatchType.UNRANKED
+                case "d": self.match_type = MatchType.DIRECT
+                case _: self.match_type = MatchType.OTHER
         else:
-            self.is_ranked = False
+            self.match_type = False
         self.game_number = game_number
         self.tiebreak_number = tiebreak_number
 
