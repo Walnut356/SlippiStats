@@ -1,23 +1,58 @@
 from os import PathLike
 from typing import Any, Optional, Self
+from itertools import permutations
 
+from .stat_types import *
 from ..event import Frame, Start
 from ..game import Game
 from ..metadata import Metadata
+from ..util import Ports
+
+
+@dataclass
+class Player():
+    """Aggregate class for event.Start.Player and metadata.Player.
+    Also contains stats info"""
+    character: InGameCharacter | int
+    port: Ports
+    connect_code: Optional[str]
+    display_name: Optional[str]
+    costume: int
+    did_win: bool
+    frames: list[Frame.Port.Data]
+    nana_frames: Optional[list[Frame.Port.Data]] = None
+    stats: Data
+
+    def __init__(self, characters, port, connect_code, display_name, costume, did_win, frames, nana_frames, stats_header):
+        self.character = characters[0]
+        self.port = port
+        self.connect_code = connect_code
+        self.display_name = display_name
+        self.costume = costume
+        self.did_win = did_win
+        self.frames = frames
+        self.nana_frames = nana_frames
+
+        data_header = {
+            "result" : "win" if self.did_win else "loss",
+            "chara" : self.character,
+            "opnt_chara" : characters[1]
+        }
+        data_header = stats_header | data_header
+
+        self.stats = Data(data_header)
+
+
 
 #TODO abstract base class?
 class ComputerBase():
 
     replay: Optional[Game]
-    replay_path: Optional[str]
-    did_win: Optional[bool]
     queue: list[dict]
     replay_path: PathLike | str
+    players: list[Players]
 
-    #TODO store whole game object instead of just pieces of it
-    #TODO adopt peppi "port frames" model, aggregate all player data (e.g. connect code, in-game info, placement, etc.)
-
-    def prime_replay(self, replay: PathLike | Game | str, retain_data=False) -> Self:
+    def prime_replay(self, replay: PathLike | Game | str) -> Self:
         """Parses a replay and loads the relevant data into the combo computer. Call combo_compute(connect_code) to extract combos
         from parsed replay"""
         if isinstance(replay, (PathLike, str)):
@@ -29,16 +64,42 @@ class ComputerBase():
         else:
             raise TypeError("prime_replay accepts only PathLikes, strings, and Game objects.")
 
-        # self.replay = parsed_replay
-        # self.rules = parsed_replay.start
-        # self.players = [player for player in parsed_replay.metadata.players if player is not None]
-        # self.all_frames = parsed_replay.frames
-        # self.metadata = parsed_replay.metadata
-        # self.placements = parsed_replay.end.player_placements
-        # self.did_win = None
+        self.replay = parsed_replay
 
-        if not retain_data:
-            self.reset_data()
+        stats_header = {
+            "match_id" : self.replay.start.match_id,
+            "date_time" : self.replay.metadata.date.replace(tzinfo=None),
+            "duration" : datetime.timedelta(seconds=((self.replay.metadata.duration)/60)),
+            "match_type" : self.replay.start.match_type,
+            "game_number" : self.replay.start.game_number,
+            }
+
+        # HACK ugly garbage to pass opponent character correctly
+        # characters will appear in order, ports will populate in order. Using this we can just use a simple permutation to guarantee
+        # object 1 in the list is the current player's character and object 2 is the opponent's character.
+        # this only works for 2 players, but double stats is a pretty rare usecase so it's fine for now.
+        characters = list(permutations([player.character for player in self.replay.players if player is not None]))
+
+        for port in Ports:
+
+            if self.start.players[port] is not None:
+                self.players.append(
+                    Player(
+                        characters=characters.pop(0),
+                        port=port,
+                        connect_code=self.replay.metadata.players[port].connect_code,
+                        display_name=self.replay.metadata.players[port].display_name,
+                        costume=self.replay.start.players[port].costume,
+                        did_win=True if self.replay.end.player_placements[port] == 0 else False,
+                        frames=tuple([frame.ports[port].leader for frame in self.replay.frames]),
+                        nana_frames=tuple(
+                            [frame.ports[port].follower for frame in self.replay.frames]
+                            if self.replay.start.players[port].character == CSSCharacter.ICE_CLIMBERS else None),
+                        stats_header=stats_header
+                            )
+                        )
+
+        if len(self.players) != 2: raise ValueError("Game must have exactly 2 players for stats generation")
 
         return self
 
@@ -75,7 +136,16 @@ class ComputerBase():
     def reset_data(self):
         return
 
-    def is_winner(self, identifier: int | str) -> bool:
-        if isinstance(identifier, str):
-            identifier = self.get_player_ports(identifier)[0][0]
-        return True if self.placements[identifier] == 0 else False
+    def get_player(self, identifier: str | int | Ports) -> Player:
+        match identifier:
+            case str():
+                for player in self.players:
+                    if player.connect_code == identifier:
+                        return player
+                else:
+                    #TODO probably rip this out and just replace it with a log warning when done debugging
+                    raise ValueError(f"No player matching given connect code {identifier}")
+            case int() | Ports():
+                return self.players[identifier]
+            case _:
+                raise ValueError(f"Invalid identifier type, get_player() accepts str, int, or Port")

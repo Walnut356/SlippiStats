@@ -97,7 +97,7 @@ class ComboComputer(ComputerBase):
         self.metadata = None
         self.queue = []
         if replay is not None:
-            self.prime_replay(replay, False)
+            self.prime_replay(replay)
 
     def reset_data(self):
         self.combos = []

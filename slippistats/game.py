@@ -11,33 +11,15 @@ from .metadata import Metadata
 from .parse import parse
 from .util import Base, Ports
 
-from .stats import StatsComputer
-
-
-@dataclass
-class Player():
-    """Aggregate class for event.Start.Player and metadata.Player.
-    Also contains stats info"""
-    characters: dict[InGameCharacter, int]
-    port: Ports
-    connect_code: Optional[str]
-    display_name: Optional[str]
-    costume: int
-    did_win: bool
-    frames: list[Frame.Port.Data]
-    nana_frames: Optional[list[Frame.Port.Data]] = None
-
 
 class Game(Base):
     """Replay data from a game of Super Smash Brothers Melee."""
 
     start: Optional[Start]  #: Information about the start of the game
-    frames: list[Frame]  #: Every frame of the game, indexed by frame number
+    frames: tuple[Frame]  #: Every frame of the game, indexed by frame number
     end: Optional[End]  #: Information about the end of the game
     metadata: Optional[Metadata]  #: Miscellaneous data not directly provided by Melee
     metadata_raw: Optional[dict]  #: Raw JSON metadata, for debugging and forward-compatibility
-    players: list[Player]
-    comp: StatsComputer
 
     def __init__(self, source: BinaryIO | str | os.PathLike, skip_frames: bool = False):
         """Parse a Slippi replay.
@@ -60,23 +42,8 @@ class Game(Base):
                 }, skip_frames
             )
 
-        for port in Ports:
-            if self.start.players[port] is not None:
-                self.players.append(
-                    Player(
-                        characters=self.start.players[port].character,
-                        port=port,
-                        connect_code=self.metadata.players[port].connect_code,
-                        display_name=self.metadata.players[port].display_name,
-                        costume=self.start.players[port].costume,
-                        did_win=True if self.end.player_placements[port] == 0 else False,
-                        frames=[frame.ports[port].leader for frame in self.frames],
-                        nana_frames=(
-                            [frame.ports[port].follower for frame in self.frames]
-                            if self.start.players[port].character == CSSCharacter.ICE_CLIMBERS else None,
-                            )
-                        )
-                    )
+        self.frames = tuple(self.frames)
+
 
     def _add_frame(self, frame: Frame):
         idx = frame.index - FIRST_FRAME_INDEX
@@ -98,9 +65,4 @@ class Game(Base):
         else:
             return super()._attr_repr(attr)
 
-    def get_player(self, connect_code: str) -> Player:
-        for player in self.players:
-            if player.connect_code == connect_code:
-                return player
-        else:
-            raise ValueError(f"No player matching given connect code {connect_code}")
+    

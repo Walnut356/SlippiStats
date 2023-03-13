@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from math import dist
 from typing import Optional
 from abc import ABC
+from collections import UserList
+
+import polars as pl
 
 from .common import *
 
@@ -9,6 +12,7 @@ from .common import *
 #TODO abstract base class:
 class Stat(ABC):
     pass
+
 
 
 @dataclass
@@ -54,6 +58,17 @@ class WavedashData(Stat):
 
     def total_startup(self) -> int:
         return self.r_frame + self.airdodge_frames
+
+class Wavedashes(UserList):
+    """Wrapper for lists of wavedash data"""
+    data_header: dict
+
+    def __init__(self, data_header):
+        self.data_header = data_header
+
+    def to_polars(self) -> pl.Dataframe:
+        return [self.data_header | wavedash.__dict__ for wavedash in self]
+
 
 
 @dataclass
@@ -208,3 +223,14 @@ class LCancelData(Stat):
 
     def percentage(self):
         return (self.successful / (self.successful + self.failed)) * 100
+
+@dataclass
+class Data():
+    wavedashes: Wavedashes
+    # dash: list[DashData] = field(default_factory=list)
+    # tech: list[TechData] = field(default_factory=list)
+    # take_hit: list[TakeHitData] = field(default_factory=list)
+    # l_cancel: Optional[LCancelData] = None
+
+    def __init__(self, data_header):
+        self.wavedashes = Wavedashes(data_header)

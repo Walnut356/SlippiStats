@@ -1,30 +1,19 @@
-from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 from os import PathLike
 
-from ..enums.state import ActionState
+from ..enums import ActionState, CSSCharacter
 from ..event import Attack, Buttons
-if TYPE_CHECKING:
-    from ..game import Game
+from ..game import Game
 from ..stats.common import *
 from ..util import Base, try_enum
 from .computer import ComputerBase
 from .stat_types import *
 
 
-@dataclass
-class Data(Base):
-    wavedash: list[WavedashData] = field(default_factory=list)
-    dash: list[DashData] = field(default_factory=list)
-    tech: list[TechData] = field(default_factory=list)
-    take_hit: list[TakeHitData] = field(default_factory=list)
-    l_cancel: Optional[LCancelData] = None
-
-
 class StatsComputer(ComputerBase):
 
-    replay: Game
     data: Data
     wavedash_state: Optional[WavedashData]
     tech_state: Optional[TechState]
@@ -38,10 +27,12 @@ class StatsComputer(ComputerBase):
         self.dash_state = None
         self.take_hit_state = None
         if replay is not None:
-            self.prime_replay(replay, False)
+            self.replay = self.prime_replay(replay)
+        else:
+            self.replay = None
 
-    def reset_data(self):
-        self.data = Data()
+        
+
 
     def stats_compute (self, connect_code: str, wavedash=True, dash=True, tech=True, take_hit=True, l_cancel=True):
         if wavedash:
