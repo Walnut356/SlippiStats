@@ -95,7 +95,7 @@ class StatsComputer(ComputerBase):
                 continue
 
             # If we're in landfallspecial and weren't previously in landfallspecial:
-            for j in reversed(range(0, 5)): # We reverse this range to search for the first instance of L or R
+            for j in range(0, 5):
                 past_frame = player.frames[i - j]
                 if (Buttons.Physical.R in past_frame.pre.buttons.physical.pressed() or
                     Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()):
@@ -107,8 +107,8 @@ class StatsComputer(ComputerBase):
                             self.wavedash_state.r_frame = k
                             self.wavedash_state.waveland = False
                             break
-                    player.stats.wavedashes.append(self.wavedash_state)
-                    break
+
+            player.stats.wavedashes.append(self.wavedash_state)
 
         #TODO think of some better way to return things
         return player.stats.wavedashes
