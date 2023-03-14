@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Optional, Sequence, Union
-from enum import StrEnum
+from enum import Enum
 
 from .controller import Triggers, Buttons
 from .enums import (Stage, CSSCharacter, InGameCharacter, ActionState, StateFlags, Direction, Hurtbox, LCancel, Attack, Item, TurnipFace)
@@ -25,11 +25,11 @@ class EventType(IntEnum):
     ITEM = 0x3B
     FRAME_END = 0x3C
 
-class MatchType(StrEnum):
-    OTHER = "OTHER"
-    RANKED = "RANKED"
-    UNRANKED = "UNRANKED"
-    DIRECT = "DIRECT"
+class MatchType(Enum):
+    OTHER = -1
+    RANKED = 0
+    UNRANKED = 1
+    DIRECT = 2
 
 
 #TODO make as many of these as possible dataclasses/recordclasses.

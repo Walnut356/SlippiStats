@@ -1,16 +1,27 @@
 from os import PathLike
 from typing import Optional
+from itertools import permutations
 
-from ..enums import ActionState
-from ..event import Attack, Buttons
+from ..enums import ActionState, ActionRange
+from ..event import Attack, Buttons, Frame
 from ..game import Game
 from ..util import try_enum
-from .common import *
-from .computer import ComputerBase
+from .common import (JoystickRegion,
+                     TechType,
+                     get_angle,
+                     get_joystick_region,
+                     get_tech_type, is_aerial_land_lag,
+                     is_in_hitlag,
+                     is_shielding, is_slideoff_action,
+                     is_teching,
+                     just_entered_state,
+                     just_exited_state,)
+from .computer import ComputerBase, Player
 from .stat_types import (WavedashData, Wavedashes,
                         DashData, DashState, Dashes,
                         TechData, TechState,
-                        TakeHitData)
+                        TakeHitData,
+                        LCancelData,)
 
 
 class StatsComputer(ComputerBase):
@@ -34,151 +45,155 @@ class StatsComputer(ComputerBase):
 
 
 
-    def stats_compute (self, connect_code: str, wavedash=True, dash=True, tech=True, take_hit=True, l_cancel=True):
-        if wavedash:
-            self.wavedash_compute(connect_code)
-        if dash:
-            self.dash_compute(connect_code)
-        if tech:
-            self.tech_compute(connect_code)
-        if take_hit:
-            self.take_hit_compute(connect_code)
-        if l_cancel:
-            self.l_cancel_compute(connect_code)
+    def stats_compute (self,
+                       connect_code: Optional[str]=None,
+                       wavedash=True,
+                       dash=True,
+                       tech=True,
+                       take_hit=True,
+                       l_cancel=True) -> list[Player]:
 
-    def wavedash_compute(self, connect_code:Optional[str]=None) -> list[WavedashData]:
-        player_ports: list[int]
-
-        if connect_code:
-            player_ports, _ = self.get_player_ports(connect_code)
+        if connect_code is None:
+            player_perms = permutations(self.players)
         else:
-            player_ports = self.get_player_ports()
+            player_perms = (self.get_player(connect_code), self.get_opponent(connect_code))
 
-        for port_index, player_port in enumerate(player_ports):
-            if len(player_ports) == 2:
-                _ = player_ports[port_index - 1] # Only works for 2 ports
+        for player, opponent in player_perms:
+            if wavedash:
+                self.wavedash_compute(player=player)
+            if dash:
+                self.dash_compute(player=player)
+            if tech:
+                self.tech_compute(player=player, opponent=opponent)
+            if take_hit:
+                self.take_hit_compute(player=player, opponent=opponent)
+            if l_cancel:
+                self.l_cancel_compute(player=player, opponent=opponent)
 
-            for i, frame in enumerate(self.replay.frames):
-                player_frame: Frame.Port.Data = self.port_frame(player_port, frame)
-                player_state: ActionState | int = player_frame.post.state
-                prev_player_frame = self.port_frame_by_index(player_port, i - 1)
-                prev_player_state: ActionState | int = prev_player_frame.post.state
+    # def stats_entry():
 
-                #TODO add wavesurf logic?
-                if player_state != ActionState.LAND_FALL_SPECIAL:
-                    continue
+    def wavedash_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,) -> list[WavedashData]:
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
-                if prev_player_state == ActionState.LAND_FALL_SPECIAL:
-                    continue
+        if connect_code is not None:
+            player = self.get_player(connect_code)
 
-                # If we're in landfallspecial and weren't previously in landfallspecial:
-                for j in reversed(range(0, 5)): # We reverse this range to search for the first instance of L or R
-                    past_frame = self.port_frame_by_index(player_port, i - j)
-                    if (Buttons.Physical.R in past_frame.pre.buttons.physical.pressed() or
-                        Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()):
-                        self.wavedash_state = WavedashData(i, 0, player_frame.pre.joystick, j)
 
-                        for k in range(0, 5):
-                            past_frame = self.port_frame_by_index(player_port, i - j - k)
-                            if past_frame.post.state == ActionState.KNEE_BEND:
-                                self.wavedash_state.r_frame = k
-                                self.wavedash_state.waveland = False
-                                break
-                        self.players[player_port].stats.wavedashes.append(self.wavedash_state)
-                        break
+        for i, player_frame in enumerate(player.frames):
+            player_state: ActionState | int = player_frame.post.state
+            prev_player_frame = player.frames[i-1]
+            prev_player_state: ActionState | int = prev_player_frame.post.state
+
+            #TODO add wavesurf logic?
+            if player_state != ActionState.LAND_FALL_SPECIAL:
+                continue
+
+            if prev_player_state == ActionState.LAND_FALL_SPECIAL:
+                continue
+
+            # If we're in landfallspecial and weren't previously in landfallspecial:
+            for j in reversed(range(0, 5)): # We reverse this range to search for the first instance of L or R
+                past_frame = player.frames[i - j]
+                if (Buttons.Physical.R in past_frame.pre.buttons.physical.pressed() or
+                    Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()):
+                    self.wavedash_state = WavedashData(i, 0, player_frame.pre.joystick, j)
+
+                    for k in range(0, 5):
+                        past_frame = player.frames[i - j - k]
+                        if past_frame.post.state == ActionState.KNEE_BEND:
+                            self.wavedash_state.r_frame = k
+                            self.wavedash_state.waveland = False
+                            break
+                    player.stats.wavedashes.append(self.wavedash_state)
+                    break
+
         #TODO think of some better way to return things
-        return self.players[player_port].stats.wavedashes
+        return player.stats.wavedashes
 
-    def dash_compute(self, connect_code:Optional[str]=None) -> list[DashData]:
-        player_ports = None
+    def dash_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,) -> list[DashData]:
 
-        if connect_code:
-            player_ports, _ = self.get_player_ports(connect_code)
-        else:
-            player_ports = self.get_player_ports()
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
-        for port_index, player_port in enumerate(player_ports):
-            if len(player_ports) == 2:
-                _ = player_ports[port_index - 1] # Only works for 2 ports
+        if connect_code is not None:
+            player = self.get_player(connect_code)
 
-            self.dash_state = DashState()
 
-            for i, frame in enumerate(self.replay.frames):
-                player_frame = self.port_frame(player_port, frame)
+        for i, player_frame in enumerate(player.frames):
+            player_state = player_frame.post.state
+            prev_player_frame = player.frames[i - 1]
+            prev_player_state = prev_player_frame.post.state
+            prev_prev_player_frame = player.frames[i - 2]
+            prev_prev_player_state = prev_prev_player_frame.post.state
+
+            # if last 2 states weren't dash and curr state is dash, start dash event
+            # if the state pattern dash -> wait -> dash occurs, mark as dashdance
+            # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
+
+            if just_entered_state(ActionState.DASH, player_state, prev_player_state):
+                self.dash_state.dash = DashData(frame_index=i,
+                                                direction=player_frame.post.facing_direction.name,
+                                                start_pos=player_frame.post.position.x,
+                                                is_dashdance=False)
+                self.dash_state.active_dash = True
+
+                if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
+                    # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
+                    self.dash_state.dash.is_dashdance = True
+                    player.stats.dashes[-1].is_dashdance = True
+
+            if just_exited_state(ActionState.DASH, player_state, prev_player_state):
+                # If not dashing for 2 consecutive frames, finalize the dash and reset the state
+                self.dash_state.dash.end_pos = player_frame.post.position.x
+                player.stats.dashes.append(self.dash_state.dash)
+                self.dash_state.dash = DashData(-1)
+
+        return player.stats.dashes
+
+    def tech_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,
+                         opponent:Optional[Player]=None,) -> list[TechData]:
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
+
+        if connect_code is not None:
+            player = self.get_player(connect_code)
+            opponent = self.get_opponent(connect_code)
+
+        for i, player_frame in enumerate(player.frames):
                 player_state = player_frame.post.state
-                prev_player_frame = self.port_frame_by_index(player_port, i - 1)
+                prev_player_frame = player.frames[i-1]
                 prev_player_state = prev_player_frame.post.state
-                prev_prev_player_frame = self.port_frame_by_index(player_port, i - 2)
-                prev_prev_player_state = prev_prev_player_frame.post.state
-
-                state_pattern = (prev_prev_player_state, prev_player_state, player_state)
-                # if last 2 states weren't dash and curr state is dash, start dash event
-                # if the state pattern dash -> wait -> dash occurs, mark as dashdance
-                # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
-                if i == 628:
-                    pass
-                if just_entered_state(ActionState.DASH, player_state, prev_player_state):
-                    self.dash_state.dash = DashData(frame_index=i,
-                                                    direction=player_frame.post.facing_direction.name,
-                                                    start_pos=player_frame.post.position.x,
-                                                    is_dashdance=False)
-                    self.dash_state.active_dash = True
-
-                    if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
-                        # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
-                        self.dash_state.dash.is_dashdance = True
-                        self.players[player_port].stats.dashes[-1].is_dashdance = True
-
-                if just_exited_state(ActionState.DASH, player_state, prev_player_state):
-                    # If not dashing for 2 consecutive frames, finalize the dash and reset the state
-                    self.dash_state.dash.end_pos = player_frame.post.position.x
-                    self.players[player_port].stats.dashes.append(self.dash_state.dash)
-                    self.dash_state.active_dash = False
-                    self.dash_state.dash = DashData(-1)
-        return self.players[player_port].stats.dashes
-
-    def tech_compute(self, connect_code:Optional[str]=None) -> list[TechData]:
-        player_ports: list[int]
-        opponent_port: int
-
-        if connect_code:
-            player_ports, opponent_port = self.get_player_ports(connect_code)
-        else:
-            player_ports = self.get_player_ports()
-
-        for port_index, player_port in enumerate(player_ports):
-            if len(player_ports) == 2:
-                opponent_port = player_ports[port_index - 1] # Only works for 2 ports
-
-            for i, frame in enumerate(self.replay.frames):
-                player_frame = self.port_frame(player_port, frame).post
-                player_state = player_frame.state
-                prev_player_frame = self.port_frame_by_index(player_port, i - 1).post
-                prev_player_state = prev_player_frame.state
 
 
                 #TODO logical error: false positive on raw walljump. Check if they were in walltech beforehand?
-                curr_teching = is_teching(player_state)
+                curr_teching = is_teching(prev_player_state)
                 was_teching = is_teching(prev_player_state)
 
             # Close out active techs if we were teching, and save some processing power if we weren't
                 if not curr_teching:
                     if was_teching and self.tech_state is not None:
-                        self.data.tech.append(self.tech_state.tech)
+                        player.stats.techs.append(self.tech_state.tech)
                         self.tech_state = None
                     continue
 
-                opponent_frame = self.port_frame(opponent_port, frame).post
+                opponent_frame = opponent.frames[i]
 
             # If we are, create a tech event, and start filling out fields based on the info we have
                 if not was_teching:
-                    self.tech_state = TechState(player_port, connect_code)
-                    if opponent_frame.most_recent_hit:
-                        self.tech_state.tech.last_hit_by = try_enum(Attack, opponent_frame.most_recent_hit).name
-                    self.tech_state.tech.position = player_frame.position
-                    self.tech_state.tech.is_on_platform = player_frame.position.y > 5 # Arbitrary value, i'll have to fact check this
+                    self.tech_state = TechState()
+                    if opponent_frame.post.most_recent_hit:
+                        self.tech_state.tech.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit).name
+                    self.tech_state.tech.position = player_frame.post.position
+                    self.tech_state.tech.is_on_platform = player_frame.post.position.y > 5 # Arbitrary value, i'll have to fact check this
 
-                tech_type = get_tech_type(player_state, player_frame.facing_direction)
+                tech_type = get_tech_type(player_state, player_frame.post.facing_direction)
 
                 self.tech_state.tech.tech_type = tech_type.name
 
@@ -196,8 +211,8 @@ class StatsComputer(ComputerBase):
                         self.tech_state.tech.jab_reset = True
 
                     case TechType.TECH_LEFT:
-                        opnt_relative_position = opponent_frame.position.x - player_frame.position.x
-                        if player_frame.facing_direction > 0:
+                        opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
+                        if player_frame.post.facing_direction > 0:
                             self.tech_state.tech.towards_center = True
                         else:
                             self.tech_state.tech.towards_center = False
@@ -206,8 +221,8 @@ class StatsComputer(ComputerBase):
                         else:
                             self.tech_state.tech.towards_opponent = False
                     case TechType.TECH_RIGHT:
-                        opnt_relative_position = opponent_frame.position.x - player_frame.position.x
-                        if player_frame.facing_direction > 0:
+                        opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
+                        if player_frame.post.facing_direction > 0:
                             self.tech_state.tech.towards_center = False
                         else:
                             self.tech_state.tech.towards_center = True
@@ -218,30 +233,26 @@ class StatsComputer(ComputerBase):
 
                     case _: # Tech in place, getup attack
                         pass
-        return self.data.tech
+        return player.stats.techs
 
 
-    def take_hit_compute(self, connect_code: Optional[str]=None) -> list[TakeHitData]:
-        player_ports: list[int]
-        opponent_port: int
+    def take_hit_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,
+                         opponent:Optional[Player]=None,) -> list[TakeHitData]:
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code:
-            player_ports, opponent_port = self.get_player_ports(connect_code)
-            self.did_win = self.is_winner(connect_code)
-        else:
-            player_ports = self.get_player_ports()
+        if connect_code is not None:
+            player = self.get_player(connect_code)
+            opponent = self.get_opponent(connect_code)
 
-        for port_index, player_port in enumerate(player_ports):
-            if len(player_ports) == 2:
-                opponent_port = player_ports[port_index - 1] # Only works for 2 ports
-
-            for i, frame in enumerate(self.replay.frames):
-                player_frame = self.port_frame(player_port, frame)
-                prev_player_frame = self.port_frame_by_index(player_port, i - 1)
-                opponent_frame = self.port_frame(opponent_port, frame)
+        for i, player_frame in enumerate(player.frames):
+                prev_player_frame = player.frames[i - 1]
+                opponent_frame = opponent.frames[i]
 
                 # right now i don't care about shield SDI/ASDI but i may change this down the line
-                # it requires slightly different logic and modification of the sdidata class
+                # it requires slightly different logic
                 in_hitlag = is_in_hitlag(player_frame.post.flags) and not is_shielding(prev_player_frame.post.state)
                 was_in_hitlag = is_in_hitlag(prev_player_frame.post.flags) and not is_shielding(prev_player_frame.post.state)
 
@@ -262,49 +273,75 @@ class StatsComputer(ComputerBase):
 
                         self.take_hit_state.find_valid_sdi()
 
-                        self.data.take_hit.append(self.take_hit_state)
+                        player.stats.take_hits.append(self.take_hit_state)
                     continue
 
                 if not was_in_hitlag:
-                    self.take_hit_state = TakeHitData(player_port, self.replay.metadata.players[player_port].connect_code)
+                    self.take_hit_state = TakeHitData()
                     self.take_hit_state.start_position = player_frame.post.position
                     self.take_hit_state.percent = player_frame.post.percent
                     self.take_hit_state.grounded = not player_frame.post.is_airborne
                     self.take_hit_state.knockback_velocity = player_frame.post.knockback_speed
                     self.take_hit_state.knockback_angle = get_angle(player_frame.post.knockback_speed)
-                    if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.AERIAL_ATTACK_END:
+                    if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.SQUAT_END:
                         self.take_hit_state.crouch_cancel = True
                     else:
                         self.take_hit_state.crouch_cancel = False
                 #TODO this failed during all_stats(), DF had 1872 entries.
                 # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
+                # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
                 self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
                 self.take_hit_state.hitlag_frames += 1
-        return self.data.take_hit
+
+        return player.stats.take_hits
 
 
-    def l_cancel_compute(self, connect_code: Optional[str]=None):
+    def l_cancel_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,) -> list[LCancelData]:
 
-        player_ports: list[int]
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code:
-            player_ports, _ = self.get_player_ports(connect_code)
-            self.did_win = self.is_winner(connect_code)
-        else:
-            player_ports = self.get_player_ports()
+        if connect_code is not None:
+            player = self.get_player(connect_code)
 
-        for port_index, player_port in enumerate(player_ports):
-            if len(player_ports) == 2:
-                _ = player_ports[port_index - 1] # Only works for 2 ports
-            self.data.l_cancel = LCancelData(player_port, connect_code)
+        for i, player_frame in enumerate(player.frames):
+            player_state = player_frame.post.state
+            l_cancel = player_frame.post.l_cancel
 
-            for i, frame in enumerate(self.replay.frames):
-                player_frame = self.port_frame(player_port, frame)
+            if l_cancel == 0:
+                continue
 
-                match player_frame.post.l_cancel:
-                    case 0: pass
-                    case 1: self.data.l_cancel.successful += 1
-                    case 2: self.data.l_cancel.failed += 1
+            trigger_input_frame: Optional[int] = None
+            slideoff = False
+            # Check for l/r press 20 frames prior and l/r press and/or slideoff up to 10 frames after
+            for j in range(10):
+                # Because we're counting away from the landing frame, we want the first input and no others
+                if (trigger_input_frame is None and
+                    Buttons.logical.R in player.frames[i + j].pre.buttons or
+                    Buttons.logical.L in player.frames[i + j].pre.buttons):
+                    trigger_input_frame = j
+                    continue
+
+                if (is_aerial_land_lag(player_state) and is_slideoff_action(player.frames[i - 1].post.state)):
+                    slideoff = True
+
+            for j in range(20):
+                # Here we can just immediately exit the loop since there's nothing else we need to check for
+                if (Buttons.logical.R in player.frames[i - j].pre.buttons or
+                    Buttons.logical.L in player.frames[i - j].pre.buttons):
+                    trigger_input_frame = -j
+                    break
+
+            player.stats.l_cancels.append(LCancelData(
+                frame_index=i,
+                move=player.frames[i - 1].post.state,
+                l_cancel=True if l_cancel == 1 else False,
+                trigger_input_frame=trigger_input_frame,
+                slideoff=slideoff
+                ))
+
 
     # def recovery_compute(self, connect_code: Optional[str]=None):
     #     player_ports: list[int]

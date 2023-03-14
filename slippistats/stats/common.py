@@ -1,10 +1,7 @@
-import datetime
-from collections import UserList
+from collections.abc import Callable
 from enum import Enum
 from math import atan2, degrees
 from typing import Optional
-
-import polars as pl
 
 # from ..enums.character import InGameCharacter
 from ..enums.stage import Stage
@@ -16,12 +13,18 @@ from ..util import IntEnum
 #                                 State Helpers                                #
 # ---------------------------------------------------------------------------- #
 
-def just_entered_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
+def just_entered_state(action_state: int | Callable, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
     # TODO test this
+    if isinstance(action_state, Callable):
+        return action_state(curr_state) and not action_state(prev_state)
+
     return curr_state == action_state and prev_state != action_state
 
 def just_exited_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
-    return curr_state != action_state and prev_state == action_state
+    if isinstance(action_state, Callable):
+        return action_state(prev_state) and not action_state(curr_state)
+
+    return prev_state == action_state and curr_state != action_state
 
 def is_damaged(action_state: int) -> bool:
     """Recieves action state, returns whether or not the player is in a damaged state.
@@ -160,6 +163,18 @@ def is_upb_lag(state:int, prev_state:int) -> bool:
             prev_state != ActionState.ESCAPE_AIR and
             (prev_state <= ActionRange.CONTROLLED_JUMP_START or
             prev_state >= ActionRange.CONTROLLED_JUMP_END))
+
+def is_aerial_land_lag(state: int) -> bool:
+    return ActionRange.AERIAL_LAND_LAG_START <= state <= ActionRange.AERIAL_LAND_LAG_END
+
+def is_slideoff_action(state: int) -> bool:
+    #TODO make sure this list is exhaustive (oh wait i forgot B moves =I)
+    # maybe there's required pre-frame air states? Otherwise could check is_airborne and didn't take damage
+    # for slideoffs, the possible action states on the next frame should be:
+    # double jump, air-fall, air-attack, air-b move or airdodge
+    return ((ActionState.JUMP_AERIAL_F <= state <= ActionRange.ACTIONABLE_AIR_END) or
+            (ActionRange.AERIAL_ATTACK_START <= state <= ActionRange.AERIAL_ATTACK_END) or
+            (ActionState.ESCAPE_AIR == state))
 
 # VERY untested, probably don't use
 # def is_recovery_lag(character: InGameCharacter, state: ActionState) -> bool:

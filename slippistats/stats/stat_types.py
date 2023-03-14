@@ -7,7 +7,7 @@ from collections import UserList
 import polars as pl
 
 from .common import (get_angle, TechType, JoystickRegion)
-from ..enums import (ActionState)
+from ..enums import (ActionState, Attack)
 from ..event import Position, Velocity
 
 
@@ -97,8 +97,6 @@ class DashState():
 
 @dataclass
 class TechData(Stat):
-    physical_port: int
-    connect_code: Optional[str]
     tech_type: Optional[TechType]
     direction: str
     position: Position
@@ -109,9 +107,7 @@ class TechData(Stat):
     jab_reset: Optional[bool]
     last_hit_by: str
 
-    def __init__(self, port, connect_code: Optional[str] = None):
-        self.physical_port = port + 1
-        self.connect_code = connect_code
+    def __init__(self):
         self.tech_type = None
         self.is_missed_tech = False
         self.towards_center = None
@@ -124,8 +120,8 @@ class TechState():
     tech: TechData
     last_state: Optional[ActionState | int]
 
-    def __init__(self, port, connect_code: Optional[str] = None):
-        self.tech = TechData(port, connect_code)
+    def __init__(self):
+        self.tech = TechData()
         self.last_state = None
 
 
@@ -134,8 +130,6 @@ class TechState():
 
 @dataclass
 class TakeHitData(Stat):
-    physical_port: int
-    connect_code: Optional[str]
     last_hit_by: Optional[int]
     grounded: Optional[bool]
     crouch_cancel: Optional[bool]
@@ -152,9 +146,7 @@ class TakeHitData(Stat):
     start_position: Optional[Position]
     end_position: Optional[Position]
 
-    def __init__(self, port, connect_code: Optional[str] = None):
-        self.physical_port = port + 1
-        self.connect_code = connect_code
+    def __init__(self):
         self.last_hit_by = None
         self.grounded = None
         self.hitlag_frames = 0
@@ -210,26 +202,38 @@ class TakeHitData(Stat):
 
 @dataclass
 class LCancelData(Stat):
-    physical_port: Optional[int]
-    connect_code: Optional[str]
-    successful: int
-    failed: int
+    frame_index=int
+    l_cancel: bool
+    move: Attack
+    slideoff: bool
+    trigger_input_frame: int
 
-    def __init__(self, port, connect_code: Optional[str] = None):
-        self.physical_port = port + 1
-        self.connect_code = connect_code
-        self.successful = 0
-        self.failed = 0
+    def __init__(self, frame_index, l_cancel, move, slideoff, trigger_input_frame):
+        self.frame_index = frame_index
+        self.l_cancel = l_cancel
+        self.trigger_input_frame = trigger_input_frame
+        match move:
+            case ActionState.ATTACK_AIR_N:
+                self.move = Attack.NAIR.name
+            case ActionState.ATTACK_AIR_F:
+                self.move = Attack.FAIR.name
+            case ActionState.ATTACK_AIR_B:
+                self.move = Attack.BAIR.name
+            case ActionState.ATTACK_AIR_HI:
+                self.move = Attack.UAIR.name
+            case ActionState.ATTACK_AIR_LW:
+                self.move = Attack.DAIR.name
+            case _:
+                self.move = "UNKNOWN"
+        self.slideoff = slideoff
 
-    def percentage(self):
-        return (self.successful / (self.successful + self.failed)) * 100
 
 
 # --------------------------------- Wrappers --------------------------------- #
 
 
 class Wavedashes(UserList):
-    """Wrapper for lists of wavedash data"""
+    """Wrapper for lists of Wavedash data"""
     data_header: dict
     data: list
 
@@ -242,7 +246,7 @@ class Wavedashes(UserList):
 
 
 class Dashes(UserList):
-    """Wrapper for lists of wavedash data"""
+    """Wrapper for lists of Dash data"""
     data_header: dict
     data: list
 
@@ -254,40 +258,60 @@ class Dashes(UserList):
         return pl.DataFrame([self.data_header | dash.__dict__ for dash in self])
 
 
-# class Wavedashes(UserList):
-#     """Wrapper for lists of wavedash data"""
-#     data_header: dict
-#     data: list
+class Techs(UserList):
+    """Wrapper for lists of Tech data"""
+    data_header: dict
+    data: list
 
-#     def __init__(self, data_header):
-#         self.data_header = data_header
-#         self.data = []
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
 
-#     def to_polars(self):
-#         return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+    def to_polars(self):
+        return pl.DataFrame([self.data_header | tech.__dict__ for tech in self])
 
-# class Wavedashes(UserList):
-#     """Wrapper for lists of wavedash data"""
-#     data_header: dict
-#     data: list
 
-#     def __init__(self, data_header):
-#         self.data_header = data_header
-#         self.data = []
+class TakeHits(UserList):
+    """Wrapper for lists of Take Hit data"""
+    data_header: dict
+    data: list
 
-#     def to_polars(self):
-#         return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
+
+    def to_polars(self):
+        return pl.DataFrame([self.data_header | take_hit.__dict__ for take_hit in self])
+
+class LCancels(UserList):
+    """Wrapper for lists of l-cancel data"""
+    data_header: dict
+    successful: int
+    failed: int
+    data: list
+
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
+
+    def percentage(self):
+        return (self.successful / (self.successful + self.failed)) * 100
+
+    def to_polars(self):
+        return pl.DataFrame([self.data_header | l_cancel.__dict__ for l_cancel in self])
 
 
 @dataclass
 class Data():
     wavedashes: Wavedashes
     dashes: Dashes
-
-    # tech: list[TechData] = field(default_factory=list)
-    # take_hit: list[TakeHitData] = field(default_factory=list)
-    # l_cancel: Optional[LCancelData] = None
+    techs: Techs
+    take_hits: TakeHits
+    l_cancels: Optional[LCancelData] = None
 
     def __init__(self, data_header):
         self.wavedashes = Wavedashes(data_header)
         self.dashes = Dashes(data_header)
+        self.techs = Techs(data_header)
+        self.take_hits = TakeHits(data_header)
+        self.l_cancels = LCancelData(data_header)

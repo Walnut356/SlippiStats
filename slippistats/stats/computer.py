@@ -1,6 +1,6 @@
 from itertools import permutations
 from os import PathLike
-from typing import Any, Optional, Self
+from typing import Optional
 from dataclasses import dataclass
 import datetime
 
@@ -56,7 +56,7 @@ class ComputerBase():
     replay_path: PathLike | str
     players: list[Player]
 
-    def prime_replay(self, replay: PathLike | Game | str) -> Self:
+    def prime_replay(self, replay: PathLike | Game | str):
         """Parses a replay and loads the relevant data into the combo computer. Call combo_compute(connect_code) to extract combos
         from parsed replay"""
         if isinstance(replay, (PathLike, str)):
@@ -73,7 +73,7 @@ class ComputerBase():
         stats_header = {
             "match_id" : self.replay.start.match_id,
             "date_time" : self.replay.metadata.date.replace(tzinfo=None),
-            "match_type" : self.replay.start.match_type,
+            "match_type" : self.replay.start.match_type.name,
             "game_number" : self.replay.start.game_number,
             "duration" : datetime.timedelta(seconds=((self.replay.metadata.duration)/60)),
             }
@@ -108,34 +108,34 @@ class ComputerBase():
         return self
 
     #FIXME the entry/return on this is dumb and I need to restructure it so it's useable anywhere outside of the stats calc
-    def get_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
-        player_port = -1
-        opponent_port = -1
-        if connect_code:
-            for i, player in enumerate(self.players):
-                if player.connect_code == connect_code.upper():
-                    player_port = i
-                else:
-                    opponent_port = i
-            if player_port == opponent_port:
-                return [[], None]
-            # TODO raise exception? log warning?
-            # currently returns nothing so program will continue and stats calc will do nothing
-            return [[player_port], opponent_port]
+    # def get_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
+    #     player_port = -1
+    #     opponent_port = -1
+    #     if connect_code:
+    #         for i, player in enumerate(self.players):
+    #             if player.connect_code == connect_code.upper():
+    #                 player_port = i
+    #             else:
+    #                 opponent_port = i
+    #         if player_port == opponent_port:
+    #             return [[], None]
+    #         # TODO raise exception? log warning?
+    #         # currently returns nothing so program will continue and stats calc will do nothing
+    #         return [[player_port], opponent_port]
 
-        # If there's no connect code, extract the port values of both *active* ports
-        player_ports = [i for i, x in enumerate(self.replay.start.players) if x is not None]
-        # And if there's more than 2 active ports, we return an empty list which should skip processing.
-        # TODO make this an exception, but one that doesn't kill the program? Or just some way to track which replays don't get processed
-        if len(player_ports) > 2:
-            return []
-        return player_ports
+    #     # If there's no connect code, extract the port values of both *active* ports
+    #     player_ports = [i for i, x in enumerate(self.replay.start.players) if x is not None]
+    #     # And if there's more than 2 active ports, we return an empty list which should skip processing.
+    #     # TODO make this an exception, but one that doesn't kill the program? Or just some way to track which replays don't get processed
+    #     if len(player_ports) > 2:
+    #         return []
+    #     return player_ports
 
-    def port_frame(self, port: int, frame: Frame) -> Frame.Port.Data:
-        return frame.ports[port].leader
+    # def port_frame(self, port: int, frame: Frame) -> Frame.Port.Data:
+    #     return frame.ports[port].leader
 
-    def port_frame_by_index(self, port: int, index: int) -> Frame.Port.Data:
-        return self.replay.frames[index].ports[port].leader
+    # def port_frame_by_index(self, port: int, index: int) -> Frame.Port.Data:
+    #     return self.replay.frames[index].ports[port].leader
 
     def reset_data(self):
         return
@@ -151,5 +151,19 @@ class ComputerBase():
                     raise ValueError(f"No player matching given connect code {identifier}")
             case int() | Ports():
                 return self.players[identifier]
+            case _:
+                raise ValueError(f"Invalid identifier type: {identifier} {type(identifier)}. get_player() accepts str, int, or Port")
+
+    def get_opponent(self, identifier: str | int | Ports) -> Player:
+        match identifier:
+            case str():
+                for player in self.players:
+                    if player.connect_code != identifier:
+                        return player
+                else:
+                    #TODO probably rip this out and just replace it with a log warning when done debugging
+                    raise ValueError(f"No player matching given connect code {identifier}")
+            case int() | Ports():
+                return self.players[identifier - 1]
             case _:
                 raise ValueError(f"Invalid identifier type: {identifier} {type(identifier)}. get_player() accepts str, int, or Port")

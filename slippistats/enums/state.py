@@ -1,4 +1,4 @@
-from ..util import *
+from ..util import IntEnum
 from enum import IntFlag
 
 # Use reference: https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
@@ -72,6 +72,10 @@ class ActionRange(IntEnum):
     AERIAL_ATTACK_END = 74
     FALL_SPECIAL_START = 35
     FALL_SPECIAL_END = 37
+    AERIAL_LAND_LAG_START = 70
+    AERIAL_LAND_LAG_END = 74
+    ACTIONABLE_AIR_START = 25
+    ACTIONABLE_AIR_END = 34
     # Command Grabs
     COMMAND_GRAB_RANGE1_START = 266
     COMMAND_GRAB_RANGE1_END = 304
