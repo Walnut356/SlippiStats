@@ -30,7 +30,6 @@ class Game(Base):
         self.end = None
         self.metadata = None
         self.metadata_raw = None
-        self.players = []
 
         parse(
             source, {
@@ -43,7 +42,6 @@ class Game(Base):
             )
 
         self.frames = tuple(self.frames)
-
 
     def _add_frame(self, frame: Frame):
         idx = frame.index - FIRST_FRAME_INDEX
@@ -64,5 +62,3 @@ class Game(Base):
             return None
         else:
             return super()._attr_repr(attr)
-
-    

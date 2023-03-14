@@ -1,7 +1,9 @@
+import datetime
+from collections import UserList
 from enum import Enum
 from math import atan2, degrees
 from typing import Optional
-import datetime
+
 import polars as pl
 
 # from ..enums.character import InGameCharacter
@@ -14,18 +16,12 @@ from ..util import IntEnum
 #                                 State Helpers                                #
 # ---------------------------------------------------------------------------- #
 
-def just_entered_state(action_state: int, curr: Frame.Port.Data | int, prev: Frame.Port.Data | int) -> bool:
+def just_entered_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
     # TODO test this
-    """Accepts state or frame, or post-frame"""
-    for frame in [curr, prev]:
-        if isinstance(frame, Frame.Port.Data):
-            frame = frame.post.state
-        if isinstance(frame, Frame.Port.Data.Post):
-            frame = frame.state
-        if isinstance(frame, int):
-            pass
+    return curr_state == action_state and prev_state != action_state
 
-    return curr == action_state and prev != action_state
+def just_exited_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
+    return curr_state != action_state and prev_state == action_state
 
 def is_damaged(action_state: int) -> bool:
     """Recieves action state, returns whether or not the player is in a damaged state.
@@ -321,28 +317,3 @@ def get_playback_header() -> dict:
         "outputOverlayFiles": True,
         "queue": []
         }
-
-def get_dataframe_header(stats_computer: StatsComputer, connect_code: str) -> dict:
-
-    formatted_date = stats_computer.metadata.date.replace(tzinfo=None)
-    # total number of frames, starting when the player has control, in seconds
-    formatted_time = datetime.timedelta(seconds=((stats_computer.metadata.duration)/60))
-
-    [player_port], opponent_port = stats_computer.generate_player_ports(connect_code)
-
-    header = {
-            "match_id" : stats_computer.replay.start.match_id,
-            "date_time" : formatted_date,
-            "duration" : formatted_time,
-            "ranked" : stats_computer.replay.start.match_type,
-            "win" : stats_computer.is_winner(player_port),
-            "char" : id.InGameCharacter(list(stats_computer.players[player_port].characters.keys())[0]).name, #lmao
-            "opnt_Char" : id.InGameCharacter(list(stats_computer.players[opponent_port].characters.keys())[0]).name
-            }
-
-    return header
-
-def to_dataframe(stats) -> pl.DataFrame:
-    #TODO refactor so passing stats computer isn't required?
-    if issubclass(stats, UserList):
-        return [get_dataframe_header(_, _) | stat.__dict__ for stat in stats] #TODO if isinstance(stat)

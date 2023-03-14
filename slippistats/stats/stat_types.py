@@ -6,7 +6,9 @@ from collections import UserList
 
 import polars as pl
 
-from .common import *
+from .common import (get_angle, TechType, JoystickRegion)
+from ..enums import (ActionState)
+from ..event import Position, Velocity
 
 
 #TODO abstract base class:
@@ -14,23 +16,20 @@ class Stat(ABC):
     pass
 
 
+# --------------------------------- Wavedash --------------------------------- #
+
 
 @dataclass
 class WavedashData(Stat):
-    physical_port: int
-    connect_code: Optional[str]
-    r_frame: int  # which airborne frame was the airdodge input on?
+    frame_index: int
     angle: Optional[float]  # in degrees
+    direction: Optional[str]
+    r_frame: int  # which airborne frame was the airdodge input on?
     airdodge_frames: int
     waveland: bool
-    direction: Optional[str]
 
-    def __init__(
-            self, port, connect_code: Optional[str], r_input_frame: int = 0, stick: Optional[Position] = None, airdodge_frames: int = 0
-        ):
-        self.physical_port = port + 1
-        self.connect_code = connect_code
-        self.r_frame = r_input_frame
+    def __init__(self, frame_index: int, r_input_frame: int = 0, stick: Optional[Position] = None, airdodge_frames: int = 0):
+        self.frame_index = frame_index
         if stick:
             # atan2 converts coordinates to degrees without losing information (with tan quadrent 1 and 3 are both positive)
             self.angle = get_angle(stick)
@@ -53,39 +52,31 @@ class WavedashData(Stat):
         else:
             self.angle = None
             self.direction = None
+        self.r_frame = r_input_frame
         self.airdodge_frames = airdodge_frames
         self.waveland = True
 
     def total_startup(self) -> int:
         return self.r_frame + self.airdodge_frames
 
-class Wavedashes(UserList):
-    """Wrapper for lists of wavedash data"""
-    data_header: dict
 
-    def __init__(self, data_header):
-        self.data_header = data_header
-
-    def to_polars(self) -> pl.Dataframe:
-        return [self.data_header | wavedash.__dict__ for wavedash in self]
-
+# ----------------------------------- Dash ----------------------------------- #
 
 
 @dataclass
 class DashData(Stat):
-    physical_port: int
-    connect_code: Optional[str]
+    frame_index: int
     start_pos: float
     end_pos: float
     direction: str
     is_dashdance: bool
 
-    def __init__(self, port, connect_code: Optional[str], start_pos=0, end_pos=0):
-        self.physical_port = port + 1
-        self.connect_code = connect_code
+    def __init__(self, frame_index, direction="NONE", is_dashdance=False, start_pos=0, end_pos=0):
+        self.frame_index = frame_index
         self.start_pos = start_pos
         self.end_pos = end_pos
-        self.is_dashdance = False
+        self.direction = direction
+        self.is_dashdance = is_dashdance
 
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
@@ -96,9 +87,12 @@ class DashState():
     dash: DashData
     active_dash: bool
 
-    def __init__(self, port, connect_code: Optional[str] = None):
-        self.dash = DashData(port, connect_code)
+    def __init__(self):
+        self.dash = DashData(-1)
         self.active_dash = False
+
+
+# ----------------------------------- Tech ----------------------------------- #
 
 
 @dataclass
@@ -133,6 +127,9 @@ class TechState():
     def __init__(self, port, connect_code: Optional[str] = None):
         self.tech = TechData(port, connect_code)
         self.last_state = None
+
+
+# --------------------------------- Take hit --------------------------------- #
 
 
 @dataclass
@@ -208,6 +205,9 @@ class TakeHitData(Stat):
         return dist(self.end_position, self.start_position)
 
 
+# --------------------------------- L cancel --------------------------------- #
+
+
 @dataclass
 class LCancelData(Stat):
     physical_port: Optional[int]
@@ -224,13 +224,70 @@ class LCancelData(Stat):
     def percentage(self):
         return (self.successful / (self.successful + self.failed)) * 100
 
+
+# --------------------------------- Wrappers --------------------------------- #
+
+
+class Wavedashes(UserList):
+    """Wrapper for lists of wavedash data"""
+    data_header: dict
+    data: list
+
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
+
+    def to_polars(self) -> pl.DataFrame:
+        return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+
+
+class Dashes(UserList):
+    """Wrapper for lists of wavedash data"""
+    data_header: dict
+    data: list
+
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
+
+    def to_polars(self):
+        return pl.DataFrame([self.data_header | dash.__dict__ for dash in self])
+
+
+# class Wavedashes(UserList):
+#     """Wrapper for lists of wavedash data"""
+#     data_header: dict
+#     data: list
+
+#     def __init__(self, data_header):
+#         self.data_header = data_header
+#         self.data = []
+
+#     def to_polars(self):
+#         return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+
+# class Wavedashes(UserList):
+#     """Wrapper for lists of wavedash data"""
+#     data_header: dict
+#     data: list
+
+#     def __init__(self, data_header):
+#         self.data_header = data_header
+#         self.data = []
+
+#     def to_polars(self):
+#         return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+
+
 @dataclass
 class Data():
     wavedashes: Wavedashes
-    # dash: list[DashData] = field(default_factory=list)
+    dashes: Dashes
+
     # tech: list[TechData] = field(default_factory=list)
     # take_hit: list[TakeHitData] = field(default_factory=list)
     # l_cancel: Optional[LCancelData] = None
 
     def __init__(self, data_header):
         self.wavedashes = Wavedashes(data_header)
+        self.dashes = Dashes(data_header)

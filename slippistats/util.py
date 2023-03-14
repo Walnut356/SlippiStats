@@ -107,7 +107,7 @@ class Enum(enum.Enum):
 class IntEnum(enum.IntEnum):
 
     def __repr__(self):
-        return f'{self.value}:{self.name}'
+        return f'{self._value_}:{self._name_}'
 
     @classmethod
     def _missing_(cls, value):

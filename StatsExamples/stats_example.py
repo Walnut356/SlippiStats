@@ -15,17 +15,17 @@ from slippistats import *
 
 def get_default_header(stats_computer: StatsComputer, connect_code: str) -> dict:
 
-    formatted_date = stats_computer.metadata.date.replace(tzinfo=None)
+    formatted_date = stats_computer.replay.metadata.date.replace(tzinfo=None)
     # total number of frames, starting when the player has control, in seconds
-    formatted_time = datetime.timedelta(seconds=((stats_computer.metadata.duration) / 60))
+    formatted_time = datetime.timedelta(seconds=((stats_computer.replay.metadata.duration) / 60))
 
     [player_port], opponent_port = stats_computer.generate_player_ports(connect_code)
 
     header = {
-        "match_id": stats_computer.rules.match_id,
+        "match_id": stats_computer.replay.start.match_id,
         "date_time": formatted_date,
         "duration": formatted_time,
-        "ranked": stats_computer.rules.is_ranked,
+        "ranked": stats_computer.replay.start.is_ranked,
         "win": stats_computer.is_winner(player_port),
         "char": id.InGameCharacter(list(stats_computer.players[player_port].characters.keys())[0]).name,  #lmao
         "opnt_Char": id.InGameCharacter(list(stats_computer.players[opponent_port].characters.keys())[0]).name
@@ -40,7 +40,7 @@ def get_wavedash_data(replay, connect_code) -> dict:
     stats.wavedash_compute(connect_code)
 
     header = get_default_header(stats, connect_code)
-    wd_data = [header | wavedash.__dict__ for wavedash in stats.data.wavedash]
+    wd_data = [header | wavedash.__dict__ for wavedash in stats.data.wavedashes]
     return wd_data
 
 
@@ -50,7 +50,7 @@ def get_dash_data(replay, connect_code) -> dict:
     stats.wavedash_compute(connect_code)
 
     header = get_default_header(stats, connect_code)
-    dash_data = [header | dash.__dict__ for dash in stats.data.dash]
+    dash_data = [header | dash.__dict__ for dash in stats.data.dashes]
     return dash_data
 
 

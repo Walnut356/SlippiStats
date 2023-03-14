@@ -1,37 +1,37 @@
-
-from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
 from os import PathLike
+from typing import Optional
 
-from ..enums import ActionState, CSSCharacter
+from ..enums import ActionState
 from ..event import Attack, Buttons
 from ..game import Game
-from ..stats.common import *
-from ..util import Base, try_enum
+from ..util import try_enum
+from .common import *
 from .computer import ComputerBase
-from .stat_types import *
+from .stat_types import (WavedashData, Wavedashes,
+                        DashData, DashState, Dashes,
+                        TechData, TechState,
+                        TakeHitData)
 
 
 class StatsComputer(ComputerBase):
 
-    data: Data
     wavedash_state: Optional[WavedashData]
     tech_state: Optional[TechState]
     dash_state: Optional[DashState]
     take_hit_state: Optional[TakeHitData]
 
     def __init__(self, replay: Optional[PathLike | Game | str]=None):
-        self.data = Data()
+        self.players = []
         self.wavedash_state = None
         self.tech_state = None
         self.dash_state = None
         self.take_hit_state = None
         if replay is not None:
-            self.replay = self.prime_replay(replay)
+            self.prime_replay(replay)
         else:
             self.replay = None
 
-        
+
 
 
     def stats_compute (self, connect_code: str, wavedash=True, dash=True, tech=True, take_hit=True, l_cancel=True):
@@ -76,7 +76,7 @@ class StatsComputer(ComputerBase):
                     past_frame = self.port_frame_by_index(player_port, i - j)
                     if (Buttons.Physical.R in past_frame.pre.buttons.physical.pressed() or
                         Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()):
-                        self.wavedash_state = WavedashData(player_port, connect_code, 0, player_frame.pre.joystick, j)
+                        self.wavedash_state = WavedashData(i, 0, player_frame.pre.joystick, j)
 
                         for k in range(0, 5):
                             past_frame = self.port_frame_by_index(player_port, i - j - k)
@@ -84,9 +84,10 @@ class StatsComputer(ComputerBase):
                                 self.wavedash_state.r_frame = k
                                 self.wavedash_state.waveland = False
                                 break
-                        self.data.wavedash.append(self.wavedash_state)
+                        self.players[player_port].stats.wavedashes.append(self.wavedash_state)
                         break
-        return self.data.wavedash
+        #TODO think of some better way to return things
+        return self.players[player_port].stats.wavedashes
 
     def dash_compute(self, connect_code:Optional[str]=None) -> list[DashData]:
         player_ports = None
@@ -100,7 +101,7 @@ class StatsComputer(ComputerBase):
             if len(player_ports) == 2:
                 _ = player_ports[port_index - 1] # Only works for 2 ports
 
-            self.dash_state = DashState(player_port, connect_code)
+            self.dash_state = DashState()
 
             for i, frame in enumerate(self.replay.frames):
                 player_frame = self.port_frame(player_port, frame)
@@ -110,37 +111,31 @@ class StatsComputer(ComputerBase):
                 prev_prev_player_frame = self.port_frame_by_index(player_port, i - 2)
                 prev_prev_player_state = prev_prev_player_frame.post.state
 
+                state_pattern = (prev_prev_player_state, prev_player_state, player_state)
                 # if last 2 states weren't dash and curr state is dash, start dash event
                 # if the state pattern dash -> wait -> dash occurs, mark as dashdance
                 # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
-
-                if player_state == ActionState.DASH:
-                    if prev_player_state != ActionState.DASH and prev_prev_player_frame != ActionState.DASH:
-                        self.dash_state.dash = DashData(player_port, connect_code)
-                        self.dash_state.active_dash = True
-                        self.dash_state.dash.direction = player_frame.post.facing_direction.name
-                        self.dash_state.dash.start_pos = player_frame.post.position.x
+                if i == 628:
+                    pass
+                if just_entered_state(ActionState.DASH, player_state, prev_player_state):
+                    self.dash_state.dash = DashData(frame_index=i,
+                                                    direction=player_frame.post.facing_direction.name,
+                                                    start_pos=player_frame.post.position.x,
+                                                    is_dashdance=False)
+                    self.dash_state.active_dash = True
 
                     if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
-                        # if a dashdance pattern (dash -> turn -> dash) is detected, first we need to finalize and record the previous dash
-                        self.dash_state.dash.end_pos = prev_prev_player_frame.post.position.x
-                        self.data.dash.append(self.dash_state.dash)
-                        # then we need to create a new dash and update its information
-                        self.dash_state.dash = DashData(player_port, connect_code)
-                        self.dash_state.active_dash = True
-                        self.dash_state.dash.direction = player_frame.post.facing_direction.name
-                        self.dash_state.dash.start_pos = player_frame.post.position.x
+                        # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
                         self.dash_state.dash.is_dashdance = True
+                        self.players[player_port].stats.dashes[-1].is_dashdance = True
 
-                else:
+                if just_exited_state(ActionState.DASH, player_state, prev_player_state):
                     # If not dashing for 2 consecutive frames, finalize the dash and reset the state
-                    if (self.dash_state.active_dash and
-                        prev_player_state != ActionState.DASH and prev_prev_player_state != ActionState.DASH):
-                        self.dash_state.dash.end_pos = prev_prev_player_frame.post.position.x
-                        self.data.dash.append(self.dash_state.dash)
-                        self.dash_state.active_dash = False
-                        self.dash_state.dash = DashData(player_port, connect_code)
-        return self.data.dash
+                    self.dash_state.dash.end_pos = player_frame.post.position.x
+                    self.players[player_port].stats.dashes.append(self.dash_state.dash)
+                    self.dash_state.active_dash = False
+                    self.dash_state.dash = DashData(-1)
+        return self.players[player_port].stats.dashes
 
     def tech_compute(self, connect_code:Optional[str]=None) -> list[TechData]:
         player_ports: list[int]
@@ -281,7 +276,8 @@ class StatsComputer(ComputerBase):
                         self.take_hit_state.crouch_cancel = True
                     else:
                         self.take_hit_state.crouch_cancel = False
-                #TODO this failed during all_stats(), DF had 1872 entries.  file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
+                #TODO this failed during all_stats(), DF had 1872 entries.
+                # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
                 self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
                 self.take_hit_state.hitlag_frames += 1
         return self.data.take_hit
