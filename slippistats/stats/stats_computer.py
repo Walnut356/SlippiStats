@@ -18,17 +18,17 @@ from .common import (JoystickRegion,
                      just_exited_state,)
 from .computer import ComputerBase, Player
 from .stat_types import (WavedashData, Wavedashes,
-                        DashData, DashState, Dashes,
-                        TechData, TechState,
-                        TakeHitData,
-                        LCancelData,)
+                        DashData, Dashes,
+                        TechData, TechState, Techs,
+                        TakeHitData, TakeHits,
+                        LCancelData, LCancels,)
 
 
 class StatsComputer(ComputerBase):
 
     wavedash_state: Optional[WavedashData]
     tech_state: Optional[TechState]
-    dash_state: Optional[DashState]
+    dash_state: Optional[DashData]
     take_hit_state: Optional[TakeHitData]
 
     def __init__(self, replay: Optional[PathLike | Game | str]=None):
@@ -74,7 +74,7 @@ class StatsComputer(ComputerBase):
 
     def wavedash_compute(self,
                          connect_code:Optional[str]=None,
-                         player: Optional[Player]=None,) -> list[WavedashData]:
+                         player: Optional[Player]=None,) -> Wavedashes:
         if connect_code is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
@@ -115,7 +115,7 @@ class StatsComputer(ComputerBase):
 
     def dash_compute(self,
                          connect_code:Optional[str]=None,
-                         player: Optional[Player]=None,) -> list[DashData]:
+                         player: Optional[Player]=None,) -> Dashes:
 
         if connect_code is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
@@ -136,29 +136,28 @@ class StatsComputer(ComputerBase):
             # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
 
             if just_entered_state(ActionState.DASH, player_state, prev_player_state):
-                self.dash_state.dash = DashData(frame_index=i,
+                self.dash_state = DashData(frame_index=i,
                                                 direction=player_frame.post.facing_direction.name,
                                                 start_pos=player_frame.post.position.x,
                                                 is_dashdance=False)
-                self.dash_state.active_dash = True
 
                 if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
                     # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
-                    self.dash_state.dash.is_dashdance = True
+                    self.dash_state.is_dashdance = True
                     player.stats.dashes[-1].is_dashdance = True
 
             if just_exited_state(ActionState.DASH, player_state, prev_player_state):
                 # If not dashing for 2 consecutive frames, finalize the dash and reset the state
-                self.dash_state.dash.end_pos = player_frame.post.position.x
-                player.stats.dashes.append(self.dash_state.dash)
-                self.dash_state.dash = DashData(-1)
+                self.dash_state.end_pos = player_frame.post.position.x
+                player.stats.dashes.append(self.dash_state)
+                self.dash_state = None
 
         return player.stats.dashes
 
     def tech_compute(self,
                          connect_code:Optional[str]=None,
                          player: Optional[Player]=None,
-                         opponent:Optional[Player]=None,) -> list[TechData]:
+                         opponent:Optional[Player]=None,) -> Techs:
         if connect_code is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
@@ -239,7 +238,7 @@ class StatsComputer(ComputerBase):
     def take_hit_compute(self,
                          connect_code:Optional[str]=None,
                          player: Optional[Player]=None,
-                         opponent:Optional[Player]=None,) -> list[TakeHitData]:
+                         opponent:Optional[Player]=None,) -> TakeHits:
         if connect_code is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
@@ -298,7 +297,7 @@ class StatsComputer(ComputerBase):
 
     def l_cancel_compute(self,
                          connect_code:Optional[str]=None,
-                         player: Optional[Player]=None,) -> list[LCancelData]:
+                         player: Optional[Player]=None,) -> LCancels:
 
         if connect_code is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")

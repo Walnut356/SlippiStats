@@ -71,7 +71,7 @@ class DashData(Stat):
     direction: str
     is_dashdance: bool
 
-    def __init__(self, frame_index, direction="NONE", is_dashdance=False, start_pos=0, end_pos=0):
+    def __init__(self, frame_index:int =-1, direction:str ="NONE", is_dashdance:bool =False, start_pos:float =0, end_pos:float =0):
         self.frame_index = frame_index
         self.start_pos = start_pos
         self.end_pos = end_pos
@@ -81,15 +81,6 @@ class DashData(Stat):
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
 
-
-@dataclass
-class DashState():
-    dash: DashData
-    active_dash: bool
-
-    def __init__(self):
-        self.dash = DashData(-1)
-        self.active_dash = False
 
 
 # ----------------------------------- Tech ----------------------------------- #
@@ -233,7 +224,7 @@ class LCancelData(Stat):
 
 
 class Wavedashes(UserList):
-    """Wrapper for lists of Wavedash data"""
+    """Iterable wrapper for lists of Wavedash data"""
     data_header: dict
     data: list
 
@@ -246,7 +237,7 @@ class Wavedashes(UserList):
 
 
 class Dashes(UserList):
-    """Wrapper for lists of Dash data"""
+    """Iterable wrapper for lists of Dash data"""
     data_header: dict
     data: list
 
@@ -259,7 +250,7 @@ class Dashes(UserList):
 
 
 class Techs(UserList):
-    """Wrapper for lists of Tech data"""
+    """Iterable wrapper for lists of Tech data"""
     data_header: dict
     data: list
 
@@ -272,7 +263,7 @@ class Techs(UserList):
 
 
 class TakeHits(UserList):
-    """Wrapper for lists of Take Hit data"""
+    """Iterable wrapper rapper for lists of Take Hit data"""
     data_header: dict
     data: list
 
@@ -284,7 +275,7 @@ class TakeHits(UserList):
         return pl.DataFrame([self.data_header | take_hit.__dict__ for take_hit in self])
 
 class LCancels(UserList):
-    """Wrapper for lists of l-cancel data"""
+    """Iterable wrapper for lists of l-cancel data"""
     data_header: dict
     successful: int
     failed: int
