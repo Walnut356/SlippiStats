@@ -6,8 +6,8 @@ import polars as pl
 
 from slippistats import *
 
-data = StatsComputer(Path(r'Modern Replays/Game_20221227T194333.slp')).wavedash_compute("NUT#356")
+data = StatsComputer(Path(r'Modern Replays/Game_20221227T194333.slp')).take_hit_compute("NUT#356")
 data = data.to_polars()
 
 print(data)
-data.write_parquet("wd_test_2.parquet")
+data.write_parquet("take_hit_test.parquet")

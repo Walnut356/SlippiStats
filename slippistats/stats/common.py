@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from enum import Enum
-from math import atan2, degrees
+from math import atan2, degrees, radians, isclose, sin, cos, sqrt, pi, tau
 from typing import Optional
 
 # from ..enums.character import InGameCharacter
@@ -25,6 +25,9 @@ def just_exited_state(action_state: int, curr_state: ActionState | int, prev_sta
         return action_state(prev_state) and not action_state(curr_state)
 
     return prev_state == action_state and curr_state != action_state
+
+def just_took_damage(percent: int, prev_percent: int) -> bool:
+    return not isclose(percent, prev_percent, abs_tol=1e-03)
 
 def is_damaged(action_state: int) -> bool:
     """Recieves action state, returns whether or not the player is in a damaged state.
@@ -60,8 +63,9 @@ def is_cmd_grabbed(action_state: int) -> bool:
 def is_teching(action_state: int) -> bool:
     """Recieves action state, returns whether or not it falls into the tech action states, includes walljump/ceiling techs"""
     return (ActionRange.TECH_START <= action_state <= ActionRange.TECH_END or
-    action_state == ActionState.FLY_REFLECT_CEIL or
-    action_state == ActionState.FLY_REFLECT_WALL)
+            ActionRange.DOWN_START <= action_state <= ActionRange.DOWN_END or
+            action_state == ActionState.FLY_REFLECT_CEIL or
+            action_state == ActionState.FLY_REFLECT_WALL)
 
 def is_dying(action_state: int) -> bool:
     """Reieves action state, returns whether or not player is in the dying animation from any blast zone"""
@@ -205,20 +209,31 @@ class TechType(Enum):
     CEILING_TECH = 8
     MISSED_CEILING_TECH = 9
     JAB_RESET = 10
+    MISSED_TECH_GET_UP = 11
+    MISSED_TECH_ROLL_RIGHT = 12
+    MISSED_TECH_ROLL_LEFT = 13
 
 # yapf: disable
 def get_tech_type(action_state: int, direction) -> TechType | None:
     match action_state:
-        case ActionState.PASSIVE | ActionState.DOWN_STAND_U | ActionState.DOWN_STAND_D:
+        case ActionState.PASSIVE:
             return TechType.TECH_IN_PLACE
+        case ActionState.DOWN_STAND_U | ActionState.DOWN_STAND_D:
+            return TechType.MISSED_TECH_GET_UP
 
-        case ActionState.PASSIVE_STAND_F | ActionState.DOWN_FOWARD_U | ActionState.DOWN_FOWARD_D:
+        case ActionState.PASSIVE_STAND_F:
             if direction > 0: return TechType.TECH_RIGHT
             else: return TechType.TECH_LEFT
+        case ActionState.DOWN_FOWARD_U | ActionState.DOWN_FOWARD_D:
+            if direction > 0: return TechType.MISSED_TECH_ROLL_RIGHT
+            else: return TechType.MISSED_TECH_ROLL_LEFT
 
-        case ActionState.PASSIVE_STAND_B | ActionState.DOWN_BACK_U | ActionState.DOWN_BACK_D:
+        case ActionState.PASSIVE_STAND_B:
             if direction > 0: return TechType.TECH_LEFT
             else: return TechType.TECH_RIGHT
+        case   ActionState.DOWN_BACK_U | ActionState.DOWN_BACK_D:
+            if direction > 0: return TechType.MISSED_TECH_ROLL_LEFT
+            else: return TechType.MISSED_TECH_ROLL_RIGHT
 
         case ActionState.DOWN_ATTACK_U | ActionState.DOWN_ATTACK_D:
             return TechType.GET_UP_ATTACK
@@ -302,7 +317,30 @@ def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Optional[Velo
         return player_frame_post.self_ground_speed + player_frame_post.knockback_speed
 
 def get_angle(point: Velocity | Position):
-    return degrees(atan2(point.y, point.x))
+    # atan2 returns 0 to 180 and 0 to -180. By adding tau (2 * pi) and wrapping around tau, we normalize to the familiar 0-360
+    return (atan2(point.y, point.x) + tau) % tau
+
+def get_post_di_angle(joystick: Position, knockback: Position):
+    kb_angle = get_angle(knockback)
+    joystick_angle = get_angle(joystick)
+
+    angle_diff = kb_angle - joystick_angle
+    if angle_diff > 180:
+        angle_diff -= 360
+
+    perp_dist = sin(angle_diff) * sqrt((joystick.x ** 2) + (joystick.y ** 2))
+    angle_offset = (perp_dist ** 2) * 18
+
+    if angle_offset > 18: angle_offset = 18
+    if -180 < angle_diff < 0:
+        angle_offset *= -1
+
+    return degrees(kb_angle) - angle_offset
+
+def get_post_di_velocity(post_kb_angle: float, og_kb: Velocity):
+    magnitude = sqrt(og_kb.x ** 2 + og_kb.y ** 2)
+    post_kb_angle = radians(post_kb_angle)
+    return Velocity(cos(post_kb_angle) * magnitude, sin(post_kb_angle) * magnitude)
 
 def max_di_angles(angle):
     angles = [angle - 90, angle + 90]

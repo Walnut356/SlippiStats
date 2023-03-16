@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from math import dist
+from math import degrees, dist
 from typing import Optional
 from abc import ABC
 from collections import UserList
 
 import polars as pl
+
+from slippistats.util import try_enum
 
 from .common import (get_angle, TechType, JoystickRegion)
 from ..enums import (ActionState, Attack)
@@ -15,6 +17,7 @@ from ..event import Position, Velocity
 class Stat(ABC):
     pass
 
+#TODO add stocks_remaining
 
 # --------------------------------- Wavedash --------------------------------- #
 
@@ -32,20 +35,20 @@ class WavedashData(Stat):
         self.frame_index = frame_index
         if stick:
             # atan2 converts coordinates to degrees without losing information (with tan quadrent 1 and 3 are both positive)
-            self.angle = get_angle(stick)
+            self.angle = degrees(get_angle(stick))
             # then we need to normalize the values to degrees-below-horizontal and assign a direction
-            if self.angle < -90 and self.angle > -180:
-                self.angle += 180
+            if self.angle < 270 and self.angle > 180:
+                self.angle -= 180
                 self.direction = "LEFT"
-            if self.angle > -90 and self.angle < 0:
-                self.angle += 90
+            if self.angle > 270 and self.angle < 360:
+                self.angle -= 270
                 self.direction = "RIGHT"
-            if self.angle == 180 or self.angle == -180:
+            if self.angle == 180:
                 self.angle = 0
                 self.direction = "LEFT"
             if self.angle == 0:
                 self.direction = "RIGHT"
-            if self.angle == -90:
+            if self.angle == 270:
                 self.angle = 90
                 self.direction = "DOWN"
 
@@ -88,22 +91,27 @@ class DashData(Stat):
 
 @dataclass
 class TechData(Stat):
+    frame_index: int
     tech_type: Optional[TechType]
+    was_punished: bool
     direction: str
     position: Position
     is_on_platform: bool
-    is_missed_tech: bool
+    is_missed_tech:bool
     towards_center: Optional[bool]
     towards_opponent: Optional[bool]
     jab_reset: Optional[bool]
     last_hit_by: str
 
     def __init__(self):
+        self.frame_index = -1
         self.tech_type = None
         self.is_missed_tech = False
+        self.was_punished = False
+        self.jab_reset = None
         self.towards_center = None
         self.towards_opponent = None
-        self.jab_reset = None
+
 
 
 @dataclass
@@ -113,7 +121,7 @@ class TechState():
 
     def __init__(self):
         self.tech = TechData()
-        self.last_state = None
+        self.last_state = -1
 
 
 # --------------------------------- Take hit --------------------------------- #
@@ -121,31 +129,42 @@ class TechState():
 
 @dataclass
 class TakeHitData(Stat):
-    last_hit_by: Optional[int]
+    frame_index: int
+    last_hit_by: Optional[Attack]
     grounded: Optional[bool]
     crouch_cancel: Optional[bool]
     hitlag_frames: Optional[int]
     stick_regions_during_hitlag: list[JoystickRegion]
     sdi_inputs: list[JoystickRegion]
     asdi: Optional[JoystickRegion]
-    di_angle: Optional[float]
+    di_stick_pos: Optional[float]
     percent: Optional[float]
-    knockback_velocity: Optional[Velocity]
-    knockback_angle: Optional[float]
-    final_knockback_velocity: Optional[Velocity]
-    final_knockback_angle: Optional[float]
-    start_position: Optional[Position]
-    end_position: Optional[Position]
+    kb_velocity: Optional[Velocity]
+    kb_angle: Optional[float]
+    final_kb_velocity: Optional[Velocity]
+    final_kb_angle: Optional[float]
+    start_pos: Optional[Position]
+    end_pos: Optional[Position]
+    di_efficacy: Optional[float]
 
     def __init__(self):
-        self.last_hit_by = None
+        self.frame_index = -1
         self.grounded = None
+        self.percent = None
+        self.last_hit_by = None
+        self.crouch_cancel = None
         self.hitlag_frames = 0
         self.stick_regions_during_hitlag = []
         self.sdi_inputs = []
         self.asdi = None
-        self.start_position = None
-        self.start_position = None
+        self.start_pos = None
+        self.end_pos = None
+        self.kb_angle = None
+        self.di_stick_pos = None
+        self.di_efficacy = None
+        self.final_kb_angle = None
+        self.kb_velocity = None
+        self.final_kb_velocity = None
 
     def find_valid_sdi(self):
         for i, stick_region in enumerate(self.stick_regions_during_hitlag):
@@ -182,10 +201,10 @@ class TakeHitData(Stat):
                 continue
 
     def change_in_position(self) -> tuple:
-        return self.start_position - self.end_position
+        return self.start_pos - self.end_pos
 
     def distance(self) -> float:
-        return dist(self.end_position, self.start_position)
+        return dist(self.end_pos, self.start_pos)
 
 
 # --------------------------------- L cancel --------------------------------- #
@@ -272,7 +291,30 @@ class TakeHits(UserList):
         self.data = []
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | take_hit.__dict__ for take_hit in self])
+
+        data = []
+
+        # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
+        for take_hit in self:
+            th_dict = take_hit.__dict__.copy()
+            try:
+                lhb = try_enum(Attack, take_hit.last_hit_by).name
+            except:
+                lhb = None
+            th_dict["last_hit_by"] = lhb or "UNKNOWN"
+            th_dict["sdi_inputs"] = [region.name for region in take_hit.sdi_inputs]
+            th_dict["asdi"] = take_hit.asdi.name
+            th_dict["stick_regions_during_hitlag"] = [region.name for region in take_hit.stick_regions_during_hitlag]
+            th_dict["kb_velocity"] = [take_hit.kb_velocity.x, take_hit.kb_velocity.y]
+            th_dict["final_kb_velocity"] = [take_hit.final_kb_velocity.x, take_hit.final_kb_velocity.y]
+            th_dict["start_pos"] = [take_hit.start_pos.x, take_hit.start_pos.y]
+            th_dict["end_pos"] = [take_hit.end_pos.x, take_hit.end_pos.y]
+            if take_hit.di_stick_pos is not None:
+                th_dict["di_stick_pos"] = [take_hit.di_stick_pos.x, take_hit.di_stick_pos.y]
+            else:
+                th_dict["di_stick_pos"] = None
+            data.append(self.data_header | th_dict)
+        return pl.DataFrame(data)
 
 class LCancels(UserList):
     """Iterable wrapper for lists of l-cancel data"""
@@ -305,4 +347,4 @@ class Data():
         self.dashes = Dashes(data_header)
         self.techs = Techs(data_header)
         self.take_hits = TakeHits(data_header)
-        self.l_cancels = LCancelData(data_header)
+        self.l_cancels = LCancels(data_header)

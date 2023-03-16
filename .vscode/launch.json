@@ -12,7 +12,8 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             "env": {
-                "PYTHONPATH": "${workspaceRoot}"
+                "PYTHONPATH": "${workspaceRoot}",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "5",
             }
         }
     ]
