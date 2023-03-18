@@ -252,7 +252,10 @@ class Wavedashes(UserList):
         self.data = []
 
     def to_polars(self) -> pl.DataFrame:
-        return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self])
+        if len(self.data) > 0:
+            return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self if wavedash is not None])
+        else:
+            return
 
 
 class Dashes(UserList):

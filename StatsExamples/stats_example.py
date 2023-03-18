@@ -133,8 +133,10 @@ def multi_find_stats(dir_path, connect_code: str):
                     else:
                         dfs = pl.concat([dfs, future.result()], how='vertical')
                         print("concatting")
-                    dfs.write_parquet("wavedashdata_temp.parquet")
-                    print("file written")
+    dfs.write_parquet("wavedashdata_temp.parquet")
+    print("file written")
+
+    return dfs
 
     # print("start concat")
     # doodad = pl.concat(dfs, how='vertical')

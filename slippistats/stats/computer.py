@@ -1,13 +1,13 @@
+import datetime
+from dataclasses import dataclass
 from itertools import permutations
 from os import PathLike
 from typing import Optional
-from dataclasses import dataclass
-import datetime
 
 from ..enums import CSSCharacter
 from ..event import Frame
 from ..game import Game
-from ..util import Ports, Base
+from ..util import Base, Ports
 from .stat_types import Data
 
 
