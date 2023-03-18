@@ -1,7 +1,10 @@
+import concurrent.futures
+import os
 from itertools import permutations
 from math import degrees
 from os import PathLike
 from typing import Optional
+import polars as pl
 
 from ..enums import ActionRange, ActionState
 from ..event import Attack, Buttons, Frame
@@ -29,6 +32,7 @@ from .computer import ComputerBase, Player
 from .stat_types import (
     DashData,
     Dashes,
+    Data,
     LCancelData,
     LCancels,
     TakeHitData,
@@ -75,17 +79,20 @@ class StatsComputer(ComputerBase):
         else:
             player_perms = (self.get_player(connect_code), self.get_opponent(connect_code))
 
+        stats = Data()
         for player, opponent in player_perms:
             if wavedash:
-                self.wavedash_compute(player=player)
+                stats.wavedashes = self.wavedash_compute(player=player)
             if dash:
-                self.dash_compute(player=player)
+                stats.dashes = self.dash_compute(player=player)
             if tech:
-                self.tech_compute(player=player, opponent=opponent)
+                stats.techs = self.tech_compute(player=player, opponent=opponent)
             if take_hit:
-                self.take_hit_compute(player=player, opponent=opponent)
+                stats.take_hits = self.take_hit_compute(player=player, opponent=opponent)
             if l_cancel:
-                self.l_cancel_compute(player=player, opponent=opponent)
+                stats.l_cancels = self.l_cancel_compute(player=player, opponent=opponent)
+
+        return stats
 
     # def stats_entry():
 
@@ -425,3 +432,36 @@ class StatsComputer(ComputerBase):
     #             if not player_is_offstage: continue
 
     #             if not player_was_offstage: continue
+
+def _eef(file):
+    try:
+        return StatsComputer(file).wavedash_compute("NUT#356").to_polars()
+    except:
+        return None
+
+def get_stats(directory, connect_code):
+    ind = 1
+    dfs = None
+    primed_replays = []
+    files = []
+    with os.scandir(directory) as dir:
+        for entry in dir:
+            files.append(os.path.join(directory, entry.name))
+        with concurrent.futures.ProcessPoolExecutor() as executor_1:
+
+            futures = {
+                executor_1.submit(_eef, file) for file in files
+                }
+
+            for df in concurrent.futures.as_completed(futures):
+                if df.result() is not None:
+                    if dfs is None:
+                        dfs = df.result()
+                    else:
+                        dfs = pl.concat([dfs, df.result()], how='vertical')
+                        print("concatting")
+
+    dfs.write_parquet("wavedashdata_temp2.parquet")
+    print("file written")
+
+    return dfs
