@@ -470,6 +470,8 @@ class Frame(Base):
                 self._pre = None
                 self._post = None
 
+            #TODO i think these are used for live parsing? IDC about live parsing so I think i can just rip all this out
+            # should make member access a tiny bit faster 
             @property
             def pre(self) -> Optional[Frame.Port.Data.Pre]:
                 """Pre-frame update data"""

@@ -214,7 +214,7 @@ class TakeHitData(Stat):
 
 @dataclass
 class LCancelData(Stat):
-    frame_index=int
+    frame_index: int
     l_cancel: bool
     move: Attack
     position: int
@@ -240,6 +240,11 @@ class LCancelData(Stat):
         self.position = position
 
 
+# ------------------------------- Recovery Data ------------------------------ #
+
+@dataclass
+class RecoveryData(Stat):
+    frame_index: int
 
 # --------------------------------- Wrappers --------------------------------- #
 

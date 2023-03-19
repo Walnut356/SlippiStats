@@ -21,7 +21,9 @@ from .common import (
     get_post_di_velocity,
     get_tech_type,
     is_damaged,
+    is_in_hitstun,
     is_in_hitlag,
+    is_offstage,
     is_shielding,
     is_teching,
     just_entered_state,
@@ -35,6 +37,7 @@ from .stat_types import (
     Dashes,
     LCancelData,
     LCancels,
+    RecoveryData,
     TakeHitData,
     TakeHits,
     TechData,
@@ -51,6 +54,7 @@ class StatsComputer(ComputerBase):
     tech_state: Optional[TechState]
     dash_state: Optional[DashData]
     take_hit_state: Optional[TakeHitData]
+    recovery_state: Optional[RecoveryData]
 
     def __init__(self, replay: Optional[PathLike | Game | str]=None):
         self.players = []
@@ -58,12 +62,11 @@ class StatsComputer(ComputerBase):
         self.tech_state = None
         self.dash_state = None
         self.take_hit_state = None
+        self.recovery_state = None
         if replay is not None:
             self.prime_replay(replay)
         else:
             self.replay = None
-
-
 
 
     def stats_compute (self,
@@ -430,32 +433,53 @@ class StatsComputer(ComputerBase):
         player.stats.l_cancels._percentage()
         return player.stats.l_cancels
 
-    # def recovery_compute(self, connect_code: Optional[str]=None):
-    #     player_ports: list[int]
-    #     opponent_port: int
+    def recovery_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,
+                         opponent:Optional[Player]=None,) -> TakeHits:
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
-    #     if connect_code:
-    #         player_ports, opponent_port = self.generate_player_ports(connect_code)
-    #         self.did_win = self.is_winner(connect_code)
-    #     else:
-    #         player_ports = self.generate_player_ports()
+        if connect_code is not None:
+            player = self.get_player(connect_code)
+            opponent = self.get_opponent(connect_code)
 
-    #     for port_index, player_port in enumerate(player_ports):
-    #         if len(player_ports) == 2:
-    #             opponent_port = player_ports[port_index - 1] # Only works for 2 ports
-    #         self.data.l_cancel = LCancelData(player_port, connect_code)
+        stage = self.replay.start.stage
 
-    #         for i, frame in enumerate(self.all_frames):
-    #             player_frame = self.port_frame(player_port, frame)
-    #             opponent_frame = self.port_frame(opponent_port, frame)
+        for i, player_frame in enumerate(player.frames):
+            opponent_frame = opponent.frames[i]
 
-    #             player_is_offstage = is_offstage(player_frame.post.position, self.rules.stage)
-    #             player_was_offstage = is_offstage(player_frame.post.position, self.rules.stage)
-    #             player_in_hitstun = is_in_hitstun(player_frame.post.state)
+            player_position = player_frame.post.position
+            player_just_offstage = is_offstage(player_position, stage) and not is_offstage(player.frames[i - 1].post.position, stage)
+            player_in_hitstun = is_in_hitstun(player_frame.post.flags)
 
-    #             if not player_is_offstage: continue
+            if player_just_offstage and player_in_hitstun:
+                self.recovery_state = RecoveryData(
+                    frame_index= i,
+                    last_hit_by= opponent_frame.post.position
+                )
 
-    #             if not player_was_offstage: continue
+                # record last hit by
+                #
+
+            #if not recovery event:
+                # continue
+
+            # record furthest position outward/hitstun end/knockback end/distance from ledge?
+            # check resources - double jump, find a way to track marth/luigi side B juice, walljump
+            # record every move used (with character enum), special attention to resource useage
+            # look for end (death, land on stage/platform, grab ledge)
+            # attempt to discern SD's (never stops moving towards ledge, special move direction towards blast zone + dist to ledge, etc.)
+            # retroactively assign meaning to previous actions (i.e. most recent action was "recovery move")
+            # maybe record opponent position?
+            # outcome, "reason": Death, ledge, stage, hit offstage, hit onstage | ledge hog, SD, pineapple, too far,
+
+
+
+    #def ledge_action_compute():
+
+
+
 
 def _eef(file, connect_code):
     try:
@@ -466,7 +490,6 @@ def _eef(file, connect_code):
 def get_stats(directory, connect_code):
     ind = 1
     dfs = None
-    primed_replays = []
     files = []
     with os.scandir(directory) as dir:
         for entry in dir:
