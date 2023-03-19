@@ -276,85 +276,85 @@ class StatsComputer(ComputerBase):
             opponent = self.get_opponent(connect_code)
 
         for i, player_frame in enumerate(player.frames):
-                prev_player_frame = player.frames[i - 1]
-                opponent_frame = opponent.frames[i]
+            prev_player_frame = player.frames[i - 1]
+            opponent_frame = opponent.frames[i]
 
-                # right now i don't care about shield SDI/ASDI but i may change this down the line
-                # it requires slightly different logic
-                in_hitlag = (is_in_hitlag(player_frame.post.flags) and not
-                            is_shielding(prev_player_frame.post.state))
-                was_in_hitlag = (is_in_hitlag(prev_player_frame.post.flags) and
-                                 not is_shielding(prev_player_frame.post.state))
+            # right now i don't care about shield SDI/ASDI but i may change this down the line
+            # it requires slightly different logic
+            in_hitlag = (is_in_hitlag(player_frame.post.flags) and not
+                        is_shielding(prev_player_frame.post.state))
+            was_in_hitlag = (is_in_hitlag(prev_player_frame.post.flags) and
+                                not is_shielding(prev_player_frame.post.state))
 
-                if not in_hitlag:
-                    if was_in_hitlag and self.take_hit_state is not None:
-                        self.take_hit_state.end_pos = prev_player_frame.post.position
-                        self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
+            if not in_hitlag:
+                if was_in_hitlag and self.take_hit_state is not None:
+                    self.take_hit_state.end_pos = prev_player_frame.post.position
+                    self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
 
-                        if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0:
-                            effective_stick = player_frame.pre.joystick
-                            match get_joystick_region(player_frame.pre.joystick):
-                                case JoystickRegion.UP:
-                                    effective_stick.x = 0
-                                    self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                                case JoystickRegion.DOWN:
-                                    effective_stick.x = 0
-                                    self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                                case JoystickRegion.LEFT:
-                                    effective_stick.y = 0
-                                    self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                                case JoystickRegion.RIGHT:
-                                    effective_stick.y = 0
-                                    self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                                case JoystickRegion.DEAD_ZONE:
-                                    self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
-                                case _:
-                                    self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick,
-                                                                                        self.take_hit_state.kb_velocity)
-                            self.take_hit_state.di_stick_pos = effective_stick
-                            di_efficacy = (
-                                (abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18) * 100
-                                )
-                            # modulo magic to truncate to 2 decimal place
-                            # see: https://stackoverflow.com/a/49183117
-                            self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
-                        else:
-                            self.take_hit_state.di_stick_pos = None
-                            self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
-
-                        self.take_hit_state.final_kb_velocity = get_post_di_velocity(self.take_hit_state.final_kb_angle,
+                    if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0:
+                        effective_stick = player_frame.pre.joystick
+                        match get_joystick_region(player_frame.pre.joystick):
+                            case JoystickRegion.UP:
+                                effective_stick.x = 0
+                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
+                            case JoystickRegion.DOWN:
+                                effective_stick.x = 0
+                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
+                            case JoystickRegion.LEFT:
+                                effective_stick.y = 0
+                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
+                            case JoystickRegion.RIGHT:
+                                effective_stick.y = 0
+                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
+                            case JoystickRegion.DEAD_ZONE:
+                                self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
+                            case _:
+                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick,
                                                                                     self.take_hit_state.kb_velocity)
-                        cstick = get_joystick_region(player_frame.pre.cstick)
-                        if cstick != JoystickRegion.DEAD_ZONE:
-                            self.take_hit_state.asdi = cstick
-                        else:
-                            self.take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
-
-                        self.take_hit_state.find_valid_sdi()
-
-                        player.stats.take_hits.append(self.take_hit_state)
-                        self.take_hit_state = None
-                    continue
-
-                if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
-                    self.take_hit_state = TakeHitData()
-                    self.take_hit_state.frame_index = i
-                    self.take_hit_state.start_pos = player_frame.post.position
-                    self.take_hit_state.percent = player_frame.post.percent
-                    self.take_hit_state.grounded = not player_frame.post.is_airborne
-                    self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
-                    self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
-                    if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.SQUAT_END:
-                        self.take_hit_state.crouch_cancel = True
+                        self.take_hit_state.di_stick_pos = effective_stick
+                        di_efficacy = (
+                            (abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18) * 100
+                            )
+                        # modulo magic to truncate to 2 decimal place
+                        # see: https://stackoverflow.com/a/49183117
+                        self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
                     else:
-                        self.take_hit_state.crouch_cancel = False
-                #TODO this failed during all_stats(), DF had 1872 entries.
-                # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
-                # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
+                        self.take_hit_state.di_stick_pos = None
+                        self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
 
-                if self.take_hit_state is not None:
-                    self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
-                    self.take_hit_state.hitlag_frames += 1
+                    self.take_hit_state.final_kb_velocity = get_post_di_velocity(self.take_hit_state.final_kb_angle,
+                                                                                self.take_hit_state.kb_velocity)
+                    cstick = get_joystick_region(player_frame.pre.cstick)
+                    if cstick != JoystickRegion.DEAD_ZONE:
+                        self.take_hit_state.asdi = cstick
+                    else:
+                        self.take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
+
+                    self.take_hit_state.find_valid_sdi()
+
+                    player.stats.take_hits.append(self.take_hit_state)
+                    self.take_hit_state = None
+                continue
+
+            if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
+                self.take_hit_state = TakeHitData()
+                self.take_hit_state.frame_index = i
+                self.take_hit_state.start_pos = player_frame.post.position
+                self.take_hit_state.percent = player_frame.post.percent
+                self.take_hit_state.grounded = not player_frame.post.is_airborne
+                self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
+                self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
+                if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.SQUAT_END:
+                    self.take_hit_state.crouch_cancel = True
+                else:
+                    self.take_hit_state.crouch_cancel = False
+            #TODO this failed during all_stats(), DF had 1872 entries.
+            # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
+            # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
+
+            if self.take_hit_state is not None:
+                self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
+                self.take_hit_state.hitlag_frames += 1
 
         return player.stats.take_hits
 
@@ -433,9 +433,9 @@ class StatsComputer(ComputerBase):
 
     #             if not player_was_offstage: continue
 
-def _eef(file):
+def _eef(file, connect_code):
     try:
-        return StatsComputer(file).wavedash_compute("NUT#356").to_polars()
+        return StatsComputer(file)._compute(connect_code).to_polars()
     except:
         return None
 
@@ -450,7 +450,7 @@ def get_stats(directory, connect_code):
         with concurrent.futures.ProcessPoolExecutor() as executor_1:
 
             futures = {
-                executor_1.submit(_eef, file) for file in files
+                executor_1.submit(_eef, file, connect_code) for file in files
                 }
 
             for df in concurrent.futures.as_completed(futures):

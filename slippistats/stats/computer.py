@@ -23,6 +23,7 @@ class Player(Base):
     did_win: bool
     frames: list[Frame.Port.Data]
     stats: Data
+    combos: list
     nana_frames: Optional[list[Frame.Port.Data]] = None
 
     def __init__(self, characters, port, connect_code, display_name, costume, did_win, frames, nana_frames, stats_header):
@@ -45,6 +46,7 @@ class Player(Base):
         data_header = stats_header | data_header
 
         self.stats = Data(data_header)
+        self.combos = []
 
 
 
