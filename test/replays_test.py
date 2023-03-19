@@ -27,7 +27,7 @@ def path(name):
 class TestGame(unittest.TestCase):
 
     def __init__(self, *args, **kwargs) -> None:
-        self.pkgname: str = "slippi"
+        self.pkgname: str = "slippistats"
         super().__init__(*args, **kwargs)
         my_env = os.environ.copy()
         self.pypath: str = my_env.get("PYTHONPATH", os.getcwd())
@@ -396,13 +396,13 @@ class TestGame(unittest.TestCase):
                 }
             )
 
-    def test_wavedash(self):
+    def test_wavedash_data(self):
         wavedashes = StatsComputer(self._game("wavedash"))
         wavedashes = wavedashes.wavedash_compute(player=wavedashes.players[0]).to_polars()
         assert (wavedashes.frame_equal(pl.read_parquet(Path(r'test\data\wavedash.parquet'))))
 
-    def test_dash(self):
-        dashes = StatsComputer(self._game("wavedash"))
+    def test_dash_data(self):
+        dashes = StatsComputer(self._game("dash"))
         dashes = dashes.dash_compute(player=dashes.players[0]).to_polars()
         assert (dashes.frame_equal(pl.read_parquet(Path(r'test\data\dash.parquet'))))
 
