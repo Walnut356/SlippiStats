@@ -6,7 +6,6 @@ from typing import Optional
 from ..enums.state import ActionState
 from ..event import Frame, Position
 from ..game import Game
-from ..util import Enum
 from .common import (
     calc_damage_taken,
     did_lose_stock,
@@ -28,7 +27,7 @@ from .common import (
     is_teching,
     is_upb_lag,
     is_wavedashing,
-    )
+)
 from .computer import ComputerBase, Player
 
 COMBO_LENIENCY = 45
@@ -223,8 +222,9 @@ class ComboComputer(ComputerBase):
             opnt_is_downed = is_downed(opnt_action_state) and downed_check
             opnt_is_dying = is_dying(opnt_action_state)
             opnt_is_offstage = is_offstage(opponent_frame.post.position, self.replay.start.stage) and offstage_check
-            opnt_is_dodging = is_dodging(opnt_action_state
-                                         ) and dodge_check and not is_wavedashing(opnt_action_state, opponent.port, i, self.all_frames)
+            opnt_is_dodging = (
+                is_dodging(opnt_action_state) and dodge_check and not is_wavedashing(opnt_action_state, opponent.port, i, self.all_frames)
+                )
             opnt_is_shielding = is_shielding(opnt_action_state) and shield_check
             opnt_is_shield_broken = is_shield_broken(opnt_action_state) and shield_break_check
             opnt_did_lose_stock = did_lose_stock(opponent_frame, prev_opponent_frame)
@@ -292,6 +292,5 @@ class ComboComputer(ComputerBase):
 
                 self.combo_state.combo = None
                 self.combo_state.move = None
-
 
         return player.combos

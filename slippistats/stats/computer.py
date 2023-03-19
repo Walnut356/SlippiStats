@@ -5,7 +5,7 @@ from os import PathLike
 from typing import Optional
 
 from ..enums import CSSCharacter
-from ..event import Frame
+from ..event import Frame, Start
 from ..game import Game
 from ..util import Base, Ports
 from .stat_types import Data
@@ -54,6 +54,7 @@ class Player(Base):
 class ComputerBase():
 
     replay: Optional[Game]
+    replay_version: Optional[Start.slippi.version]
     queue: list[dict]
     replay_path: PathLike | str
     players: list[Player]
@@ -71,10 +72,12 @@ class ComputerBase():
             raise TypeError("prime_replay accepts only PathLikes, strings, and Game objects.")
 
         self.replay = parsed_replay
+        self.replay_version = self.replay.start.slippi.version
 
         stats_header = {
             "match_id" : self.replay.start.match_id,
-            "date_time" : self.replay.metadata.date.replace(tzinfo=None),
+            "date_time" : self.replay.metadata.date.replace(tzinfo=None), #TODO maybe add timezone back in? Iirc timezone doesn't parse correctly anyway
+            "slippi_version" : str(self.replay_version),
             "match_type" : self.replay.start.match_type.name,
             "game_number" : self.replay.start.game_number,
             "duration" : datetime.timedelta(seconds=((self.replay.metadata.duration)/60)),

@@ -1,13 +1,15 @@
 import concurrent.futures
 import os
+import warnings
 from itertools import permutations
 from math import degrees
 from os import PathLike
 from typing import Optional
+
 import polars as pl
 
 from ..enums import ActionRange, ActionState, LCancel, get_ground
-from ..event import Attack, Buttons, Frame
+from ..event import Attack, Buttons
 from ..game import Game
 from ..util import try_enum
 from .common import (
@@ -18,11 +20,9 @@ from .common import (
     get_post_di_angle,
     get_post_di_velocity,
     get_tech_type,
-    is_aerial_land_lag,
     is_damaged,
     is_in_hitlag,
     is_shielding,
-    is_slideoff_action,
     is_teching,
     just_entered_state,
     just_exited_state,
@@ -33,7 +33,6 @@ from .computer import ComputerBase, Player
 from .stat_types import (
     DashData,
     Dashes,
-    Data,
     LCancelData,
     LCancels,
     TakeHitData,
@@ -276,6 +275,14 @@ class StatsComputer(ComputerBase):
             player = self.get_player(connect_code)
             opponent = self.get_opponent(connect_code)
 
+        if self.replay_version < "2.0.0":
+            warnings.warn(f"""No computation: take_hit_compute() requires at least replay version 2.0.0,
+                          got replay version: {self.replay_version}""", RuntimeWarning)
+            return player.stats.take_hits
+        if self.replay_version < "3.5.0":
+            warnings.warn(f"""Partial computation: take_hit_compute() DI and knockback calculations require at least replay version 3.5.0,
+                          got replay version {self.replay_version}.""", RuntimeWarning)
+
         for i, player_frame in enumerate(player.frames):
             prev_player_frame = player.frames[i - 1]
             opponent_frame = opponent.frames[i]
@@ -292,39 +299,42 @@ class StatsComputer(ComputerBase):
                     self.take_hit_state.end_pos = prev_player_frame.post.position
                     self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
 
-                    if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0:
-                        effective_stick = player_frame.pre.joystick
-                        match get_joystick_region(player_frame.pre.joystick):
-                            case JoystickRegion.UP:
-                                effective_stick.x = 0
-                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                            case JoystickRegion.DOWN:
-                                effective_stick.x = 0
-                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                            case JoystickRegion.LEFT:
-                                effective_stick.y = 0
-                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                            case JoystickRegion.RIGHT:
-                                effective_stick.y = 0
-                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
-                            case JoystickRegion.DEAD_ZONE:
-                                self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
-                            case _:
-                                self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick,
-                                                                                    self.take_hit_state.kb_velocity)
-                        self.take_hit_state.di_stick_pos = effective_stick
-                        di_efficacy = (
-                            (abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18) * 100
-                            )
-                        # modulo magic to truncate to 2 decimal place
-                        # see: https://stackoverflow.com/a/49183117
-                        self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
-                    else:
-                        self.take_hit_state.di_stick_pos = None
-                        self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
+                    effective_stick = player_frame.pre.joystick
+                    match get_joystick_region(player_frame.pre.joystick):
+                        case JoystickRegion.UP:
+                            effective_stick.x = 0
+                        case JoystickRegion.DOWN:
+                            effective_stick.x = 0
+                        case JoystickRegion.LEFT:
+                            effective_stick.y = 0
+                        case JoystickRegion.RIGHT:
+                            effective_stick.y = 0
 
-                    self.take_hit_state.final_kb_velocity = get_post_di_velocity(self.take_hit_state.final_kb_angle,
-                                                                                self.take_hit_state.kb_velocity)
+                        case JoystickRegion.DEAD_ZONE:
+                            effective_stick.x = 0
+                            effective_stick.y = 0
+                        case _:
+                            pass
+
+                    self.take_hit_state.di_stick_pos = effective_stick
+
+                    if self.replay_version >= "3.5.0":
+                        if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0.0:
+                            self.take_hit_state.final_kb_angle = get_post_di_angle(effective_stick, self.take_hit_state.kb_velocity)
+
+
+                            di_efficacy = (
+                                (abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18) * 100
+                                )
+                            # modulo magic to truncate to 2 decimal place
+                            # see: https://stackoverflow.com/a/49183117
+                            self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
+                        else:
+                            self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
+
+                        self.take_hit_state.final_kb_velocity = get_post_di_velocity(self.take_hit_state.final_kb_angle,
+                                                                                    self.take_hit_state.kb_velocity)
+
                     cstick = get_joystick_region(player_frame.pre.cstick)
                     if cstick != JoystickRegion.DEAD_ZONE:
                         self.take_hit_state.asdi = cstick
@@ -340,11 +350,17 @@ class StatsComputer(ComputerBase):
             if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
                 self.take_hit_state = TakeHitData()
                 self.take_hit_state.frame_index = i
+                self.take_hit_state.state_before_hit = player.frames[i - 1].post.state
                 self.take_hit_state.start_pos = player_frame.post.position
                 self.take_hit_state.percent = player_frame.post.percent
                 self.take_hit_state.grounded = not player_frame.post.is_airborne
-                self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
-                self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
+                if self.replay_version >= "3.5.0":
+                    self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
+                    self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
+                else:
+                    self.take_hit_state.kb_velocity = None
+                    self.take_hit_state.kb_angle = None
+
                 if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.SQUAT_END:
                     self.take_hit_state.crouch_cancel = True
                 else:
@@ -370,8 +386,12 @@ class StatsComputer(ComputerBase):
         if connect_code is not None:
             player = self.get_player(connect_code)
 
+        if self.replay_version < "2.0.0":
+            warnings.warn(f"""No computation: l_cancel_compute() requires at least replay version 2.0.0,
+                          got replay version: {self.replay_version}""", RuntimeWarning)
+            return player.stats.l_cancels
+
         for i, player_frame in enumerate(player.frames):
-            player_state = player_frame.post.state
             l_cancel = player_frame.post.l_cancel
 
             if l_cancel == LCancel.NOT_APPLICABLE:

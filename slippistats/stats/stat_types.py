@@ -1,16 +1,16 @@
+from abc import ABC
+from collections import UserList
 from dataclasses import dataclass
 from math import degrees, dist
 from typing import Optional
-from abc import ABC
-from collections import UserList
 
 import polars as pl
 
 from slippistats.util import try_enum
 
-from .common import (get_angle, TechType, JoystickRegion)
-from ..enums import (ActionState, Attack)
+from ..enums import ActionState, Attack
 from ..event import Position, Velocity
+from .common import JoystickRegion, TechType, get_angle
 
 
 #TODO abstract base class:
@@ -131,6 +131,7 @@ class TechState():
 class TakeHitData(Stat):
     frame_index: int
     last_hit_by: Optional[Attack]
+    state_before_hit: Optional[ActionState]
     grounded: Optional[bool]
     crouch_cancel: Optional[bool]
     hitlag_frames: Optional[int]
@@ -152,6 +153,7 @@ class TakeHitData(Stat):
         self.grounded = None
         self.percent = None
         self.last_hit_by = None
+        self.state_before_hit = None
         self.crouch_cancel = None
         self.hitlag_frames = 0
         self.stick_regions_during_hitlag = []
@@ -301,9 +303,15 @@ class TakeHits(UserList):
             th_dict = take_hit.__dict__.copy()
             try:
                 lhb = try_enum(Attack, take_hit.last_hit_by).name
-            except:
+            except AttributeError:
                 lhb = None
+            try:
+                sbh = try_enum(ActionState, take_hit.state_before_hit).name
+            except AttributeError:
+                sbh = None
+
             th_dict["last_hit_by"] = lhb or "UNKNOWN"
+            th_dict["state_before_hit"] = sbh or "UNKNOWN"
             th_dict["sdi_inputs"] = [region.name for region in take_hit.sdi_inputs]
             th_dict["asdi"] = take_hit.asdi.name
             th_dict["stick_regions_during_hitlag"] = [region.name for region in take_hit.stick_regions_during_hitlag]

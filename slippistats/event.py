@@ -1,10 +1,22 @@
 from __future__ import annotations
-from typing import Optional, Sequence, Union
+
 from enum import Enum
+from typing import Optional, Sequence, Union
 
-from .controller import Triggers, Buttons
-from .enums import (Stage, CSSCharacter, InGameCharacter, ActionState, StateFlags, Direction, Hurtbox, LCancel, Attack, Item, TurnipFace)
-
+from .controller import Buttons, Triggers
+from .enums import (
+    ActionState,
+    Attack,
+    CSSCharacter,
+    Direction,
+    Hurtbox,
+    InGameCharacter,
+    Item,
+    LCancel,
+    Stage,
+    StateFlags,
+    TurnipFace,
+)
 from .util import *
 
 # The first frame of the game is indexed -123, counting up to zero (which is when the word "GO" appears).
@@ -252,7 +264,7 @@ class Start(Base):
                 # build was obsoleted in 2.0.0, and never held a nonzero value
 
             def __repr__(self):
-                return '%d.%d.%d' % (self.major, self.minor, self.revision)
+                return f'{self.major}.{self.minor}.{self.revision}'
 
             def __eq__(self, other: Start.Slippi.Version | str):
                 if isinstance(other, self.__class__):
