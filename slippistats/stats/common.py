@@ -6,6 +6,7 @@ from typing import Optional
 import concurrent.futures
 
 # from ..enums.character import InGameCharacter
+from ..controller import Buttons
 from ..enums.stage import Stage
 from ..enums.state import ActionRange, ActionState
 from ..event import Frame, Position, StateFlags, Velocity
@@ -27,6 +28,19 @@ def just_exited_state(action_state: int, curr_state: ActionState | int, prev_sta
         return action_state(prev_state) and not action_state(curr_state)
 
     return prev_state == action_state and curr_state != action_state
+
+def just_input_l_cancel(curr_frame: Frame.Port.Data, prev_frame: Frame.Port.Data) -> bool:
+    curr = curr_frame.pre.buttons.logical
+    prev = prev_frame.pre.buttons.logical
+
+    return ((Buttons.Logical.R in curr or
+        Buttons.Logical.L in curr or
+        Buttons.Logical.Z in curr or
+        Buttons.Logical.TRIGGER_ANALOG in curr) and not
+        (Buttons.Logical.R in prev or
+        Buttons.Logical.L in prev or
+        Buttons.Logical.Z in prev or
+        Buttons.Logical.TRIGGER_ANALOG in prev))
 
 def just_took_damage(percent: int, prev_percent: int) -> bool:
     return not isclose(percent, prev_percent, abs_tol=1e-03)

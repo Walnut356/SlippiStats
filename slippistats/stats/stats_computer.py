@@ -26,6 +26,7 @@ from .common import (
     is_teching,
     just_entered_state,
     just_exited_state,
+    just_input_l_cancel,
     just_took_damage,
 )
 from .computer import ComputerBase, Player
@@ -376,30 +377,27 @@ class StatsComputer(ComputerBase):
             if l_cancel == LCancel.NOT_APPLICABLE:
                 continue
 
+            # Check for l/r press either 15 frames prior, or j + hitlag frames prior
             trigger_input_frame: Optional[int] = None
-            # Check for l/r press 20 frames prior and l/r press and/or slideoff up to 10 frames after
-            for j in range(7):
+            in_hitlag = False
+            j = 0
+
+            while j < 15 and not in_hitlag:
                 if i - j >= 0:
-                    if (Buttons.Logical.R in player.frames[i - j].pre.buttons.logical or
-                        Buttons.Logical.L in player.frames[i - j].pre.buttons.logical or
-                        Buttons.Logical.Z in player.frames[i - j].pre.buttons.logical or
-                        Buttons.Logical.TRIGGER_ANALOG in player.frames[i - j].pre.buttons.logical):
+                    if is_in_hitlag(player.frames[i - j].post.flags):
+                        in_hitlag = True
+
+                    if just_input_l_cancel(player.frames[i - j], player.frames[i - j - 1]):
                         trigger_input_frame = -j
                         break
 
-            for j in range(10):
-                if i + j < len(player.frames):
-                # Because we're counting away from the landing frame, we want the first input and no others
-                    if (trigger_input_frame is None and
-                        Buttons.Logical.R in player.frames[i + j].pre.buttons.logical or
-                        Buttons.Logical.L in player.frames[i + j].pre.buttons.logical or
-                        Buttons.Logical.Z in player.frames[i + j].pre.buttons.logical or
-                        Buttons.Logical.TRIGGER_ANALOG in player.frames[i + j].pre.buttons.logical):
-                        trigger_input_frame = j
-                        continue
+                j += 1
 
-
-
+            if trigger_input_frame is not None:
+                for j in range(5):
+                    if i + j < len(player.frames):
+                        if just_input_l_cancel(player.frames[i + j], player.frames[i + j - 1]):
+                            trigger_input_frame = j
 
             player.stats.l_cancels.append(LCancelData(
                 frame_index=i,

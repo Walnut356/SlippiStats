@@ -18,9 +18,7 @@ if __name__ == '__main__':
     # thing = get_stats(directory, code)
 
     # print("done")
-    for i in range(1000):
-        start = time.time()
-        thing = StatsComputer(r'Modern Replays\Game_20221227T194333.slp')
-        thing = thing.stats_compute()
 
-        print(time.time() - start)
+    thing = StatsComputer(Path(r'Modern Replays/Game_20221227T194333.slp'))
+    thing = thing.l_cancel_compute("NUT#356")
+    print("done")
