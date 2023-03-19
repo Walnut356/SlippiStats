@@ -179,7 +179,7 @@ def is_slideoff_action(state: int) -> bool:
     # for slideoffs, the possible action states on the next frame should be:
     # double jump, air-fall, air-attack, air-b move or airdodge
     return ((ActionState.JUMP_AERIAL_F <= state <= ActionRange.ACTIONABLE_AIR_END) or
-            (ActionRange.AERIAL_ATTACK_START <= state <= ActionRange.AERIAL_ATTACK_END) or
+            (ActionRange.AERIAL_ATTACK_START <= state <= ActionState.ATTACK_AIR_LW) or
             (ActionState.ESCAPE_AIR == state))
 
 # VERY untested, probably don't use

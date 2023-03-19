@@ -6,7 +6,7 @@ from os import PathLike
 from typing import Optional
 import polars as pl
 
-from ..enums import ActionRange, ActionState
+from ..enums import ActionRange, ActionState, LCancel, get_ground
 from ..event import Attack, Buttons, Frame
 from ..game import Game
 from ..util import try_enum
@@ -79,20 +79,20 @@ class StatsComputer(ComputerBase):
         else:
             player_perms = (self.get_player(connect_code), self.get_opponent(connect_code))
 
-        stats = Data()
+
         for player, opponent in player_perms:
             if wavedash:
-                stats.wavedashes = self.wavedash_compute(player=player)
+                self.wavedash_compute(player=player)
             if dash:
-                stats.dashes = self.dash_compute(player=player)
+                self.dash_compute(player=player)
             if tech:
-                stats.techs = self.tech_compute(player=player, opponent=opponent)
+                self.tech_compute(player=player, opponent=opponent)
             if take_hit:
-                stats.take_hits = self.take_hit_compute(player=player, opponent=opponent)
+                self.take_hit_compute(player=player, opponent=opponent)
             if l_cancel:
-                stats.l_cancels = self.l_cancel_compute(player=player, opponent=opponent)
+                self.l_cancel_compute(player=player)
 
-        return stats
+        return self.players
 
     # def stats_entry():
 
@@ -373,38 +373,44 @@ class StatsComputer(ComputerBase):
             player_state = player_frame.post.state
             l_cancel = player_frame.post.l_cancel
 
-            if l_cancel == 0:
+            if l_cancel == LCancel.NOT_APPLICABLE:
                 continue
 
             trigger_input_frame: Optional[int] = None
-            slideoff = False
             # Check for l/r press 20 frames prior and l/r press and/or slideoff up to 10 frames after
+            for j in range(7):
+                if i - j >= 0:
+                    if (Buttons.Logical.R in player.frames[i - j].pre.buttons.logical or
+                        Buttons.Logical.L in player.frames[i - j].pre.buttons.logical or
+                        Buttons.Logical.Z in player.frames[i - j].pre.buttons.logical or
+                        Buttons.Logical.TRIGGER_ANALOG in player.frames[i - j].pre.buttons.logical):
+                        trigger_input_frame = -j
+                        break
+
             for j in range(10):
+                if i + j < len(player.frames):
                 # Because we're counting away from the landing frame, we want the first input and no others
-                if (trigger_input_frame is None and
-                    Buttons.logical.R in player.frames[i + j].pre.buttons or
-                    Buttons.logical.L in player.frames[i + j].pre.buttons):
-                    trigger_input_frame = j
-                    continue
+                    if (trigger_input_frame is None and
+                        Buttons.Logical.R in player.frames[i + j].pre.buttons.logical or
+                        Buttons.Logical.L in player.frames[i + j].pre.buttons.logical or
+                        Buttons.Logical.Z in player.frames[i + j].pre.buttons.logical or
+                        Buttons.Logical.TRIGGER_ANALOG in player.frames[i + j].pre.buttons.logical):
+                        trigger_input_frame = j
+                        continue
 
-                if (is_aerial_land_lag(player_state) and is_slideoff_action(player.frames[i - 1].post.state)):
-                    slideoff = True
 
-            for j in range(20):
-                # Here we can just immediately exit the loop since there's nothing else we need to check for
-                if (Buttons.logical.R in player.frames[i - j].pre.buttons or
-                    Buttons.logical.L in player.frames[i - j].pre.buttons):
-                    trigger_input_frame = -j
-                    break
+
 
             player.stats.l_cancels.append(LCancelData(
                 frame_index=i,
                 move=player.frames[i - 1].post.state,
                 l_cancel=True if l_cancel == 1 else False,
                 trigger_input_frame=trigger_input_frame,
-                slideoff=slideoff
+                position=get_ground(self.replay.start.stage, player_frame.post.last_ground_id),
                 ))
 
+        player.stats.l_cancels._percentage()
+        return player.stats.l_cancels
 
     # def recovery_compute(self, connect_code: Optional[str]=None):
     #     player_ports: list[int]

@@ -215,27 +215,27 @@ class LCancelData(Stat):
     frame_index=int
     l_cancel: bool
     move: Attack
-    slideoff: bool
+    position: int
     trigger_input_frame: int
 
-    def __init__(self, frame_index, l_cancel, move, slideoff, trigger_input_frame):
+    def __init__(self, frame_index, l_cancel, move, position, trigger_input_frame):
         self.frame_index = frame_index
         self.l_cancel = l_cancel
         self.trigger_input_frame = trigger_input_frame
         match move:
             case ActionState.ATTACK_AIR_N:
-                self.move = Attack.NAIR.name
+                self.move = Attack.NAIR
             case ActionState.ATTACK_AIR_F:
-                self.move = Attack.FAIR.name
+                self.move = Attack.FAIR
             case ActionState.ATTACK_AIR_B:
-                self.move = Attack.BAIR.name
+                self.move = Attack.BAIR
             case ActionState.ATTACK_AIR_HI:
-                self.move = Attack.UAIR.name
+                self.move = Attack.UAIR
             case ActionState.ATTACK_AIR_LW:
-                self.move = Attack.DAIR.name
+                self.move = Attack.DAIR
             case _:
                 self.move = "UNKNOWN"
-        self.slideoff = slideoff
+        self.position = position
 
 
 
@@ -294,7 +294,6 @@ class TakeHits(UserList):
         self.data = []
 
     def to_polars(self):
-
         data = []
 
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
@@ -322,19 +321,35 @@ class TakeHits(UserList):
 class LCancels(UserList):
     """Iterable wrapper for lists of l-cancel data"""
     data_header: dict
-    successful: int
-    failed: int
-    data: list
+    percent: Optional[float]
+    data: list[LCancelData]
 
     def __init__(self, data_header):
-        self.data_header = data_header
+        self.percent = None
         self.data = []
+        self.data_header = data_header
 
-    def percentage(self):
-        return (self.successful / (self.successful + self.failed)) * 100
+
+    def _percentage(self):
+        success = 0
+        for item in self.data:
+            if item.l_cancel == True:
+                success += 1
+        if len(self.data) > 0:
+            self.percent = (success / len(self.data)) * 100
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | l_cancel.__dict__ for l_cancel in self])
+        data = []
+
+        # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
+        for l_cancel in self:
+            lc_dict = l_cancel.__dict__.copy()
+            lc_dict["position"] = l_cancel.position.name
+            lc_dict["move"] = l_cancel.move.name
+
+            data.append(self.data_header | lc_dict)
+
+        return pl.DataFrame(data)
 
 
 @dataclass

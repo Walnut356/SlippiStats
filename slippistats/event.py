@@ -579,7 +579,7 @@ class Frame(Base):
                 combo_count: int  # Combo count as defined by the game
                 state_age: Optional[float]  # Number of frames action state has been active. Can be fractional for certain actions
                 flags: Optional[StateFlags]  # State flags
-                maybe_hitstun_remaining: Optional[float]  # hitstun boolean
+                maybe_hitstun_remaining: Optional[float]  # hitstun frames remaining
                 is_airborne: Optional[bool]  # True if character is airborne
                 last_ground_id: Optional[int]  # ID of ground character is standing on, if any
                 jumps_remaining: Optional[int]  # Jumps remaining
@@ -675,9 +675,9 @@ class Frame(Base):
                         (l_cancel,) = unpack_uint8(stream.read(1))
 
                         flags = StateFlags(flags[0] + flags[1] * 2**8 + flags[2] * 2**16 + flags[3] * 2**24 + flags[4] * 2**32)
-                        ground = maybe_ground if not airborne else None
+                        ground = maybe_ground
                         hit_stun = misc_as if flags.HIT_STUN else None
-                        l_cancel = LCancel(l_cancel) if l_cancel else None
+                        l_cancel = LCancel(l_cancel)
                     except struct.error:
                         (flags, hit_stun, airborne, ground, jumps, l_cancel) = [None] * 6
 
