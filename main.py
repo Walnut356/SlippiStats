@@ -15,6 +15,10 @@ code = r"NUT#356"
 # print(data)
 # data.write_parquet("take_hit_test.parquet")
 if __name__ == '__main__':
-    thing = get_stats(directory, code)
+    # thing = get_stats(directory, code)
 
-    print("done")
+    # print("done")
+
+    wavedashes = StatsComputer(r'test\replays\dash.slp')
+    wavedashes = wavedashes.dash_compute(player=wavedashes.players[0])
+    wavedashes.to_polars().write_parquet("dash_replay.parquet")

@@ -26,10 +26,11 @@ class EventType(IntEnum):
     FRAME_END = 0x3C
 
 class MatchType(Enum):
-    OTHER = -1
+    OFFLINE = -1
     RANKED = 0
     UNRANKED = 1
     DIRECT = 2
+    OTHER = 3
 
 
 #TODO make as many of these as possible dataclasses/recordclasses.
@@ -69,14 +70,14 @@ class Start(Base):
         self.is_pal = is_pal
         self.is_frozen_ps = is_frozen_ps
         self.match_id = match_id
-        if match_id: #it's lazy, but it WORKS
+        if match_id: #it's lazy, but it works
             match match_id[5]:
                 case "r": self.match_type = MatchType.RANKED
                 case "u": self.match_type = MatchType.UNRANKED
                 case "d": self.match_type = MatchType.DIRECT
                 case _: self.match_type = MatchType.OTHER
         else:
-            self.match_type = False
+            self.match_type = MatchType.OFFLINE
         self.game_number = game_number
         self.tiebreak_number = tiebreak_number
 
