@@ -8,6 +8,7 @@ from typing import Optional
 
 import polars as pl
 
+from ..enums.ground import Yoshis
 from ..enums import ActionRange, ActionState, LCancel, get_ground
 from ..event import Attack, Buttons
 from ..game import Game
@@ -21,8 +22,10 @@ from .common import (
     get_post_di_velocity,
     get_tech_type,
     is_damaged,
+    is_dying,
     is_in_hitstun,
     is_in_hitlag,
+    is_ledge_action,
     is_offstage,
     is_shielding,
     is_teching,
@@ -449,21 +452,22 @@ class StatsComputer(ComputerBase):
         for i, player_frame in enumerate(player.frames):
             opponent_frame = opponent.frames[i]
 
+            player_state = player_frame.post.state
             player_position = player_frame.post.position
             player_just_offstage = is_offstage(player_position, stage) and not is_offstage(player.frames[i - 1].post.position, stage)
             player_in_hitstun = is_in_hitstun(player_frame.post.flags)
 
-            if player_just_offstage and player_in_hitstun:
+            if (self.recovery_state is None and player_just_offstage and player_in_hitstun):
                 self.recovery_state = RecoveryData(
-                    frame_index= i,
-                    last_hit_by= opponent_frame.post.position
+                    frame_index=i,
+                    last_hit_by=opponent_frame.post.position
+
                 )
 
-                # record last hit by
-                #
 
-            #if not recovery event:
-                # continue
+
+            if self.recovery_state is None:
+                continue
 
             # record furthest position outward/hitstun end/knockback end/distance from ledge?
             # check resources - double jump, find a way to track marth/luigi side B juice, walljump
@@ -475,6 +479,12 @@ class StatsComputer(ComputerBase):
             # outcome, "reason": Death, ledge, stage, hit offstage, hit onstage | ledge hog, SD, pineapple, too far,
 
 
+            player_is_dead = is_dying(player_state)
+            player_is_ledge = is_ledge_action(player_state)
+            player_did_land = not player_frame.post.is_airborne and get_ground(stage, player_frame.post.last_ground_id) != Yoshis.RANDALL
+
+
+    # def track_
 
     #def ledge_action_compute():
 

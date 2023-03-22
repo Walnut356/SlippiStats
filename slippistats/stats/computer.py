@@ -54,7 +54,7 @@ class Player(Base):
 class ComputerBase():
 
     replay: Optional[Game]
-    replay_version: Optional[Start.slippi.version]
+    replay_version: Optional[Start.Slippi.Version]
     queue: list[dict]
     replay_path: PathLike | str
     players: list[Player]
