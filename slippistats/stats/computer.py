@@ -54,7 +54,7 @@ class Player(Base):
 class ComputerBase():
 
     replay: Optional[Game]
-    replay_version: Optional[Start.Slippi.Version]
+    replay_version: Optional[Start.SlippiVersion]
     queue: list[dict]
     replay_path: PathLike | str
     players: list[Player]
@@ -72,7 +72,7 @@ class ComputerBase():
             raise TypeError("prime_replay accepts only PathLikes, strings, and Game objects.")
 
         self.replay = parsed_replay
-        self.replay_version = self.replay.start.slippi.version
+        self.replay_version = self.replay.start.slippi_version
 
         stats_header = {
             "match_id" : self.replay.start.match_id,

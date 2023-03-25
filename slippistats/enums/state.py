@@ -22,7 +22,7 @@ class LCancel(IntEnum):
     FAILURE = 2
 
 
-class StateFlags1(IntFlag):
+class Field1(IntFlag):
     BIT_1 = 1
     BIT_2 = 2
     BIT_3 = 4
@@ -33,7 +33,7 @@ class StateFlags1(IntFlag):
     BIT_8 = 128
 
 
-class StateFlags2(IntFlag):
+class Field2(IntFlag):
     BIT_1 = 1
     BIT_2 = 2
     STATE_DEPENDANT_INVULN = 4
@@ -44,7 +44,7 @@ class StateFlags2(IntFlag):
     BIT_8 = 128
 
 
-class StateFlags3(IntFlag):
+class Field3(IntFlag):
     BIT_1 = 1
     BIT_2 = 2
     BIT_3 = 4
@@ -55,7 +55,7 @@ class StateFlags3(IntFlag):
     SHIELDING = 128
 
 
-class StateFlags4(IntFlag):
+class Field4(IntFlag):
     BIT_1 = 1
     HITSTUN = 2
     HITBOX_TOUCHING_SHIELD = 4  # dubious meaning
@@ -66,7 +66,7 @@ class StateFlags4(IntFlag):
     BIT_8 = 128
 
 
-class StateFlags5(IntFlag):
+class Field5(IntFlag):
     BIT_1 = 1
     BIT_2 = 2
     BIT_3 = 4

@@ -256,6 +256,7 @@ class ShieldDropData(Stat):
 
 # --------------------------------- Wrappers --------------------------------- #
 
+#TODO ABC, protocol, mixin? for append, to_polars, etc.
 
 class Wavedashes(UserList):
     """Iterable wrapper for lists of Wavedash data"""
@@ -270,11 +271,11 @@ class Wavedashes(UserList):
         if isinstance(item, WavedashData):
             UserList.append(self, item)
         else:
-            raise ValueError(f"Incorrect stat type: {type(item)}, expected WavedashData")
+            raise TypeError(f"Incorrect stat type: {type(item)}, expected WavedashData")
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) > 0:
-            return pl.DataFrame([self.data_header | wavedash.__dict__ for wavedash in self if wavedash is not None])
+            return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
         else:
             return
 
@@ -292,10 +293,10 @@ class Dashes(UserList):
         if isinstance(item, DashData):
             UserList.append(self, item)
         else:
-            raise ValueError(f"Incorrect stat type: {type(item)}, expected DashData")
+            raise TypeError(f"Incorrect stat type: {type(item)}, expected DashData")
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | dash.__dict__ for dash in self])
+        return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
 
 
 class Techs(UserList):
@@ -311,10 +312,10 @@ class Techs(UserList):
         if isinstance(item, TechData):
             UserList.append(self, item)
         else:
-            raise ValueError(f"Incorrect stat type: {type(item)}, expected TechData")
+            raise TypeError(f"Incorrect stat type: {type(item)}, expected TechData")
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | tech.__dict__ for tech in self])
+        return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
 
 
 class TakeHits(UserList):
@@ -330,37 +331,39 @@ class TakeHits(UserList):
         if isinstance(item, TakeHitData):
             UserList.append(self, item)
         else:
-            raise ValueError(f"Incorrect stat type: {type(item)}, expected TakeHitData")
+            raise TypeError(f"Incorrect stat type: {type(item)}, expected TakeHitData")
 
     def to_polars(self):
+        if len(self.data) == 0:
+            raise
         data = []
 
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for take_hit in self:
-            th_dict = take_hit.__dict__.copy()
+        for stat in self:
+            stat_dict = vars(stat).copy()
             try:
-                lhb = try_enum(Attack, take_hit.last_hit_by).name
+                lhb = try_enum(Attack, stat.last_hit_by).name
             except AttributeError:
                 lhb = None
             try:
-                sbh = try_enum(ActionState, take_hit.state_before_hit).name
+                sbh = try_enum(ActionState, stat.state_before_hit).name
             except AttributeError:
                 sbh = None
 
-            th_dict["last_hit_by"] = lhb or "UNKNOWN"
-            th_dict["state_before_hit"] = sbh or "UNKNOWN"
-            th_dict["sdi_inputs"] = [region.name for region in take_hit.sdi_inputs]
-            th_dict["asdi"] = take_hit.asdi.name
-            th_dict["stick_regions_during_hitlag"] = [region.name for region in take_hit.stick_regions_during_hitlag]
-            th_dict["kb_velocity"] = [take_hit.kb_velocity.x, take_hit.kb_velocity.y]
-            th_dict["final_kb_velocity"] = [take_hit.final_kb_velocity.x, take_hit.final_kb_velocity.y]
-            th_dict["start_pos"] = [take_hit.start_pos.x, take_hit.start_pos.y]
-            th_dict["end_pos"] = [take_hit.end_pos.x, take_hit.end_pos.y]
-            if take_hit.di_stick_pos is not None:
-                th_dict["di_stick_pos"] = [take_hit.di_stick_pos.x, take_hit.di_stick_pos.y]
+            stat_dict["last_hit_by"] = lhb or "UNKNOWN"
+            stat_dict["state_before_hit"] = sbh or "UNKNOWN"
+            stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs]
+            stat_dict["asdi"] = stat.asdi.name
+            stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
+            stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
+            stat_dict["final_kb_velocity"] = [stat.final_kb_velocity.x, stat.final_kb_velocity.y]
+            stat_dict["start_pos"] = [stat.start_pos.x, stat.start_pos.y]
+            stat_dict["end_pos"] = [stat.end_pos.x, stat.end_pos.y]
+            if stat.di_stick_pos is not None:
+                stat_dict["di_stick_pos"] = [stat.di_stick_pos.x, stat.di_stick_pos.y]
             else:
-                th_dict["di_stick_pos"] = None
-            data.append(self.data_header | th_dict)
+                stat_dict["di_stick_pos"] = None
+            data.append(self.data_header | stat_dict)
         return pl.DataFrame(data)
 
 class LCancels(UserList):
@@ -394,7 +397,7 @@ class LCancels(UserList):
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
         for stat in self:
             # we have to make a copy so we don't bork the data with our changes
-            stat_dict = stat.__dict__.copy()
+            stat_dict = vars(stat).copy()
             try:
                 stat_dict["position"] = stat.position.name
             except AttributeError:

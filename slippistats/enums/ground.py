@@ -2,8 +2,7 @@ from typing import TYPE_CHECKING
 
 from ..util import IntEnum, try_enum
 
-if TYPE_CHECKING:
-    from .stage import Stage
+from .stage import Stage
 
 class Yoshis(IntEnum):
     RANDALL = 0

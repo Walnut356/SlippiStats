@@ -3,13 +3,16 @@
 import datetime, glob, os, subprocess, unittest
 from pathlib import Path
 
-from slippistats import Game, parse
-from slippistats.enums import CSSCharacter, InGameCharacter, Item, Stage
+from slippistats.game import Game
+from slippistats.parse import parse
+from slippistats.enums.character import CSSCharacter, InGameCharacter
+from slippistats.enums.item import Item
+from slippistats.enums.stage import Stage
 from slippistats.log import log
 from slippistats.metadata import Metadata
 from slippistats.event import Buttons, Direction, End, Frame, Position, Start, Triggers, Velocity
 from slippistats.parse import ParseEvent
-from slippistats.stats import StatsComputer
+from slippistats.stats.stats_computer import StatsComputer
 import polars as pl
 
 BPhys = Buttons.Physical
@@ -76,7 +79,7 @@ class TestGame(unittest.TestCase):
 
     def test_slippi_old_version(self):
         game = self._game('v0.1')
-        self.assertEqual(game.start.slippi.version, Start.Slippi.Version(0, 1, 0, 0))
+        self.assertEqual(game.start.slippi.version, Start.SlippiVersion.Version(0, 1, 0, 0))
         self.assertEqual(game.metadata.duration, None)
         self.assertEqual(game.metadata.players, (None, None, None, None))
         self.assertEqual(game.start.players[0].character, CSSCharacter.FOX)
@@ -122,7 +125,7 @@ class TestGame(unittest.TestCase):
             Start(
                 is_teams=False,
                 random_seed=3803194226,
-                slippi=Start.Slippi(Start.Slippi.Version(1, 0, 0, 0)),
+                slippi=Start.SlippiVersion(Start.SlippiVersion.Version(1, 0, 0, 0)),
                 stage=Stage.YOSHIS_STORY,
                 players=(
                     Start.Player(
@@ -189,7 +192,7 @@ class TestGame(unittest.TestCase):
             Start(
                 is_teams=False,
                 random_seed=3803194226,
-                slippi=Start.Slippi(Start.Slippi.Version(1, 0, 0, 0)),
+                slippi=Start.SlippiVersion(Start.SlippiVersion.Version(1, 0, 0, 0)),
                 stage=Stage.YOSHIS_STORY,
                 players=(
                     Start.Player(
@@ -323,11 +326,11 @@ class TestGame(unittest.TestCase):
 
     def test_v2(self):
         game = self._game('v2.0')
-        self.assertEqual(game.start.slippi.version, Start.Slippi.Version(2, 0, 1))
+        self.assertEqual(game.start.slippi.version, Start.SlippiVersion.Version(2, 0, 1))
 
     def test_v3_14_0(self):
         game = self._game('v3.14.0')
-        self.assertEqual(game.start.slippi.version, Start.Slippi.Version(3, 14, 0))
+        self.assertEqual(game.start.slippi.version, Start.SlippiVersion.Version(3, 14, 0))
         self.assertEqual(game.start.match_id, 'mode.unranked-2022-12-27T01:04:44.19-0')
         self.assertEqual(game.start.game_number, 4)
 

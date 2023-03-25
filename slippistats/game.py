@@ -52,12 +52,11 @@ class Game(Base):
         else:
             raise ValueError(f'missing frames: {count-1} -> {idx}')
 
-    #TODO probably delete this since the repr ends up so big
     def _attr_repr(self, attr):
         self_attr = getattr(self, attr)
         if isinstance(self_attr, list):
             return f'{attr}=[...]({len(self_attr)})' % (attr, len(self_attr))
-        elif attr == 'metadata_raw':
+        elif attr == 'metadata_raw' or callable(attr):
             return None
         else:
             return super()._attr_repr(attr)

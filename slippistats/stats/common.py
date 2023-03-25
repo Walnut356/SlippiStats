@@ -18,8 +18,8 @@ from ..enums.stage import Stage
 from ..enums.state import (
     ActionRange,
     ActionState,
-    StateFlags2,
-    StateFlags4,
+    Field2,
+    Field4,
 )
 from ..event import Frame, Position, Velocity
 from ..util import IntEnum
@@ -68,7 +68,7 @@ def is_in_hitstun(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitstun bitflag is active.
     Always returns false on older replays that do not support stateflags."""
     for field in flags:
-        if StateFlags4.HIT_STUN in field:
+        if Field4.HIT_STUN in field:
             return True
     else:
         return False
@@ -77,7 +77,7 @@ def is_in_hitlag(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitlag bitflag is active.
     Always returns false on older replays that do not support stateflags."""
     for field in flags:
-        if StateFlags2.HIT_LAG in field:
+        if Field2.HIT_LAG in field:
             return True
     else:
         return False

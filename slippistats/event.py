@@ -14,11 +14,11 @@ from .enums.state import (
     Direction,
     Hurtbox,
     LCancel,
-    StateFlags1,
-    StateFlags2,
-    StateFlags3,
-    StateFlags4,
-    StateFlags5,
+    Field1,
+    Field2,
+    Field3,
+    Field4,
+    Field5,
 )
 from .util import (
     Base,
@@ -68,7 +68,7 @@ class Start(Base):
     is_teams: bool  #: True if this was a teams game
     players: tuple[Optional[Start.Player]]  #: Players in this game by port (port 1 is at index 0; empty ports will contain None)
     random_seed: int  #: Random seed before the game start
-    slippi: Start.Slippi  #: Information about the Slippi recorder that generated this replay
+    slippi_version: Start.SlippiVersion  #: Information about the Slippi recorder that generated this replay
     stage: Stage  #: Stage on which this game was played
     is_pal: Optional[bool]  #: `added(1.5.0)` True if this was a PAL version of Melee
     is_frozen_ps: Optional[bool]  #: `added(2.0.0)` True if frozen Pokemon Stadium was enabled
@@ -82,7 +82,7 @@ class Start(Base):
             is_teams: bool,
             players: tuple[Optional[Start.Player]],
             random_seed: int,
-            slippi: Start.Slippi,
+            slippi: Start.SlippiVersion,
             stage: Stage,
             is_pal: Optional[bool] = None,
             is_frozen_ps: Optional[bool] = None,
@@ -93,7 +93,7 @@ class Start(Base):
         self.is_teams = is_teams
         self.players = players
         self.random_seed = random_seed
-        self.slippi = slippi
+        self.slippi_version = slippi
         self.stage = stage
         self.is_pal = is_pal
         self.is_frozen_ps = is_frozen_ps
@@ -115,7 +115,7 @@ class Start(Base):
 
     @classmethod
     def _parse(cls, stream):
-        slippi_ = cls.Slippi._parse(stream)
+        slippi_version = cls.SlippiVersion._parse(stream)
 
         stream.read(8)  # skip game bitfields
         (is_teams,) = unpack_bool(stream.read(1))
@@ -215,7 +215,7 @@ class Start(Base):
             is_teams=is_teams,
             players=tuple(players),
             random_seed=random_seed,
-            slippi=slippi_,
+            slippi=slippi_version,
             stage=stage,
             is_pal=is_pal,
             is_frozen_ps=is_frozen_ps,
@@ -229,82 +229,76 @@ class Start(Base):
             return NotImplemented
         return (
             self.is_teams == other.is_teams and self.players == other.players and self.random_seed == other.random_seed and
-            self.slippi == other.slippi and self.stage is other.stage
+            self.slippi_version == other.slippi_version and self.stage is other.stage
             )
 
-    class Slippi(Base):
+    class SlippiVersion(Base):
         """Information about the Slippi recorder that generated this replay."""
         #TODO flatten to Slippi_Version
 
-        version: Start.Slippi.Version  #: Slippi version number
+        major: int
+        minor: int
+        revision: int
 
-        def __init__(self, version: Start.Slippi.Version):
-            self.version = version
+        def __init__(self, major: int, minor: int, revision: int=0, build=None):
+            self.major = major
+            self.minor = minor
+            self.revision = revision
+            # build was obsoleted in 2.0.0 and never held a nonzero value.
 
         @classmethod
         def _parse(cls, stream):
             # unpack returns a tuple, so we need to flatten the list. Additionally, we need to splat it to send to the constructor
             # I try not to use this too often because it's annoying to read if you don't already know what it does
-            return cls(cls.Version(*[tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(4)]]))
+            return cls(*[tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(4)]])
 
-        class Version(Base):
+        def __repr__(self):
+            return f'{self.major}.{self.minor}.{self.revision}'
 
-            major: int
-            minor: int
-            revision: int
+        def __eq__(self, other: Start.SlippiVersion | str):
+            if isinstance(other, self.__class__):
+                return self.major == other.major and self.minor == other.minor and self.revision == other.revision
 
-            def __init__(self, major: int, minor: int, revision: int, build=None):
-                self.major = major
-                self.minor = minor
-                self.revision = revision
-                # build was obsoleted in 2.0.0, and never held a nonzero value
+            if isinstance(other, str):
+                major, minor, revision = [int(n) for n in other.split(".", 2)]
+                return self.major == major and self.minor == minor and self.revision == revision
 
-            def __repr__(self):
-                return f'{self.major}.{self.minor}.{self.revision}'
+            raise NotImplementedError(
+                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
+                )
 
-            def __eq__(self, other: Start.Slippi.Version | str):
-                if isinstance(other, self.__class__):
-                    return self.major == other.major and self.minor == other.minor and self.revision == other.revision
-
-                if isinstance(other, str):
-                    major, minor, revision = [int(n) for n in other.split(".", 2)]
-                    return self.major == major and self.minor == minor and self.revision == revision
-
-                raise NotImplementedError(
-                    "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                    )
-
-            def __ge__(self, other: Start.Slippi.Version | str):
-                if isinstance(other, self.__class__):
-                    # Can't rely on short circuiting, example: 2.11.0 would evaluate as greater than 3.9.0, so we need a smarter check
-                    if self.major > other.major:
+        def __ge__(self, other: Start.SlippiVersion | str):
+            if isinstance(other, self.__class__):
+                # Can't rely on short circuiting, example: 2.11.0 would evaluate as greater than 3.9.0, so we need a smarter check
+                if self.major > other.major:
+                    return True
+                if self.major == other.major:
+                    if self.minor > other.minor:
                         return True
-                    if self.major == other.major:
-                        if self.minor > other.minor:
+                    if self.minor == other.minor:
+                        if self.revision >= other.revision:
                             return True
-                        if self.minor == other.minor:
-                            if self.revision >= other.revision:
-                                return True
-                    return False
+                return False
 
-                if isinstance(other, str):
-                    major, minor, revision = [int(n) for n in other.split(".", 2)]
-                    if self.major > major:
+            if isinstance(other, str):
+                major, minor, revision = [int(n) for n in other.split(".", 2)]
+                if self.major > major:
+                    return True
+                if self.major == major:
+                    if self.minor > minor:
                         return True
-                    if self.major == major:
-                        if self.minor > minor:
+                    if self.minor == minor:
+                        if self.revision >= revision:
                             return True
-                        if self.minor == minor:
-                            if self.revision >= revision:
-                                return True
-                    return False
+                return False
 
-                raise NotImplementedError(
-                    "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                    )
+            raise NotImplementedError(
+                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
+                )
 
-            def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
-                return not self.__ge__(other)
+        def __lt__(self, other: Start.SlippiVersion | Start.SlippiVersion | str):
+            return not self.__ge__(other)
+
 
     class Player(Base):
         """Contains metadata about the player from the console's perspective including:
@@ -689,11 +683,11 @@ class Frame(Base):
                         (jumps,) = unpack_uint8(stream.read(1))
                         (l_cancel,) = unpack_uint8(stream.read(1))
 
-                        flags = [StateFlags1(flags[0]),
-                                StateFlags2(flags[1]),
-                                StateFlags3(flags[2]),
-                                StateFlags4(flags[3]),
-                                StateFlags5(flags[4])]
+                        flags = [Field1(flags[0]),
+                                Field2(flags[1]),
+                                Field3(flags[2]),
+                                Field4(flags[3]),
+                                Field5(flags[4])]
                         ground = maybe_ground
                         misc_timer = misc_timer
                         l_cancel = LCancel(l_cancel)
