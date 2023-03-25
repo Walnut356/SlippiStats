@@ -41,6 +41,7 @@ from .stat_types import (
     LCancelData,
     LCancels,
     RecoveryData,
+    ShieldDropData,
     TakeHitData,
     TakeHits,
     TechData,
@@ -83,7 +84,7 @@ class StatsComputer(ComputerBase):
         if connect_code is None:
             player_perms = permutations(self.players)
         else:
-            player_perms = (self.get_player(connect_code), self.get_opponent(connect_code))
+            player_perms = [(self.get_player(connect_code), self.get_opponent(connect_code))]
 
 
         for player, opponent in player_perms:
@@ -367,7 +368,7 @@ class StatsComputer(ComputerBase):
                     self.take_hit_state.kb_velocity = None
                     self.take_hit_state.kb_angle = None
 
-                if ActionRange.SQUAT_START <= prev_player_frame.post.state <= ActionRange.SQUAT_END:
+                if ActionRange.SQUAT_START <= prev_player_frame.post.state < ActionRange.SQUAT_END:
                     self.take_hit_state.crouch_cancel = True
                 else:
                     self.take_hit_state.crouch_cancel = False
@@ -487,6 +488,39 @@ class StatsComputer(ComputerBase):
     # def track_
 
     #def ledge_action_compute():
+
+    def shield_drop_compute(self,
+                         connect_code:Optional[str]=None,
+                         player: Optional[Player]=None,
+                         opponent:Optional[Player]=None,) -> TakeHits:
+        if connect_code is None and player is None:
+            raise ValueError("Compute functions require either a connect_code or player argument")
+
+        if connect_code is not None:
+            player = self.get_player(connect_code)
+            opponent = self.get_opponent(connect_code)
+
+        stage = self.replay.start.stage
+
+        for i, player_frame in enumerate(player.frames):
+            player_state = player_frame.post.state
+            prev_player_frame = player.frames[i - 1]
+            prev_player_state = prev_player_frame.post.state
+
+            # can't use is_shielding() because you can't shielddrop during the guard release animation,
+            # so it would false positive on drop shield -> first frame drop through platform
+            player_was_shielding = (prev_player_state == ActionState.GUARD or
+                                    prev_player_state == ActionState.GUARD_ON or
+                                    prev_player_state == ActionState.GUARD_REFLECT or
+                                    prev_player_state == ActionState.GUARD_DAMAGE)
+            if player_state == ActionState.PASS and player_was_shielding:
+                player.stats.shield_drops.append(ShieldDropData(
+                    frame_index=i,
+                    position=get_ground(stage, player_frame.post.last_ground_id)
+                ))
+                #TODO check for shieldstun and maybe followup option
+
+        return player.stats.shield_drops
 
 
 
