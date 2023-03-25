@@ -1,13 +1,27 @@
 from collections.abc import Callable
 from enum import Enum
-from math import atan2, cos, degrees, isclose, radians, sin, sqrt, tau
+from math import (
+    atan2,
+    cos,
+    degrees,
+    isclose,
+    radians,
+    sin,
+    sqrt,
+    tau,
+)
 from typing import Optional
 
 # from ..enums.character import InGameCharacter
 from ..controller import Buttons
 from ..enums.stage import Stage
-from ..enums.state import ActionRange, ActionState
-from ..event import Frame, Position, StateFlags, Velocity
+from ..enums.state import (
+    ActionRange,
+    ActionState,
+    StateFlags2,
+    StateFlags4,
+)
+from ..event import Frame, Position, Velocity
 from ..util import IntEnum
 
 # ---------------------------------------------------------------------------- #
@@ -46,21 +60,25 @@ def just_took_damage(percent: int, prev_percent: int) -> bool:
 def is_damaged(action_state: int) -> bool:
     """Recieves action state, returns whether or not the player is in a damaged state.
     This includes all generic variants."""
-    return ActionRange.DAMAGE_START <= action_state <= ActionRange.DAMAGE_END
+    return ((ActionRange.DAMAGE_START <= action_state <= ActionRange.DAMAGE_END) or
+            action_state == ActionState.DOWN_DAMAGE_U or
+            action_state == ActionState.DOWN_DAMAGE_D) # Jab reset states, prevents combo counter from ignoring them if not checking hitstun
 
-def is_in_hitstun(flags: StateFlags) -> bool:
+def is_in_hitstun(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitstun bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    if StateFlags.HIT_STUN in flags:
-        return True
+    for field in flags:
+        if StateFlags4.HIT_STUN in field:
+            return True
     else:
         return False
 
-def is_in_hitlag(flags: StateFlags) -> bool:
+def is_in_hitlag(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitlag bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    if StateFlags.HIT_LAG in flags:
-        return True
+    for field in flags:
+        if StateFlags2.HIT_LAG in field:
+            return True
     else:
         return False
 
@@ -236,18 +254,26 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
             return TechType.MISSED_TECH_GET_UP
 
         case ActionState.PASSIVE_STAND_F:
-            if direction > 0: return TechType.TECH_RIGHT
-            else: return TechType.TECH_LEFT
+            if direction > 0:
+                return TechType.TECH_RIGHT
+            else:
+                return TechType.TECH_LEFT
         case ActionState.DOWN_FOWARD_U | ActionState.DOWN_FOWARD_D:
-            if direction > 0: return TechType.MISSED_TECH_ROLL_RIGHT
-            else: return TechType.MISSED_TECH_ROLL_LEFT
+            if direction > 0:
+                return TechType.MISSED_TECH_ROLL_RIGHT
+            else:
+                return TechType.MISSED_TECH_ROLL_LEFT
 
         case ActionState.PASSIVE_STAND_B:
-            if direction > 0: return TechType.TECH_LEFT
-            else: return TechType.TECH_RIGHT
+            if direction > 0:
+                return TechType.TECH_LEFT
+            else:
+                return TechType.TECH_RIGHT
         case   ActionState.DOWN_BACK_U | ActionState.DOWN_BACK_D:
-            if direction > 0: return TechType.MISSED_TECH_ROLL_LEFT
-            else: return TechType.MISSED_TECH_ROLL_RIGHT
+            if direction > 0:
+                return TechType.MISSED_TECH_ROLL_LEFT
+            else:
+                return TechType.MISSED_TECH_ROLL_RIGHT
 
         case ActionState.DOWN_ATTACK_U | ActionState.DOWN_ATTACK_D:
             return TechType.GET_UP_ATTACK
@@ -345,7 +371,8 @@ def get_post_di_angle(joystick: Position, knockback: Position):
     perp_dist = sin(angle_diff) * sqrt((joystick.x ** 2) + (joystick.y ** 2))
     angle_offset = (perp_dist ** 2) * 18
 
-    if angle_offset > 18: angle_offset = 18
+    if angle_offset > 18:
+        angle_offset = 18
     if -180 < angle_diff < 0:
         angle_offset *= -1
 
