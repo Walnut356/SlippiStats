@@ -237,19 +237,19 @@ class Start(Base):
                 "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
                 )
 
-        def __ge__(self, other: Start.Slippi | Start.Slippi.Version | str):
-            if isinstance(other, self.__class__):
-                return self.version >= other.version
+        # def __ge__(self, other: Start.Slippi | Start.Slippi.Version | str):
+        #     if isinstance(other, self.__class__):
+        #         return self.version >= other.version
 
-            if isinstance(other, (str, Start.Slippi.Version)):
-                return self.version >= other
+        #     if isinstance(other, (str, Start.Slippi.Version)):
+        #         return self.version >= other
 
-            raise NotImplementedError(
-                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
+        #     raise NotImplementedError(
+        #         "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
+        #         )
 
-        def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
-            return not self.__ge__(other)
+        # def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
+        #     return not self.__ge__(other)
 
         class Version(Base):
 
@@ -306,6 +306,9 @@ class Start(Base):
                 raise NotImplementedError(
                     "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
                     )
+
+            def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
+                return not self.__ge__(other)
 
     class Player(Base):
         """Contains metadata about the player from the console's perspective including:
@@ -466,12 +469,14 @@ class Frame(Base):
 
             __slots__ = '_pre', '_post'
 
+
+
             def __init__(self):
                 self._pre = None
                 self._post = None
 
             #TODO i think these are used for live parsing? IDC about live parsing so I think i can just rip all this out
-            # should make member access a tiny bit faster 
+            #should make member access a tiny bit faster
             @property
             def pre(self) -> Optional[Frame.Port.Data.Pre]:
                 """Pre-frame update data"""

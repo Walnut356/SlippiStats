@@ -6,7 +6,7 @@ from typing import Optional
 
 import polars as pl
 
-from slippistats.util import try_enum
+from slippistats.util import IntEnum, try_enum
 
 from ..enums import ActionState, Attack
 from ..event import Position, Velocity
@@ -246,6 +246,13 @@ class LCancelData(Stat):
 class RecoveryData(Stat):
     frame_index: int
 
+# ------------------------------- Shield Drop Data ------------------------------ #
+
+@dataclass
+class ShieldDropData(Stat):
+    frame_index: int
+    position: IntEnum | int
+
 # --------------------------------- Wrappers --------------------------------- #
 
 
@@ -257,6 +264,12 @@ class Wavedashes(UserList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+
+    def append(self, item):
+        if isinstance(item, WavedashData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected WavedashData")
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) > 0:
@@ -274,6 +287,12 @@ class Dashes(UserList):
         self.data_header = data_header
         self.data = []
 
+    def append(self, item):
+        if isinstance(item, DashData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected DashData")
+
     def to_polars(self):
         return pl.DataFrame([self.data_header | dash.__dict__ for dash in self])
 
@@ -287,6 +306,12 @@ class Techs(UserList):
         self.data_header = data_header
         self.data = []
 
+    def append(self, item):
+        if isinstance(item, TechData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected TechData")
+
     def to_polars(self):
         return pl.DataFrame([self.data_header | tech.__dict__ for tech in self])
 
@@ -299,6 +324,12 @@ class TakeHits(UserList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+
+    def append(self, item):
+        if isinstance(item, TakeHitData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected TakeHitData")
 
     def to_polars(self):
         data = []
@@ -342,11 +373,16 @@ class LCancels(UserList):
         self.data = []
         self.data_header = data_header
 
+    def append(self, item):
+        if isinstance(item, LCancelData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected LCancelData")
 
     def _percentage(self):
         success = 0
         for item in self.data:
-            if item.l_cancel == True:
+            if item.l_cancel:
                 success += 1
         if len(self.data) > 0:
             self.percent = (success / len(self.data)) * 100
@@ -355,12 +391,44 @@ class LCancels(UserList):
         data = []
 
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for l_cancel in self:
-            lc_dict = l_cancel.__dict__.copy()
-            lc_dict["position"] = l_cancel.position.name
-            lc_dict["move"] = l_cancel.move.name
+        for stat in self:
+            # we have to make a copy so we don't bork the data with our changes
+            stat_dict = stat.__dict__.copy()
+            try:
+                stat_dict["position"] = stat.position.name
+            except AttributeError:
+                stat_dict["position"] = "UNKNOWN"
+            stat_dict["move"] = stat.move.name
 
-            data.append(self.data_header | lc_dict)
+            data.append(self.data_header | stat_dict)
+
+        return pl.DataFrame(data)
+
+
+class ShieldDrops(UserList):
+    """Iterable wrapper for lists of Dash data"""
+    data_header: dict
+    data: list
+
+    def __init__(self, data_header):
+        self.data_header = data_header
+        self.data = []
+
+    def append(self, item):
+        if isinstance(item, ShieldDropData):
+            UserList.append(self, item)
+        else:
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected ShieldDropData")
+
+    def to_polars(self):
+        data = []
+        for stat in self:
+            stat_dict = stat.__dict__.copy()
+            try:
+                stat_dict["position"] = stat.position.name
+            except AttributeError:
+                stat_dict["position"] = "UNKNOWN"
+            data.append(self.data_header | stat_dict)
 
         return pl.DataFrame(data)
 
@@ -371,7 +439,9 @@ class Data():
     dashes: Dashes
     techs: Techs
     take_hits: TakeHits
-    l_cancels: Optional[LCancelData] = None
+    l_cancels: LCancels
+
+    shield_drops: ShieldDrops
 
     def __init__(self, data_header):
         self.wavedashes = Wavedashes(data_header)
@@ -379,3 +449,5 @@ class Data():
         self.techs = Techs(data_header)
         self.take_hits = TakeHits(data_header)
         self.l_cancels = LCancels(data_header)
+
+        self.shield_drops = ShieldDrops(data_header)

@@ -112,36 +112,6 @@ class ComputerBase():
 
         return self
 
-    #FIXME the entry/return on this is dumb and I need to restructure it so it's useable anywhere outside of the stats calc
-    # def get_player_ports(self, connect_code=None) -> Any:  #difficult to express proper type hint
-    #     player_port = -1
-    #     opponent_port = -1
-    #     if connect_code:
-    #         for i, player in enumerate(self.players):
-    #             if player.connect_code == connect_code.upper():
-    #                 player_port = i
-    #             else:
-    #                 opponent_port = i
-    #         if player_port == opponent_port:
-    #             return [[], None]
-    #         # TODO raise exception? log warning?
-    #         # currently returns nothing so program will continue and stats calc will do nothing
-    #         return [[player_port], opponent_port]
-
-    #     # If there's no connect code, extract the port values of both *active* ports
-    #     player_ports = [i for i, x in enumerate(self.replay.start.players) if x is not None]
-    #     # And if there's more than 2 active ports, we return an empty list which should skip processing.
-    #     # TODO make this an exception, but one that doesn't kill the program? Or just some way to track which replays don't get processed
-    #     if len(player_ports) > 2:
-    #         return []
-    #     return player_ports
-
-    # def port_frame(self, port: int, frame: Frame) -> Frame.Port.Data:
-    #     return frame.ports[port].leader
-
-    # def port_frame_by_index(self, port: int, index: int) -> Frame.Port.Data:
-    #     return self.replay.frames[index].ports[port].leader
-
     def reset_data(self):
         return
 
