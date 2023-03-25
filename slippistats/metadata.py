@@ -4,8 +4,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from . import event as evt
-from .enums import InGameCharacter
+from .event import FIRST_FRAME_INDEX
+from .enums.character import InGameCharacter
 from .util import Base, Enum
 
 
@@ -45,7 +45,7 @@ class Metadata(Base):
         date = datetime(*raw_date[:7], timezone(timedelta(hours=raw_date[7], minutes=raw_date[8])))
         #Duration is stored as the final frame index + the "pre-Go" frames.
         try:
-            duration = 1 + json['lastFrame'] - evt.FIRST_FRAME_INDEX
+            duration = 1 + json['lastFrame'] - FIRST_FRAME_INDEX
         except KeyError:
             duration = None
 

@@ -1,4 +1,6 @@
-import enum, re, struct
+import enum
+import re
+import struct
 
 from .log import log
 

@@ -1,16 +1,30 @@
 from __future__ import annotations
+
 import io
 import os
 from pathlib import Path
-from typing import BinaryIO, Callable, Any
+from typing import Any, BinaryIO, Callable
 
 import ubjson
 
 from .event import End, EventType, Frame, Start
 from .log import log
 from .metadata import Metadata
-from .util import *
+from .util import (
+    Enum,
+    expect_bytes,
+    unpack_int32,
+    unpack_uint8,
+    unpack_uint16,
+)
 
+#TODO parse maybe to pass around metadata/start event to allow for "smarter" parsing (e.g. enum char states by char)
+# otherwise, frame event does contain character so that can be used
+
+# It would also carry slippi file version which could make parsing not require try-except
+
+# Also might be worth not enuming anything at parse time and instead using the "get()" to enum. Saves processing time for every
+# enum value not used. try_enum does take a pretty significant portion of the Game instantiation time
 
 class ParseEvent(Enum):
     """Parser events, used as keys for event handlers. Docstrings indicate the type of object that will be passed to each handler."""

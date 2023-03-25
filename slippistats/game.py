@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 from logging import debug
-from typing import BinaryIO, Optional, TYPE_CHECKING
+from typing import BinaryIO, Optional
 
-from .enums import InGameCharacter, CSSCharacter
 from .event import FIRST_FRAME_INDEX, End, Frame, Start
 from .metadata import Metadata
 from .parse import parse
-from .util import Base, Ports
+from .util import Base
 
 
 class Game(Base):
@@ -54,6 +52,7 @@ class Game(Base):
         else:
             raise ValueError(f'missing frames: {count-1} -> {idx}')
 
+    #TODO probably delete this since the repr ends up so big
     def _attr_repr(self, attr):
         self_attr = getattr(self, attr)
         if isinstance(self_attr, list):

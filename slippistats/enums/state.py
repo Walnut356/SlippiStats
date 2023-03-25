@@ -1,15 +1,18 @@
-from ..util import IntEnum
 from enum import IntFlag
+
+from ..util import IntEnum
 
 # Use reference: https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
 
 # To check if an action state is zero-indexed:https://github.com/altf4/libmelee/blob/master/melee/actiondata.csv
 # I might add some form of check in here, but for now i just handle it manually.
 
+# def get_state(state: int, character: Optional[int]=None):
+
 
 class Direction(IntEnum):
     LEFT = -1
-    DOWN = 0  # not used by slippi replay data, but useful for stats enumerations
+    DOWN = 0  # technically not down, it's used for warp star item, but calling it "DOWN" is useful for stats enumerations
     RIGHT = 1
 
 
@@ -19,19 +22,59 @@ class LCancel(IntEnum):
     FAILURE = 2
 
 
-class StateFlags(IntFlag):
-    REFLECT = 2**4
-    UNTOUCHABLE = 2**10
-    FAST_FALL = 2**11
-    HIT_LAG = 2**13
-    SHIELD = 2**23
-    HIT_STUN = 2**25
-    SHIELD_TOUCH = 2**26
-    POWER_SHIELD = 2**29
-    FOLLOWER = 2**35
-    SLEEP = 2**36
-    DEAD = 2**38
-    OFF_SCREEN = 2**39
+class StateFlags1(IntFlag):
+    BIT_1 = 1
+    BIT_2 = 2
+    BIT_3 = 4
+    BIT_4 = 8
+    REFLECT_BUBBLE = 16
+    BIT_6 = 32
+    BIT_7 = 64
+    BIT_8 = 128
+
+
+class StateFlags2(IntFlag):
+    BIT_1 = 1
+    BIT_2 = 2
+    STATE_DEPENDANT_INVULN = 4
+    FASTFALL = 8
+    DEFENDER_HITLAG = 16
+    HITLAG = 32
+    BIT_7 = 64
+    BIT_8 = 128
+
+
+class StateFlags3(IntFlag):
+    BIT_1 = 1
+    BIT_2 = 2
+    BIT_3 = 4
+    BIT_4 = 8
+    BIT_5 = 16
+    BIT_6 = 32
+    BIT_7 = 64
+    SHIELDING = 128
+
+
+class StateFlags4(IntFlag):
+    BIT_1 = 1
+    HITSTUN = 2
+    HITBOX_TOUCHING_SHIELD = 4  # dubious meaning
+    BIT_4 = 8
+    BIT_5 = 16
+    POWERSHIELD_BUBBLE = 32
+    BIT_7 = 64
+    BIT_8 = 128
+
+
+class StateFlags5(IntFlag):
+    BIT_1 = 1
+    BIT_2 = 2
+    BIT_3 = 4
+    IS_FOLLOWER = 8
+    IS_INACTIVE = 16  # action state Sleep, used for zelda/shiek when the opposite is in play
+    BIT_6 = 32
+    IS_DEAD = 64
+    IS_OFFSCREEN = 128
 
 
 class Hurtbox(IntEnum):

@@ -1,23 +1,39 @@
 from __future__ import annotations
 
-from enum import Enum
+import struct
+from enum import IntFlag
 from typing import Optional, Sequence, Union
 
 from .controller import Buttons, Triggers
-from .enums import (
+from .enums.attack import Attack
+from .enums.character import CSSCharacter, InGameCharacter
+from .enums.item import Item, TurnipFace
+from .enums.stage import Stage
+from .enums.state import (
     ActionState,
-    Attack,
-    CSSCharacter,
     Direction,
     Hurtbox,
-    InGameCharacter,
-    Item,
     LCancel,
-    Stage,
-    StateFlags,
-    TurnipFace,
+    StateFlags1,
+    StateFlags2,
+    StateFlags3,
+    StateFlags4,
+    StateFlags5,
 )
-from .util import *
+from .util import (
+    Base,
+    Enum,
+    IntEnum,
+    try_enum,
+    unpack_bool,
+    unpack_float,
+    unpack_int8,
+    unpack_int32,
+    unpack_matchid,
+    unpack_uint8,
+    unpack_uint16,
+    unpack_uint32,
+)
 
 # The first frame of the game is indexed -123, counting up to zero (which is when the word "GO" appears).
 # But since players actually get control before frame zero (!!!), we need to record these frames.
@@ -84,10 +100,14 @@ class Start(Base):
         self.match_id = match_id
         if match_id: #it's lazy, but it works
             match match_id[5]:
-                case "r": self.match_type = MatchType.RANKED
-                case "u": self.match_type = MatchType.UNRANKED
-                case "d": self.match_type = MatchType.DIRECT
-                case _: self.match_type = MatchType.OTHER
+                case "r":
+                    self.match_type = MatchType.RANKED
+                case "u":
+                    self.match_type = MatchType.UNRANKED
+                case "d":
+                    self.match_type = MatchType.DIRECT
+                case _:
+                    self.match_type = MatchType.OTHER
         else:
             self.match_type = MatchType.OFFLINE
         self.game_number = game_number
@@ -173,7 +193,7 @@ class Start(Base):
         stream.read(283)  # skip major/minor scene and slippi info
 
         try:
-            (match_id,) = unpack('50s', stream)
+            (match_id,) = unpack_matchid(stream.read(50))
             match_id = str(match_id.decode('utf-8')).rstrip('\x00')
         except struct.error:
             match_id = None
@@ -214,6 +234,7 @@ class Start(Base):
 
     class Slippi(Base):
         """Information about the Slippi recorder that generated this replay."""
+        #TODO flatten to Slippi_Version
 
         version: Start.Slippi.Version  #: Slippi version number
 
@@ -225,31 +246,6 @@ class Start(Base):
             # unpack returns a tuple, so we need to flatten the list. Additionally, we need to splat it to send to the constructor
             # I try not to use this too often because it's annoying to read if you don't already know what it does
             return cls(cls.Version(*[tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(4)]]))
-
-        def __eq__(self, other):
-            if isinstance(other, self.__class__):
-                return self.version == other.version
-
-            if isinstance(other, (str, Start.Slippi.Version)):
-                return self.version == other
-
-            raise NotImplementedError(
-                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
-
-        # def __ge__(self, other: Start.Slippi | Start.Slippi.Version | str):
-        #     if isinstance(other, self.__class__):
-        #         return self.version >= other.version
-
-        #     if isinstance(other, (str, Start.Slippi.Version)):
-        #         return self.version >= other
-
-        #     raise NotImplementedError(
-        #         "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-        #         )
-
-        # def __lt__(self, other: Start.Slippi | Start.Slippi.Version | str):
-        #     return not self.__ge__(other)
 
         class Version(Base):
 
@@ -581,7 +577,7 @@ class Frame(Base):
 
                 __slots__ = (
                     'character', 'state', 'position', 'facing_direction', 'percent', 'shield_size', 'stocks_remaining', 'most_recent_hit',
-                    'last_hit_by', 'combo_count', 'state_age', 'flags', 'maybe_hitstun_remaining', 'is_airborne', 'last_ground_id',
+                    'last_hit_by', 'combo_count', 'state_age', 'flags', 'misc_timer', 'is_airborne', 'last_ground_id',
                     'jumps_remaining', 'l_cancel', 'hurtbox_status', 'self_ground_speed', 'self_air_speed', 'knockback_speed',
                     'hitlag_remaining', 'animation_index'
                     )
@@ -597,8 +593,8 @@ class Frame(Base):
                 last_hit_by: Optional[int]  # Port of character that last hit this character
                 combo_count: int  # Combo count as defined by the game
                 state_age: Optional[float]  # Number of frames action state has been active. Can be fractional for certain actions
-                flags: Optional[StateFlags]  # State flags
-                maybe_hitstun_remaining: Optional[float]  # hitstun frames remaining
+                flags: Optional[list[IntFlag]]  # State flags
+                misc_timer: Optional[float]  # hitstun frames remaining
                 is_airborne: Optional[bool]  # True if character is airborne
                 last_ground_id: Optional[int]  # ID of ground character is standing on, if any
                 jumps_remaining: Optional[int]  # Jumps remaining
@@ -625,8 +621,8 @@ class Frame(Base):
                         last_hit_by: Optional[int],
                         combo_count: int,
                         state_age: Optional[float] = None,
-                        flags: Optional[StateFlags] = None,
-                        hit_stun: Optional[float] = None,
+                        flags: Optional[list[IntEnum]] = None,
+                        misc_timer: Optional[float] = None,
                         airborne: Optional[bool] = None,
                         ground: Optional[int] = None,
                         jumps: Optional[int] = None,
@@ -650,7 +646,7 @@ class Frame(Base):
                     self.combo_count = combo_count
                     self.state_age = state_age
                     self.flags = flags
-                    self.maybe_hitstun_remaining = hit_stun
+                    self.misc_timer = misc_timer
                     self.is_airborne = airborne
                     self.last_ground_id = ground
                     self.jumps_remaining = jumps
@@ -687,18 +683,22 @@ class Frame(Base):
                         # I try not to use this too often because it's annoying to read if you don't already know what it does
                         flags = [tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(5)]]
 
-                        (misc_as,) = unpack_float(stream.read(4))
+                        (misc_timer,) = unpack_float(stream.read(4))
                         (airborne,) = unpack_bool(stream.read(1))
                         (maybe_ground,) = unpack_uint16(stream.read(2))
                         (jumps,) = unpack_uint8(stream.read(1))
                         (l_cancel,) = unpack_uint8(stream.read(1))
 
-                        flags = StateFlags(flags[0] + flags[1] * 2**8 + flags[2] * 2**16 + flags[3] * 2**24 + flags[4] * 2**32)
+                        flags = [StateFlags1(flags[0]),
+                                StateFlags2(flags[1]),
+                                StateFlags3(flags[2]),
+                                StateFlags4(flags[3]),
+                                StateFlags5(flags[4])]
                         ground = maybe_ground
-                        hit_stun = misc_as if flags.HIT_STUN else None
+                        misc_timer = misc_timer
                         l_cancel = LCancel(l_cancel)
                     except struct.error:
-                        (flags, hit_stun, airborne, ground, jumps, l_cancel) = [None] * 6
+                        (flags, misc_timer, airborne, ground, jumps, l_cancel) = [None] * 6
 
                     try:  # v2.1.0
                         (hurtbox_status,) = unpack_uint8(stream.read(1))
@@ -741,7 +741,7 @@ class Frame(Base):
                         last_hit_by=last_hit_by if last_hit_by < 4 else None,
                         combo_count=combo_count,
                         flags=flags,
-                        hit_stun=hit_stun,
+                        misc_timer=misc_timer,
                         airborne=airborne,
                         ground=ground,
                         jumps=jumps,

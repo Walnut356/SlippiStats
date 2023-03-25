@@ -8,7 +8,8 @@ import polars as pl
 
 from slippistats.util import IntEnum, try_enum
 
-from ..enums import ActionState, Attack
+from ..enums.attack import Attack
+from ..enums.state import ActionState
 from ..event import Position, Velocity
 from .common import JoystickRegion, TechType, get_angle
 

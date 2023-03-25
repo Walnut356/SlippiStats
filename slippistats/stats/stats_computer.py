@@ -3,13 +3,16 @@ import os
 import warnings
 from itertools import permutations
 from math import degrees
-from os import PathLike
 from typing import Optional
 
 import polars as pl
 
-from ..enums.ground import Yoshis
-from ..enums import ActionRange, ActionState, LCancel, get_ground
+from ..enums.ground import Yoshis, get_ground
+from ..enums.state import (
+    ActionRange,
+    ActionState,
+    LCancel,
+)
 from ..event import Attack, Buttons
 from ..game import Game
 from ..util import try_enum
@@ -23,8 +26,8 @@ from .common import (
     get_tech_type,
     is_damaged,
     is_dying,
-    is_in_hitstun,
     is_in_hitlag,
+    is_in_hitstun,
     is_ledge_action,
     is_offstage,
     is_shielding,
@@ -60,7 +63,7 @@ class StatsComputer(ComputerBase):
     take_hit_state: Optional[TakeHitData]
     recovery_state: Optional[RecoveryData]
 
-    def __init__(self, replay: Optional[PathLike | Game | str]=None):
+    def __init__(self, replay: Optional[os.PathLike | Game | str]=None):
         self.players = []
         self.wavedash_state = None
         self.tech_state = None

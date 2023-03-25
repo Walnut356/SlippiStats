@@ -4,7 +4,7 @@ from itertools import permutations
 from os import PathLike
 from typing import Optional
 
-from ..enums import CSSCharacter
+from ..enums.character import CSSCharacter
 from ..event import Frame, Start
 from ..game import Game
 from ..util import Base, Ports
