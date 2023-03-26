@@ -17,9 +17,9 @@ game = slp.StatsComputer(peach_file)
 
 thing = []
 for frame in game.players[0].frames:
-    thing.append(frame.post.flags)
-    if Field5.IS_DEAD in frame.post.flags[4]:
-        print(frame.post.flags)
+    thing.append(frame.post.state)
+    if frame.post.state > 340:
+        print(frame.post.state)
 
 print("done")
 # data = slp.StatsComputer(Path(r'Modern Replays/Game_20221227T194333.slp')).take_hit_compute("NUT#356")

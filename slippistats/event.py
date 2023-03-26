@@ -7,9 +7,10 @@ from typing import Optional, Sequence, Union
 from .controller import Buttons, Triggers
 from .enums.attack import Attack
 from .enums.character import CSSCharacter, InGameCharacter
-from .enums.item import Item, TurnipFace
+from .enums.item import Item, MissileType, TurnipFace
 from .enums.stage import Stage
 from .enums.state import (
+    get_character_state,
     ActionState,
     Direction,
     Hurtbox,
@@ -577,13 +578,13 @@ class Frame(Base):
                     )
 
                 character: InGameCharacter  # In-game character (can only change for Zelda/Sheik).
-                state: Union[ActionState, int]  # Character's action state
+                state: ActionState | int  # Character's action state
                 position: Position  # Character's position
                 facing_direction: Direction  # Direction the character is facing
                 percent: float  # Current damage percent
                 shield_size: float  # Current size of shield
                 stocks_remaining: int  # Number of stocks remaining
-                most_recent_hit: Union[Attack, int]  # Last attack that this character landed
+                most_recent_hit: Attack | int  # Last attack that this character landed
                 last_hit_by: Optional[int]  # Port of character that last hit this character
                 combo_count: int  # Combo count as defined by the game
                 state_age: Optional[float]  # Number of frames action state has been active. Can be fractional for certain actions
@@ -605,20 +606,20 @@ class Frame(Base):
                 def __init__(
                         self,
                         character: InGameCharacter,
-                        state: Union[ActionState, int],
+                        state: ActionState | int,
                         position: Position,
                         direction: Direction,
                         damage: float,
                         shield: float,
                         stocks: int,
-                        most_recent_hit: Union[Attack, int],
+                        most_recent_hit: Attack | int,
                         last_hit_by: Optional[int],
                         combo_count: int,
                         state_age: Optional[float] = None,
                         flags: Optional[list[IntEnum]] = None,
                         misc_timer: Optional[float] = None,
                         airborne: Optional[bool] = None,
-                        ground: Optional[int] = None,
+                        last_ground_id: Optional[int] = None,
                         jumps: Optional[int] = None,
                         l_cancel: Optional[LCancel] = None,
                         hurtbox_status: Optional[Hurtbox] = None,
@@ -642,7 +643,7 @@ class Frame(Base):
                     self.flags = flags
                     self.misc_timer = misc_timer
                     self.is_airborne = airborne
-                    self.last_ground_id = ground
+                    self.last_ground_id = last_ground_id
                     self.jumps_remaining = jumps
                     self.l_cancel = l_cancel
                     self.hurtbox_status = hurtbox_status
@@ -665,7 +666,7 @@ class Frame(Base):
                     (combo_count,) = unpack_uint8(stream.read(1))
                     (last_hit_by,) = unpack_uint8(stream.read(1))
                     (stocks,) = unpack_uint8(stream.read(1))
-
+                    character = try_enum(InGameCharacter, character)
                     # v0.2.0
                     try:
                         (state_age,) = unpack_float(stream.read(4))
@@ -679,7 +680,7 @@ class Frame(Base):
 
                         (misc_timer,) = unpack_float(stream.read(4))
                         (airborne,) = unpack_bool(stream.read(1))
-                        (maybe_ground,) = unpack_uint16(stream.read(2))
+                        (last_ground_id,) = unpack_uint16(stream.read(2))
                         (jumps,) = unpack_uint8(stream.read(1))
                         (l_cancel,) = unpack_uint8(stream.read(1))
 
@@ -688,11 +689,10 @@ class Frame(Base):
                                 Field3(flags[2]),
                                 Field4(flags[3]),
                                 Field5(flags[4])]
-                        ground = maybe_ground
-                        misc_timer = misc_timer
+
                         l_cancel = LCancel(l_cancel)
                     except struct.error:
-                        (flags, misc_timer, airborne, ground, jumps, l_cancel) = [None] * 6
+                        (flags, misc_timer, airborne, last_ground_id, jumps, l_cancel) = [None] * 6
 
                     try:  # v2.1.0
                         (hurtbox_status,) = unpack_uint8(stream.read(1))
@@ -723,8 +723,8 @@ class Frame(Base):
                         animation_index = None
 
                     return cls(
-                        character=InGameCharacter(character),
-                        state=try_enum(ActionState, state),
+                        character=character,
+                        state=get_character_state(state, character),
                         state_age=state_age,
                         position=Position(position_x, position_y),
                         direction=Direction(direction),
@@ -737,7 +737,7 @@ class Frame(Base):
                         flags=flags,
                         misc_timer=misc_timer,
                         airborne=airborne,
-                        ground=ground,
+                        last_ground_id=last_ground_id,
                         jumps=jumps,
                         l_cancel=l_cancel,
                         hurtbox_status=hurtbox_status,
@@ -761,7 +761,7 @@ class Frame(Base):
         damage: int  #: Amount of damage item has taken
         timer: int  #: Frames remaining until item expires
         spawn_id: int  #: Unique ID per item spawned (0, 1, 2, ...)
-        missile_type: Optional[int]
+        missile_type: Optional[MissileType]
         turnip_type: Optional[TurnipFace]
         is_shot_launched: Optional[bool]
         charge_power: Optional[int]
@@ -805,6 +805,8 @@ class Frame(Base):
                 (is_shot_launched,) = unpack_uint8(stream.read(1))
                 (charge_power,) = unpack_uint8(stream.read(1))
                 (owner,) = unpack_int8(stream.read(1))
+                missile_type = try_enum(MissileType, missile_type) if type == Item.SAMUS_MISSILE else missile_type
+                turnip_type = try_enum(TurnipFace, turnip_type) if type == Item.PEACH_TURNIP else turnip_type
             except struct.error:
                 missile_type = None
                 turnip_type = None
@@ -822,7 +824,7 @@ class Frame(Base):
                 timer=timer,
                 spawn_id=spawn_id,
                 missile_type=missile_type,
-                turnip_type=try_enum(TurnipFace, turnip_type),
+                turnip_type=turnip_type,
                 is_shot_launched=is_shot_launched,
                 charge_power=charge_power,
                 owner=owner
