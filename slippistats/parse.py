@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import mmap
 import os
 from pathlib import Path
 from typing import Any, BinaryIO, Callable
@@ -74,11 +75,23 @@ def _parse_event_payloads(stream):
     # log.debug(f'event payload sizes: {sizes}')
     return (2 + this_size, sizes)
 
+# This essentially acts as a jump table in _parse_event, saves a lot of processing on a potentially very hot match statement and enum call
+# If python was compiled, this would probably be unnecessary.
+EVENT_TYPE_PARSE = {
+    EventType.GAME_START : lambda stream: Start._parse(stream),
+    EventType.FRAME_START : lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.START, stream),
+    EventType.FRAME_PRE : lambda stream: Frame.Event(Frame.Event.PortId(stream), Frame.Event.Type.PRE, stream),
+    EventType.FRAME_POST : lambda stream: Frame.Event(Frame.Event.PortId(stream), Frame.Event.Type.POST, stream),
+    EventType.ITEM : lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.ITEM, stream),
+    EventType.FRAME_END : lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.END, stream),
+    EventType.GAME_END : lambda stream: End._parse(stream),
+}
 
 def _parse_event(event_stream, payload_sizes):
     (code,) = unpack_uint8(event_stream.read(1))
     # log.debug(f'Event: 0x{code:x}')
 
+    # It's not great for debugging, but ripping this out saves something like 15-30% of processing time. .tell() is INCREDIBLY slow
     # remember starting pos for better error reporting
     # try: base_pos = event_stream.tell() if event_stream.seekable() else None
     # except AttributeError: base_pos = None
@@ -89,36 +102,40 @@ def _parse_event(event_stream, payload_sizes):
     stream = io.BytesIO(event_stream.read(size))
 
     try:
-        try: event_type = EventType(code)
-        except ValueError: event_type = None
+        event = EVENT_TYPE_PARSE.get(code, None)
+        if callable(event):
+            event = event(stream)
+    # try:
+    #     try: event_type = EventType(code)
+    #     except ValueError: event_type = None
 
-        match event_type:
-            case EventType.FRAME_PRE:
-                event = Frame.Event(Frame.Event.PortId(stream),
-                                    Frame.Event.Type.PRE,
-                                    stream)
-            case EventType.FRAME_POST:
-                event = Frame.Event(Frame.Event.PortId(stream),
-                                    Frame.Event.Type.POST,
-                                    stream)
-            case EventType.ITEM:
-                event = Frame.Event(Frame.Event.Id(stream),
-                                    Frame.Event.Type.ITEM,
-                                    stream)
-            case EventType.FRAME_START:
-                event = Frame.Event(Frame.Event.Id(stream),
-                                    Frame.Event.Type.START,
-                                    stream)
-            case EventType.FRAME_END:
-                event = Frame.Event(Frame.Event.Id(stream),
-                                    Frame.Event.Type.END,
-                                    stream)
-            case EventType.GAME_START:
-                event = Start._parse(stream)
-            case EventType.GAME_END:
-                event = End._parse(stream)
-            case _:
-                event = None
+    #     match event_type:
+    #         case EventType.FRAME_PRE:
+    #             event = Frame.Event(Frame.Event.PortId(stream),
+    #                                 Frame.Event.Type.PRE,
+    #                                 stream)
+    #         case EventType.FRAME_POST:
+    #             event = Frame.Event(Frame.Event.PortId(stream),
+    #                                 Frame.Event.Type.POST,
+    #                                 stream)
+    #         case EventType.ITEM:
+    #             event = Frame.Event(Frame.Event.Id(stream),
+    #                                 Frame.Event.Type.ITEM,
+    #                                 stream)
+    #         case EventType.FRAME_START:
+    #             event = Frame.Event(Frame.Event.Id(stream),
+    #                                 Frame.Event.Type.START,
+    #                                 stream)
+    #         case EventType.FRAME_END:
+    #             event = Frame.Event(Frame.Event.Id(stream),
+    #                                 Frame.Event.Type.END,
+    #                                 stream)
+    #         case EventType.GAME_START:
+    #             event = Start._parse(stream)
+    #         case EventType.GAME_END:
+    #             event = End._parse(stream)
+    #         case _:
+    #             event = None
 
         return (1 + size, event)
     except Exception as exc:
@@ -247,7 +264,7 @@ def _parse_try(source: BinaryIO, handlers, skip_frames):
 
 
 def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
-    with open(source, 'rb') as f:
+    with mmap.mmap(os.open(source, os.O_RDONLY), 0, access=mmap.ACCESS_READ) as f:
         _parse_try(f, handlers, skip_frames)
 
 
