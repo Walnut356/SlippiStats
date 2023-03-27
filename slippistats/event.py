@@ -36,6 +36,7 @@ from .util import (
     unpack_uint32,
 )
 
+
 # The first frame of the game is indexed -123, counting up to zero (which is when the word "GO" appears).
 # But since players actually get control before frame zero (!!!), we need to record these frames.
 FIRST_FRAME_INDEX = -123
@@ -879,6 +880,7 @@ class Frame(Base):
         """Temporary wrapper used while parsing frame data."""
 
         __slots__ = 'id', 'type', 'data'
+
 
         def __init__(self, id, type, data):
             self.id = id
