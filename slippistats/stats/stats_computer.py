@@ -4,7 +4,6 @@ import warnings
 from itertools import permutations
 from math import degrees
 
-
 import polars as pl
 
 from ..enums.ground import Yoshis, get_ground
@@ -509,10 +508,6 @@ class StatsComputer(ComputerBase):
                 and get_ground(stage, player_frame.post.last_ground_id) != Yoshis.RANDALL
             )
 
-    # def track_
-
-    # def ledge_action_compute():
-
     def shield_drop_compute(
         self,
         connect_code: str | None = None,
@@ -551,6 +546,15 @@ class StatsComputer(ComputerBase):
                 # TODO check for shieldstun and maybe followup option
 
         return player.stats.shield_drops
+
+    # def track_
+
+    # def ledge_action_compute():
+
+
+# ---------------------------------------------------------------------------- #
+#                                      eef                                     #
+# ---------------------------------------------------------------------------- #
 
 
 def _eef(file, connect_code):

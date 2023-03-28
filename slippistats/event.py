@@ -3,6 +3,7 @@ from __future__ import annotations
 import struct
 from collections.abc import Sequence
 from enum import IntFlag
+from io import BytesIO
 
 from .controller import Buttons, Triggers
 from .enums.attack import Attack
@@ -117,7 +118,13 @@ class Start(Base):
         self.tiebreak_number = tiebreak_number
 
     @classmethod
-    def _parse(cls, stream):
+    def _parse(cls, stream: BytesIO) -> Start:
+        is_pal = None
+        is_frozen_ps = None
+        match_id = None
+        game_number = None
+        tiebreak_number = None
+
         slippi_version = cls.SlippiVersion._parse(stream)
 
         stream.read(8)  # skip game bitfields
@@ -162,7 +169,7 @@ class Start(Base):
         stream.read(72)  # skip the rest of the game info block
         (random_seed,) = unpack_uint32(stream.read(4))
 
-        try:  # v1.0.0
+        if slippi_version >= "1.0.0":
             for i in range(4):
                 (dash_back,) = unpack_uint32(stream.read(4))
                 (shield_drop,) = unpack_uint32(stream.read(4))
@@ -170,10 +177,8 @@ class Start(Base):
                 shield_drop = cls.Player.UCF.ShieldDrop(shield_drop)
                 if players[i]:
                     players[i].ucf = cls.Player.UCF(dash_back, shield_drop)
-        except struct.error:
-            pass
 
-        try:  # v1.3.0
+        if slippi_version >= "1.3.0":
             for i in range(4):
                 tag_bytes = stream.read(16)
                 if players[i]:
@@ -183,42 +188,27 @@ class Start(Base):
                     except ValueError:
                         pass
                     players[i].tag = tag_bytes.decode("shift-jis").rstrip()
-        except struct.error:
+
+        if slippi_version >= "1.5.0":
+            (is_pal,) = unpack_bool(stream.read(1))
+
+        if slippi_version >= "2.0.0":
+            (is_frozen_ps,) = unpack_bool(stream.read(1))
+
+        try:
+            stream.read(283)  # skip major/minor scene and slippi info
+        except EOFError:
             pass
 
-        # v1.5.0
-        try:
-            (is_pal,) = unpack_bool(stream.read(1))
-        except struct.error:
-            is_pal = None
-
-        # v2.0.0
-        try:
-            (is_frozen_ps,) = unpack_bool(stream.read(1))
-        except struct.error:
-            is_frozen_ps = None
-
-        # v3.14.0
-        stream.read(283)  # skip major/minor scene and slippi info
-
-        try:
+        if slippi_version >= "3.14.0":
             (match_id,) = unpack_matchid(stream.read(50))
             match_id = str(match_id.decode("utf-8")).rstrip("\x00")
-        except struct.error:
-            match_id = None
-        except EOFError:
-            match_id = None
 
-        stream.read(1)
-        try:
+            stream.read(1)
+
             (game_number,) = unpack_uint32(stream.read(4))
-        except struct.error:
-            game_number = None
 
-        try:
             (tiebreak_number,) = unpack_uint32(stream.read(4))
-        except struct.error:
-            tiebreak_number = None
 
         return cls(
             is_teams=is_teams,
@@ -260,7 +250,7 @@ class Start(Base):
             # build was obsoleted in 2.0.0 and never held a nonzero value.
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: BytesIO) -> Start.SlippiVersion:
             # unpack returns a tuple, so we need to flatten the list.
             # Additionally, we need to splat it to send to the constructor
             # I try not to use this too often because it's annoying to read if you don't already know what it does
@@ -418,22 +408,22 @@ class End(Base):
         self.player_placements = player_placements
 
     @classmethod
-    def _parse(cls, stream):
+    def _parse(cls, stream: BytesIO, replay_version) -> End:
         (method,) = unpack_uint8(stream.read(1))
-        try:  # v2.0.0
+        lras_initiator = None
+        player_placements = None
+
+        if replay_version >= "2.0.0":
             (lras,) = unpack_uint8(stream.read(1))
             lras_initiator = lras if lras < 4 else None
-        except struct.error:
-            lras_initiator = None
 
-        try:  # v3.13.0
+        if replay_version >= "3.13.0":
             (p1_placement,) = unpack_int8(stream.read(1))
             (p2_placement,) = unpack_int8(stream.read(1))
             (p3_placement,) = unpack_int8(stream.read(1))
             (p4_placement,) = unpack_int8(stream.read(1))
             player_placements = [p1_placement, p2_placement, p3_placement, p4_placement]
-        except struct.error:
-            player_placements = None
+
         return cls(cls.Method(method), lras_initiator, player_placements)
 
     def __eq__(self, other):
@@ -562,7 +552,7 @@ class Frame(Base):
                     self.percent = damage
 
                 @classmethod
-                def _parse(cls, stream):
+                def _parse(cls, stream: BytesIO, replay_version) -> Frame.Port.Data.Pre:
                     (random_seed,) = unpack_uint32(stream.read(4))
                     (state,) = unpack_uint16(stream.read(2))
                     (position_x,) = unpack_float(stream.read(4))
@@ -577,18 +567,14 @@ class Frame(Base):
                     (buttons_physical,) = unpack_uint16(stream.read(2))
                     (trigger_physical_l,) = unpack_float(stream.read(4))
                     (trigger_physical_r,) = unpack_float(stream.read(4))
+                    raw_analog_x = None
+                    damage = None
 
-                    # v1.2.0
-                    try:
+                    if replay_version >= Start.SlippiVersion(1, 2, 0):
                         (raw_analog_x,) = unpack_uint8(stream.read(1))
-                    except struct.error:
-                        raw_analog_x = None
 
-                    # v1.4.0
-                    try:
+                    if replay_version >= Start.SlippiVersion(1, 4, 0):
                         (damage,) = unpack_float(stream.read(4))
-                    except struct.error:
-                        damage = None
 
                     return cls(
                         state=try_enum(ActionState, state),
@@ -713,7 +699,7 @@ class Frame(Base):
                     self.animation_index = animation_index
 
                 @classmethod
-                def _parse(cls, stream):
+                def _parse(cls, stream: BytesIO, replay_version) -> Frame.Port.Data.Post:
                     (character,) = unpack_uint8(stream.read(1))
                     (state,) = unpack_uint16(stream.read(2))
                     (position_x,) = unpack_float(stream.read(4))
@@ -726,15 +712,27 @@ class Frame(Base):
                     (last_hit_by,) = unpack_uint8(stream.read(1))
                     (stocks,) = unpack_uint8(stream.read(1))
                     character = try_enum(InGameCharacter, character)
-                    # v0.2.0
-                    try:
-                        (state_age,) = unpack_float(stream.read(4))
-                    except struct.error:
-                        state_age = None
 
-                    try:  # v2.0.0
+                    state_age = None
+                    (
+                        flags,
+                        misc_timer,
+                        airborne,
+                        last_ground_id,
+                        jumps,
+                        l_cancel,
+                    ) = [None] * 6
+                    hurtbox_status = None
+                    (self_ground_speed, self_air_speed, knockback_speed) = [None] * 3
+                    hitlag_remaining = None
+                    animation_index = None
+
+                    if replay_version >= Start.SlippiVersion(0, 2, 0):
+                        (state_age,) = unpack_float(stream.read(4))
+
+                    if replay_version >= Start.SlippiVersion(2, 0, 0):
                         # unpack returns a tuple, so we need to flatten the list.
-                        # I try not to use this too often because it's annoying to read if you don't already know what it does
+                        # I try not to use this too often for readability
                         flags = [tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(5)]]
 
                         (misc_timer,) = unpack_float(stream.read(4))
@@ -742,7 +740,6 @@ class Frame(Base):
                         (last_ground_id,) = unpack_uint16(stream.read(2))
                         (jumps,) = unpack_uint8(stream.read(1))
                         (l_cancel,) = unpack_uint8(stream.read(1))
-
                         flags = [
                             Field1(flags[0]),
                             Field2(flags[1]),
@@ -750,24 +747,12 @@ class Frame(Base):
                             Field4(flags[3]),
                             Field5(flags[4]),
                         ]
-
                         l_cancel = LCancel(l_cancel)
-                    except struct.error:
-                        (
-                            flags,
-                            misc_timer,
-                            airborne,
-                            last_ground_id,
-                            jumps,
-                            l_cancel,
-                        ) = [None] * 6
 
-                    try:  # v2.1.0
+                    if replay_version >= Start.SlippiVersion(2, 1, 0):
                         (hurtbox_status,) = unpack_uint8(stream.read(1))
-                    except struct.error:
-                        hurtbox_status = None
 
-                    try:  # v3.5.0
+                    if replay_version >= Start.SlippiVersion(3, 5, 0):
                         (self_air_x,) = unpack_float(stream.read(4))
                         (self_y,) = unpack_float(stream.read(4))
                         (kb_x,) = unpack_float(stream.read(4))
@@ -777,18 +762,12 @@ class Frame(Base):
                         self_ground_speed = Velocity(self_ground_x, self_y)
                         self_air_speed = Velocity(self_air_x, self_y)
                         knockback_speed = Velocity(kb_x, kb_y)
-                    except struct.error:
-                        (self_ground_speed, self_air_speed, knockback_speed) = [None] * 3
 
-                    try:  # v3.8.0
+                    if replay_version >= Start.SlippiVersion(3, 8, 0):
                         (hitlag_remaining,) = unpack_float(stream.read(4))
-                    except struct.error:
-                        hitlag_remaining = None
 
-                    try:  # v3.11.0
+                    if replay_version >= Start.SlippiVersion(3, 11, 0):
                         (animation_index,) = unpack_uint32(stream.read(4))
-                    except struct.error:
-                        animation_index = None
 
                     return cls(
                         character=character,
@@ -875,7 +854,10 @@ class Frame(Base):
             self.owner = owner
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: BytesIO, replay_version) -> Frame.Item:
+            if replay_version < "3.0.0":
+                raise ValueError(f"Item frames shouldn't exist pre-3.0.0, parsed replay version {replay_version}")
+
             (type,) = unpack_uint16(stream.read(2))
             (state,) = unpack_uint8(stream.read(1))
             (direction,) = unpack_float(stream.read(4))
@@ -887,20 +869,22 @@ class Frame(Base):
             (timer,) = unpack_float(stream.read(4))
             (spawn_id,) = unpack_uint32(stream.read(4))
 
-            try:
+            missile_type = None
+            turnip_type = None
+            is_shot_launched = None
+            charge_power = None
+            owner = None
+
+            if replay_version >= "3.2.0":
                 (missile_type,) = unpack_uint8(stream.read(1))
                 (turnip_type,) = unpack_uint8(stream.read(1))
                 (is_shot_launched,) = unpack_uint8(stream.read(1))
                 (charge_power,) = unpack_uint8(stream.read(1))
-                (owner,) = unpack_int8(stream.read(1))
                 missile_type = try_enum(MissileType, missile_type) if type == Item.SAMUS_MISSILE else missile_type
                 turnip_type = try_enum(TurnipFace, turnip_type) if type == Item.PEACH_TURNIP else turnip_type
-            except struct.error:
-                missile_type = None
-                turnip_type = None
-                is_shot_launched = None
-                charge_power = None
-                owner = None
+
+            if replay_version >= "3.6.0":
+                (owner,) = unpack_int8(stream.read(1))
 
             return cls(
                 type=try_enum(Item, type),
@@ -943,7 +927,7 @@ class Frame(Base):
             self.random_seed = random_seed
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: BytesIO, replay_version) -> Frame.Start:
             (random_seed,) = unpack_uint32(stream.read(4))
             # random_seed = random_seed ??? why was this here?
             return cls(random_seed)
@@ -956,11 +940,13 @@ class Frame(Base):
     class End(Base):
         """End-of-frame data."""
 
+        __slots__ = ("latest_finalized_frame",)
+
         def __init__(self):
             pass
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: BytesIO, replay_version) -> Frame.End:
             return cls()
 
         def __eq__(self, other):
@@ -971,23 +957,27 @@ class Frame(Base):
     class Event(Base):
         """Temporary wrapper used while parsing frame data."""
 
-        __slots__ = "id", "type", "data"
+        __slots__ = ("id", "event_type", "raw_data")
 
-        def __init__(self, id, type, data):
+        id: Frame.Event.PortId | Frame.Event.Id
+        event_type: Frame.Event.Type
+        raw_data: BytesIO
+
+        def __init__(self, id, event_type, raw_data, replay_version):
             self.id = id
-            self.type = type
-            self.data = data
+            self.event_type = event_type
+            self.raw_data = raw_data
 
         class Id(Base):
             __slots__ = ("frame",)
 
-            def __init__(self, stream):
+            def __init__(self, stream: BytesIO, replay_version):
                 (self.frame,) = unpack_int32(stream.read(4))
 
         class PortId(Id):
-            __slots__ = "port", "is_follower"
+            __slots__ = ("port", "is_follower", "frame")
 
-            def __init__(self, stream):
+            def __init__(self, stream: BytesIO, replay_version):
                 (self.frame,) = unpack_int32(stream.read(4))
                 (self.port,) = unpack_uint8(stream.read(1))
                 (self.is_follower,) = unpack_bool(stream.read(1))

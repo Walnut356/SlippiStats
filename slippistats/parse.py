@@ -84,17 +84,27 @@ def _parse_event_payloads(stream):
 # saves a lot of processing on a potentially very hot match statement and enum call
 # If python was compiled, this would probably be unnecessary.
 EVENT_TYPE_PARSE = {
-    EventType.GAME_START: lambda stream: Start._parse(stream),
-    EventType.FRAME_START: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.START, stream),
-    EventType.FRAME_PRE: lambda stream: Frame.Event(Frame.Event.PortId(stream), Frame.Event.Type.PRE, stream),
-    EventType.FRAME_POST: lambda stream: Frame.Event(Frame.Event.PortId(stream), Frame.Event.Type.POST, stream),
-    EventType.ITEM: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.ITEM, stream),
-    EventType.FRAME_END: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.END, stream),
-    EventType.GAME_END: lambda stream: End._parse(stream),
+    # EventType.GAME_START: lambda stream, replay_version: Start._parse(stream, replay_version),
+    EventType.FRAME_START: lambda stream, replay_version: Frame.Event(
+        Frame.Event.Id(stream, replay_version), Frame.Event.Type.START, stream, replay_version
+    ),
+    EventType.FRAME_PRE: lambda stream, replay_version: Frame.Event(
+        Frame.Event.PortId(stream, replay_version), Frame.Event.Type.PRE, stream, replay_version
+    ),
+    EventType.FRAME_POST: lambda stream, replay_version: Frame.Event(
+        Frame.Event.PortId(stream, replay_version), Frame.Event.Type.POST, stream, replay_version
+    ),
+    EventType.ITEM: lambda stream, replay_version: Frame.Event(
+        Frame.Event.Id(stream, replay_version), Frame.Event.Type.ITEM, stream, replay_version
+    ),
+    EventType.FRAME_END: lambda stream, replay_version: Frame.Event(
+        Frame.Event.Id(stream, replay_version), Frame.Event.Type.END, stream, replay_version
+    ),
+    EventType.GAME_END: lambda stream, replay_version: End._parse(stream, replay_version),
 }
 
 
-def _parse_event(event_stream, payload_sizes):
+def _parse_event(event_stream, payload_sizes, replay_version):
     (code,) = unpack_uint8(event_stream.read(1))
     # log.debug(f'Event: 0x{code:x}')
 
@@ -113,7 +123,7 @@ def _parse_event(event_stream, payload_sizes):
     try:
         event = EVENT_TYPE_PARSE.get(code, None)
         if callable(event):
-            event = event(stream)
+            event = event(stream, replay_version)
         # try:
         #     try: event_type = EventType(code)
         #     except ValueError: event_type = None
@@ -160,14 +170,15 @@ def _parse_event(event_stream, payload_sizes):
 
 # exceptional ugliness to implement a jump table instead of a bunch of conditionals or a match statement.
 def _pre_frame(
-    current_frame,
-    event,
-    handlers,
+    current_frame: Frame,
+    event: Frame.Event,
+    handlers: dict,
     skip_frames,
     total_size,
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -191,7 +202,7 @@ def _pre_frame(
         if port.follower is None:
             port.follower = Frame.Port.Data()
         data = port.follower
-    data._pre = event.data
+    data._pre = event.raw_data
     return current_frame
 
 
@@ -204,6 +215,7 @@ def _post_frame(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -227,7 +239,7 @@ def _post_frame(
         if port.follower is None:
             port.follower = Frame.Port.Data()
         data = port.follower
-    data._post = event.data
+    data._post = event.raw_data
     return current_frame
 
 
@@ -240,6 +252,7 @@ def _item_frame(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -253,7 +266,7 @@ def _item_frame(
     if not current_frame:
         current_frame = Frame(event.id.frame)
 
-    current_frame.items.append(Frame.Item._parse(event.data))
+    current_frame.items.append(Frame.Item._parse(event.raw_data, replay_version))
     return current_frame
 
 
@@ -266,6 +279,7 @@ def _start_frame(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -279,7 +293,7 @@ def _start_frame(
     if not current_frame:
         current_frame = Frame(event.id.frame)
 
-    current_frame.items.append(Frame.Start._parse(event.data))
+    current_frame.items.append(Frame.Start._parse(event.raw_data, replay_version))
     return current_frame
 
 
@@ -292,6 +306,7 @@ def _end_frame(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -305,7 +320,7 @@ def _end_frame(
     if not current_frame:
         current_frame = Frame(event.id.frame)
 
-    current_frame.end = Frame.End._parse(event.data)
+    current_frame.end = Frame.End._parse(event.raw_data, replay_version)
     return current_frame
 
 
@@ -318,6 +333,7 @@ def _game_start(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     handlers[Start](event)
     if skip_frames and total_size != 0:
@@ -336,6 +352,7 @@ def _game_end(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     handlers[End](event)
     return current_frame
@@ -350,6 +367,7 @@ def _do_nothing(
     bytes_read,
     payload_sizes,
     stream,
+    replay_version,
 ):
     pass
 
@@ -367,15 +385,35 @@ thing = {
 
 
 def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
+    # `total_size` will be zero for in-progress replays
     current_frame = None
     bytes_read = 0
     event = None
+    replay_version = None
 
-    # `total_size` will be zero for in-progress replays
+    (event_code,) = unpack_uint8(stream.read(1))
+    if event_code == 0x36:
+        b = payload_sizes[event_code]
+    else:
+        raise ValueError(f"expected event code 0x36 (Game Start),got value {event_code}")
+
+    start_block = io.BytesIO(stream.read(b))
+    try:
+        event = Start._parse(start_block)
+    except Exception as exc:
+        raise ParseError(str(exc))
+
+    bytes_read += b + 1
+
+    replay_version = event.slippi_version
+
     while (total_size == 0 or bytes_read < total_size) and not isinstance(event, End):
-        (b, event, event_code) = _parse_event(stream, payload_sizes)
+        (b, event, event_code) = _parse_event(stream, payload_sizes, replay_version)
         bytes_read += b
 
+        # Manual jump table implementation to avoid the giant inefficient commented block below
+        # For non-frame entities, current_frame is passed back without modification
+        # The handlers are all closures, so it doesn't matter where they're invoked, they'll still build the Game object
         current_frame = thing[event_code](
             current_frame,
             event,
@@ -385,6 +423,7 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
             bytes_read,
             payload_sizes,
             stream,
+            replay_version,
         )
 
         # pattern matching a type requires type constructor, probably doesn't actually construct the type?

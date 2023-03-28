@@ -24,6 +24,7 @@ def eef(replay):
 with os.scandir(dir) as d:
     for entry in d:
         file = os.path.join(dir, entry.name)
+        print(entry.name)
         print(timeit.timeit("eef(file)", number=1, globals=globals()))
 
 # for i in range(100000):
