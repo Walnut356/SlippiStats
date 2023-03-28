@@ -2,7 +2,6 @@ from abc import ABC
 from collections import UserList
 from dataclasses import dataclass
 from math import degrees, dist
-from typing import Optional
 
 import polars as pl
 
@@ -27,8 +26,8 @@ class Stat(ABC):
 @dataclass
 class WavedashData(Stat):
     frame_index: int
-    angle: Optional[float]  # in degrees
-    direction: Optional[str]
+    angle: float | None  # in degrees
+    direction: str | None
     r_frame: int  # which airborne frame was the airdodge input on?
     airdodge_frames: int
     waveland: bool
@@ -37,7 +36,7 @@ class WavedashData(Stat):
         self,
         frame_index: int,
         r_input_frame: int = 0,
-        stick: Optional[Position] = None,
+        stick: Position | None = None,
         airdodge_frames: int = 0,
     ):
         self.frame_index = frame_index
@@ -106,15 +105,15 @@ class DashData(Stat):
 @dataclass
 class TechData(Stat):
     frame_index: int
-    tech_type: Optional[TechType]
+    tech_type: TechType | None
     was_punished: bool
     direction: str
     position: Position
     is_on_platform: bool
     is_missed_tech: bool
-    towards_center: Optional[bool]
-    towards_opponent: Optional[bool]
-    jab_reset: Optional[bool]
+    towards_center: bool | None
+    towards_opponent: bool | None
+    jab_reset: bool | None
     last_hit_by: str
 
     def __init__(self):
@@ -130,7 +129,7 @@ class TechData(Stat):
 @dataclass
 class TechState:
     tech: TechData
-    last_state: Optional[ActionState | int]
+    last_state: ActionState | int | None
 
     def __init__(self):
         self.tech = TechData()
@@ -143,23 +142,23 @@ class TechState:
 @dataclass
 class TakeHitData(Stat):
     frame_index: int
-    last_hit_by: Optional[Attack]
-    state_before_hit: Optional[ActionState]
-    grounded: Optional[bool]
-    crouch_cancel: Optional[bool]
-    hitlag_frames: Optional[int]
+    last_hit_by: Attack | None
+    state_before_hit: ActionState | None
+    grounded: bool | None
+    crouch_cancel: bool | None
+    hitlag_frames: int | None
     stick_regions_during_hitlag: list[JoystickRegion]
     sdi_inputs: list[JoystickRegion]
-    asdi: Optional[JoystickRegion]
-    di_stick_pos: Optional[float]
-    percent: Optional[float]
-    kb_velocity: Optional[Velocity]
-    kb_angle: Optional[float]
-    final_kb_velocity: Optional[Velocity]
-    final_kb_angle: Optional[float]
-    start_pos: Optional[Position]
-    end_pos: Optional[Position]
-    di_efficacy: Optional[float]
+    asdi: JoystickRegion | None
+    di_stick_pos: Position | None
+    percent: float | None
+    kb_velocity: Velocity | None
+    kb_angle: float | None
+    final_kb_velocity: Velocity | None
+    final_kb_angle: float | None
+    start_pos: Position | None
+    end_pos: Position | None
+    di_efficacy: float | None
 
     def __init__(self):
         self.frame_index = -1
@@ -232,7 +231,7 @@ class LCancelData(Stat):
     frame_index: int
     l_cancel: bool
     move: Attack
-    position: int
+    position: IntEnum
     trigger_input_frame: int
 
     def __init__(self, frame_index, l_cancel, move, position, trigger_input_frame):
@@ -281,7 +280,7 @@ class Wavedashes(UserList):
     """Iterable wrapper for lists of Wavedash data"""
 
     data_header: dict
-    data: list
+    data: list[WavedashData]
 
     def __init__(self, data_header):
         self.data_header = data_header
@@ -295,9 +294,7 @@ class Wavedashes(UserList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) > 0:
-            return pl.DataFrame(
-                [self.data_header | vars(stat) for stat in self if stat is not None]
-            )
+            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
         else:
             return
 
@@ -306,7 +303,7 @@ class Dashes(UserList):
     """Iterable wrapper for lists of Dash data"""
 
     data_header: dict
-    data: list
+    data: list[DashData]
 
     def __init__(self, data_header):
         self.data_header = data_header
@@ -319,16 +316,14 @@ class Dashes(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected DashData")
 
     def to_polars(self):
-        return pl.DataFrame(
-            [self.data_header | vars(stat) for stat in self if stat is not None]
-        )
+        return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
 
 
 class Techs(UserList):
     """Iterable wrapper for lists of Tech data"""
 
     data_header: dict
-    data: list
+    data: list[TechData]
 
     def __init__(self, data_header):
         self.data_header = data_header
@@ -341,16 +336,14 @@ class Techs(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected TechData")
 
     def to_polars(self):
-        return pl.DataFrame(
-            [self.data_header | vars(stat) for stat in self if stat is not None]
-        )
+        return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
 
 
 class TakeHits(UserList):
     """Iterable wrapper rapper for lists of Take Hit data"""
 
     data_header: dict
-    data: list
+    data: list[TakeHitData]
 
     def __init__(self, data_header):
         self.data_header = data_header
@@ -368,7 +361,7 @@ class TakeHits(UserList):
         data = []
 
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for stat in self:
+        for stat in self.data:
             stat_dict = vars(stat).copy()
             try:
                 lhb = try_enum(Attack, stat.last_hit_by).name
@@ -383,9 +376,7 @@ class TakeHits(UserList):
             stat_dict["state_before_hit"] = sbh or "UNKNOWN"
             stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs]
             stat_dict["asdi"] = stat.asdi.name
-            stat_dict["stick_regions_during_hitlag"] = [
-                region.name for region in stat.stick_regions_during_hitlag
-            ]
+            stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
             stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
             stat_dict["final_kb_velocity"] = [
                 stat.final_kb_velocity.x,
@@ -405,7 +396,7 @@ class LCancels(UserList):
     """Iterable wrapper for lists of l-cancel data"""
 
     data_header: dict
-    percent: Optional[float]
+    percent: float | None
     data: list[LCancelData]
 
     def __init__(self, data_header):
@@ -431,7 +422,7 @@ class LCancels(UserList):
         data = []
 
         # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for stat in self:
+        for stat in self.data:
             # we have to make a copy so we don't bork the data with our changes
             stat_dict = vars(stat).copy()
             try:
@@ -449,7 +440,7 @@ class ShieldDrops(UserList):
     """Iterable wrapper for lists of Dash data"""
 
     data_header: dict
-    data: list
+    data: list[ShieldDropData]
 
     def __init__(self, data_header):
         self.data_header = data_header
@@ -459,13 +450,11 @@ class ShieldDrops(UserList):
         if isinstance(item, ShieldDropData):
             UserList.append(self, item)
         else:
-            raise ValueError(
-                f"Incorrect stat type: {type(item)}, expected ShieldDropData"
-            )
+            raise ValueError(f"Incorrect stat type: {type(item)}, expected ShieldDropData")
 
     def to_polars(self):
         data = []
-        for stat in self:
+        for stat in self.data:
             stat_dict = stat.__dict__.copy()
             try:
                 stat_dict["position"] = stat.position.name

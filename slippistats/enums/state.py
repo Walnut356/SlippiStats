@@ -1,5 +1,4 @@
 from enum import IntFlag
-from typing import Optional
 from .character import InGameCharacter
 from ..util import IntEnum
 
@@ -39,7 +38,7 @@ CHARACTER_STATE_DICT = {
 }
 
 
-def get_character_state(state: int, character: Optional[int] = None):
+def get_character_state(state: int, character: int | None = None):
     if state < 0:
         raise ValueError()
     if state < 341:

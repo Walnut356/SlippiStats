@@ -10,7 +10,6 @@ from math import (
     sqrt,
     tau,
 )
-from typing import Optional
 
 # from ..enums.character import InGameCharacter
 from ..controller import Buttons
@@ -417,7 +416,7 @@ def get_joystick_region(stick_position: Position) -> JoystickRegion:
 # yapf: enable
 
 
-def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Optional[Velocity]:
+def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Velocity | None:
     # If we don't have one velocity value, we don't have any so we can just return
     if player_frame_post.self_air_speed is None:
         return None
@@ -429,7 +428,8 @@ def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Optional[Velo
 
 
 def get_angle(point: Velocity | Position):
-    # atan2 returns 0 to 180 and 0 to -180. By adding tau (2 * pi) and wrapping around tau, we normalize to the familiar 0-360
+    # atan2 returns 0 to 180 and 0 to -180.
+    # By adding tau (2 * pi) and wrapping around tau, we normalize to the familiar 0-360
     return (atan2(point.y, point.x) + tau) % tau
 
 

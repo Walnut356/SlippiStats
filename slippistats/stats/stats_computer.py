@@ -3,7 +3,7 @@ import os
 import warnings
 from itertools import permutations
 from math import degrees
-from typing import Optional
+
 
 import polars as pl
 
@@ -56,13 +56,13 @@ from .stat_types import (
 
 
 class StatsComputer(ComputerBase):
-    wavedash_state: Optional[WavedashData]
-    tech_state: Optional[TechState]
-    dash_state: Optional[DashData]
-    take_hit_state: Optional[TakeHitData]
-    recovery_state: Optional[RecoveryData]
+    wavedash_state: WavedashData | None
+    tech_state: TechState | None
+    dash_state: DashData | None
+    take_hit_state: TakeHitData | None
+    recovery_state: RecoveryData | None
 
-    def __init__(self, replay: Optional[os.PathLike | Game | str] = None):
+    def __init__(self, replay: os.PathLike | Game | str | None = None):
         self.players = []
         self.wavedash_state = None
         self.tech_state = None
@@ -76,7 +76,7 @@ class StatsComputer(ComputerBase):
 
     def stats_compute(
         self,
-        connect_code: Optional[str] = None,
+        connect_code: str | None = None,
         wavedash=True,
         dash=True,
         tech=True,
@@ -86,9 +86,7 @@ class StatsComputer(ComputerBase):
         if connect_code is None:
             player_perms = permutations(self.players)
         else:
-            player_perms = [
-                (self.get_player(connect_code), self.get_opponent(connect_code))
-            ]
+            player_perms = [(self.get_player(connect_code), self.get_opponent(connect_code))]
 
         for player, opponent in player_perms:
             if wavedash:
@@ -108,13 +106,11 @@ class StatsComputer(ComputerBase):
 
     def wavedash_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
     ) -> Wavedashes:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -138,9 +134,7 @@ class StatsComputer(ComputerBase):
                     Buttons.Physical.R in past_frame.pre.buttons.physical.pressed()
                     or Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()
                 ):
-                    self.wavedash_state = WavedashData(
-                        i, 0, player_frame.pre.joystick, j
-                    )
+                    self.wavedash_state = WavedashData(i, 0, player_frame.pre.joystick, j)
 
                     for k in range(0, 5):
                         past_frame = player.frames[i - j - k]
@@ -156,13 +150,11 @@ class StatsComputer(ComputerBase):
 
     def dash_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
     ) -> Dashes:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -186,10 +178,7 @@ class StatsComputer(ComputerBase):
                     is_dashdance=False,
                 )
 
-                if (
-                    prev_player_state == ActionState.TURN
-                    and prev_prev_player_state == ActionState.DASH
-                ):
+                if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
                     # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
                     self.dash_state.is_dashdance = True
                     player.stats.dashes[-1].is_dashdance = True
@@ -204,14 +193,12 @@ class StatsComputer(ComputerBase):
 
     def tech_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
-        opponent: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
+        opponent: Player | None = None,
     ) -> Techs:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -244,9 +231,7 @@ class StatsComputer(ComputerBase):
                 self.tech_state.tech = TechData()
                 self.tech_state.tech.frame_index = i
                 if opponent_frame.post.most_recent_hit:
-                    self.tech_state.tech.last_hit_by = try_enum(
-                        Attack, opponent_frame.post.most_recent_hit
-                    ).name
+                    self.tech_state.tech.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit).name
                 self.tech_state.tech.position = player_frame.post.position
                 self.tech_state.tech.is_on_platform = (
                     player_frame.post.position.y > 5
@@ -268,9 +253,7 @@ class StatsComputer(ComputerBase):
                     self.tech_state.tech.jab_reset = True
 
                 case TechType.TECH_LEFT | TechType.MISSED_TECH_ROLL_LEFT:
-                    opnt_relative_position = (
-                        opponent_frame.post.position.x - player_frame.post.position.x
-                    )
+                    opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
                         self.tech_state.tech.towards_center = True
                     else:
@@ -280,9 +263,7 @@ class StatsComputer(ComputerBase):
                     else:
                         self.tech_state.tech.towards_opponent = False
                 case TechType.TECH_RIGHT | TechType.MISSED_TECH_ROLL_RIGHT:
-                    opnt_relative_position = (
-                        opponent_frame.post.position.x - player_frame.post.position.x
-                    )
+                    opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
                         self.tech_state.tech.towards_center = False
                     else:
@@ -300,14 +281,12 @@ class StatsComputer(ComputerBase):
 
     def take_hit_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
-        opponent: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
+        opponent: Player | None = None,
     ) -> TakeHits:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -333,19 +312,15 @@ class StatsComputer(ComputerBase):
 
             # right now i don't care about shield SDI/ASDI but i may change this down the line
             # it requires slightly different logic
-            in_hitlag = is_in_hitlag(player_frame.post.flags) and not is_shielding(
+            in_hitlag = is_in_hitlag(player_frame.post.flags) and not is_shielding(prev_player_frame.post.state)
+            was_in_hitlag = is_in_hitlag(prev_player_frame.post.flags) and not is_shielding(
                 prev_player_frame.post.state
             )
-            was_in_hitlag = is_in_hitlag(
-                prev_player_frame.post.flags
-            ) and not is_shielding(prev_player_frame.post.state)
 
             if not in_hitlag:
                 if was_in_hitlag and self.take_hit_state is not None:
                     self.take_hit_state.end_pos = prev_player_frame.post.position
-                    self.take_hit_state.last_hit_by = try_enum(
-                        Attack, opponent_frame.post.most_recent_hit
-                    )
+                    self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
 
                     effective_stick = player_frame.pre.joystick
                     match get_joystick_region(player_frame.pre.joystick):
@@ -367,30 +342,19 @@ class StatsComputer(ComputerBase):
                     self.take_hit_state.di_stick_pos = effective_stick
 
                     if self.replay_version >= "3.5.0":
-                        if (
-                            self.take_hit_state.kb_velocity.x != 0.0
-                            and self.take_hit_state.kb_velocity.y != 0.0
-                        ):
+                        if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0.0:
                             self.take_hit_state.final_kb_angle = get_post_di_angle(
                                 effective_stick, self.take_hit_state.kb_velocity
                             )
 
                             di_efficacy = (
-                                abs(
-                                    self.take_hit_state.final_kb_angle
-                                    - self.take_hit_state.kb_angle
-                                )
-                                / 18
+                                abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18
                             ) * 100
                             # modulo magic to truncate to 2 decimal place
                             # see: https://stackoverflow.com/a/49183117
-                            self.take_hit_state.di_efficacy = (
-                                di_efficacy - di_efficacy % 1e-2
-                            )
+                            self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
                         else:
-                            self.take_hit_state.final_kb_angle = (
-                                self.take_hit_state.kb_angle
-                            )
+                            self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
 
                         self.take_hit_state.final_kb_velocity = get_post_di_velocity(
                             self.take_hit_state.final_kb_angle,
@@ -401,9 +365,7 @@ class StatsComputer(ComputerBase):
                     if cstick != JoystickRegion.DEAD_ZONE:
                         self.take_hit_state.asdi = cstick
                     else:
-                        self.take_hit_state.asdi = get_joystick_region(
-                            player_frame.pre.joystick
-                        )
+                        self.take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
 
                     self.take_hit_state.find_valid_sdi()
 
@@ -411,9 +373,7 @@ class StatsComputer(ComputerBase):
                     self.take_hit_state = None
                 continue
 
-            if not was_in_hitlag and just_took_damage(
-                player_frame.post.percent, prev_player_frame.post.percent
-            ):
+            if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
                 self.take_hit_state = TakeHitData()
                 self.take_hit_state.frame_index = i
                 self.take_hit_state.state_before_hit = player.frames[i - 1].post.state
@@ -422,18 +382,12 @@ class StatsComputer(ComputerBase):
                 self.take_hit_state.grounded = not player_frame.post.is_airborne
                 if self.replay_version >= "3.5.0":
                     self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
-                    self.take_hit_state.kb_angle = degrees(
-                        get_angle(player_frame.post.knockback_speed)
-                    )
+                    self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
                 else:
                     self.take_hit_state.kb_velocity = None
                     self.take_hit_state.kb_angle = None
 
-                if (
-                    ActionRange.SQUAT_START
-                    <= prev_player_frame.post.state
-                    < ActionRange.SQUAT_END
-                ):
+                if ActionRange.SQUAT_START <= prev_player_frame.post.state < ActionRange.SQUAT_END:
                     self.take_hit_state.crouch_cancel = True
                 else:
                     self.take_hit_state.crouch_cancel = False
@@ -442,22 +396,18 @@ class StatsComputer(ComputerBase):
             # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
 
             if self.take_hit_state is not None:
-                self.take_hit_state.stick_regions_during_hitlag.append(
-                    get_joystick_region(player_frame.pre.joystick)
-                )
+                self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
                 self.take_hit_state.hitlag_frames += 1
 
         return player.stats.take_hits
 
     def l_cancel_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
     ) -> LCancels:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -477,7 +427,7 @@ class StatsComputer(ComputerBase):
                 continue
 
             # Check for l/r press either 15 frames prior, or j + hitlag frames prior
-            trigger_input_frame: Optional[int] = None
+            trigger_input_frame: int | None = None
             in_hitlag = False
             j = 0
 
@@ -486,9 +436,7 @@ class StatsComputer(ComputerBase):
                     if is_in_hitlag(player.frames[i - j].post.flags):
                         in_hitlag = True
 
-                    if just_input_l_cancel(
-                        player.frames[i - j], player.frames[i - j - 1]
-                    ):
+                    if just_input_l_cancel(player.frames[i - j], player.frames[i - j - 1]):
                         trigger_input_frame = -j
                         break
 
@@ -497,9 +445,7 @@ class StatsComputer(ComputerBase):
             if trigger_input_frame is not None:
                 for j in range(5):
                     if i + j < len(player.frames):
-                        if just_input_l_cancel(
-                            player.frames[i + j], player.frames[i + j - 1]
-                        ):
+                        if just_input_l_cancel(player.frames[i + j], player.frames[i + j - 1]):
                             trigger_input_frame = j
 
             player.stats.l_cancels.append(
@@ -508,9 +454,7 @@ class StatsComputer(ComputerBase):
                     move=player.frames[i - 1].post.state,
                     l_cancel=True if l_cancel == 1 else False,
                     trigger_input_frame=trigger_input_frame,
-                    position=get_ground(
-                        self.replay.start.stage, player_frame.post.last_ground_id
-                    ),
+                    position=get_ground(self.replay.start.stage, player_frame.post.last_ground_id),
                 )
             )
 
@@ -519,14 +463,12 @@ class StatsComputer(ComputerBase):
 
     def recovery_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
-        opponent: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
+        opponent: Player | None = None,
     ) -> TakeHits:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -539,19 +481,13 @@ class StatsComputer(ComputerBase):
 
             player_state = player_frame.post.state
             player_position = player_frame.post.position
-            player_just_offstage = is_offstage(
-                player_position, stage
-            ) and not is_offstage(player.frames[i - 1].post.position, stage)
+            player_just_offstage = is_offstage(player_position, stage) and not is_offstage(
+                player.frames[i - 1].post.position, stage
+            )
             player_in_hitstun = is_in_hitstun(player_frame.post.flags)
 
-            if (
-                self.recovery_state is None
-                and player_just_offstage
-                and player_in_hitstun
-            ):
-                self.recovery_state = RecoveryData(
-                    frame_index=i, last_hit_by=opponent_frame.post.position
-                )
+            if self.recovery_state is None and player_just_offstage and player_in_hitstun:
+                self.recovery_state = RecoveryData(frame_index=i, last_hit_by=opponent_frame.post.position)
 
             if self.recovery_state is None:
                 continue
@@ -570,8 +506,7 @@ class StatsComputer(ComputerBase):
             player_is_ledge = is_ledge_action(player_state)
             player_did_land = (
                 not player_frame.post.is_airborne
-                and get_ground(stage, player_frame.post.last_ground_id)
-                != Yoshis.RANDALL
+                and get_ground(stage, player_frame.post.last_ground_id) != Yoshis.RANDALL
             )
 
     # def track_
@@ -580,14 +515,12 @@ class StatsComputer(ComputerBase):
 
     def shield_drop_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
-        opponent: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
+        opponent: Player | None = None,
     ) -> TakeHits:
         if connect_code is None and player is None:
-            raise ValueError(
-                "Compute functions require either a connect_code or player argument"
-            )
+            raise ValueError("Compute functions require either a connect_code or player argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)

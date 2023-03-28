@@ -2,7 +2,7 @@ import datetime
 from dataclasses import dataclass
 from itertools import permutations
 from os import PathLike
-from typing import Optional
+
 
 from ..enums.character import CSSCharacter
 from ..event import Frame, Start
@@ -18,14 +18,14 @@ class Player(Base):
 
     character: CSSCharacter
     port: Ports
-    connect_code: Optional[str]
-    display_name: Optional[str]
+    connect_code: str | None
+    display_name: str | None
     costume: int
     did_win: bool
     frames: list[Frame.Port.Data]
     stats: Data
     combos: list
-    nana_frames: Optional[list[Frame.Port.Data]] = None
+    nana_frames: list[Frame.Port.Data] | None = None
 
     def __init__(
         self,
@@ -63,8 +63,8 @@ class Player(Base):
 
 # TODO abstract base class?
 class ComputerBase:
-    replay: Optional[Game]
-    replay_version: Optional[Start.SlippiVersion]
+    replay: Game | None
+    replay_version: Start.SlippiVersion | None
     queue: list[dict]
     replay_path: PathLike | str
     players: list[Player]

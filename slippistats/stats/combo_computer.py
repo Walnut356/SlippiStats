@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
-from typing import Optional
 
 from ..enums.state import ActionState
 from ..event import Frame, Position
@@ -36,7 +35,8 @@ POST_COMBO_BUFFER_FRAMES = 90
 
 # class ComboEvent(Enum):
 #     """Enumeration for combo states"""
-#     # strictly speaking this is unnecessary and unused at the moment. AFAIK this is meant to be used in conjunction with real time
+#     # strictly speaking this is unnecessary and unused at the moment.
+#     # AFAIK this is meant to be used in conjunction with real time
 #     # parsing, which this parser *can* do. Maybe a future TODO to get it to work properly.
 #     COMBO_START = "COMBO_START"
 #     COMBO_EXTEND = "COMBO_EXTEND"
@@ -51,7 +51,7 @@ class MoveLanded:
     move_id: int = 0
     hit_count: int = 0
     damage: float = 0
-    opponent_position: Optional[Position] = None
+    opponent_position: Position | None = None
 
 
 @dataclass
@@ -64,7 +64,7 @@ class ComboData:
 
     moves: list[MoveLanded] = field(default_factory=list)
     did_kill: bool = False
-    death_direction: Optional[str] = None
+    death_direction: str | None = None
     player_stocks: int = 4
     opponent_stocks: int = 4
     did_end_game: bool = False
@@ -74,8 +74,9 @@ class ComboData:
     start_frame: int = 0
     end_frame: int = 0
 
-    # I could probably add a "combo_filters()" abstraction with keyword arguments, but that feels like it shoehorns too much by limiting
-    # possible filter options, akin to clippi. Until i have a more robust list of filters, i won't make that further abstraction
+    # I could probably add a "combo_filters()" abstraction with keyword arguments,
+    # but that feels like it shoehorns too much by limiting possible filter options, akin to clippi
+    # Until i have a more robust list of filters, i won't make that further abstraction
     def total_damage(self) -> float:
         """Calculates total damage of the combo"""
         return self.end_percent - self.start_percent
@@ -93,10 +94,10 @@ class ComboData:
 class ComboState:
     """Contains info used during combo calculation to build the final combo"""
 
-    combo: Optional[ComboData] = field(default_factory=ComboData)
-    move: Optional[MoveLanded] = field(default_factory=MoveLanded)
+    combo: ComboData | None = field(default_factory=ComboData)
+    move: MoveLanded | None = field(default_factory=MoveLanded)
     reset_counter: int = 0
-    last_hit_animation: Optional[int] = None
+    last_hit_animation: int | None = None
 
 
 class ComboComputer(ComputerBase):
@@ -107,7 +108,7 @@ class ComboComputer(ComputerBase):
     queue: list[dict]
     replay_path: Path
 
-    def __init__(self, replay: Optional[PathLike | Game | str] = None):
+    def __init__(self, replay: PathLike | Game | str | None = None):
         self.rules = None
         self.combos = []
         self.players = []
@@ -134,9 +135,9 @@ class ComboComputer(ComputerBase):
 
     def combo_compute(
         self,
-        connect_code: Optional[str] = None,
-        player: Optional[Player] = None,
-        opponent: Optional[Player] = None,
+        connect_code: str | None = None,
+        player: Player | None = None,
+        opponent: Player | None = None,
         hitstun_check=True,
         hitlag_check=True,
         tech_check=True,
@@ -147,8 +148,8 @@ class ComboComputer(ComputerBase):
         shield_break_check=True,
         ledge_check=True,
     ) -> list[ComboData]:
-        """Generates list of combos from the replay information parsed using prime_replay(), returns nothing. Output is accessible as a list
-        through ComboComputer.combos"""
+        """Generates list of combos from the replay information parsed using prime_replay(), returns nothing.
+        Output is also accessible as a list through ComboComputer.combos"""
 
         if connect_code is None and player is None:
             raise ValueError(
@@ -191,7 +192,7 @@ class ComboComputer(ComputerBase):
             if action_changed_since_hit or action_state_reset:
                 self.combo_state.last_hit_animation = None
 
-            # I throw in the extra hitstun check to make it extra robust in case the animations are weird for whatever reason
+            # I throw in the extra hitstun check to make it extra robust in case we're forgetting some animation
             # Don't include hitlag check unless you want shield hits to start combo events.
             # There might be false positives on self damage like fully charged roy neutral b
             if (
@@ -234,7 +235,7 @@ class ComboComputer(ComputerBase):
             if self.combo_state.combo is None:
                 continue
 
-            # Otherwise check the rest of the relevant statistics and determine whether to continue or terminate the combo
+            # Otherwise check all other relevant statistics and determine whether to continue or terminate the combo
             opnt_is_in_hitlag = is_in_hitlag(opponent_frame.post.flags) and hitlag_check
             opnt_is_teching = is_teching(opnt_action_state) and tech_check
             opnt_is_downed = is_downed(opnt_action_state) and downed_check
@@ -273,7 +274,8 @@ class ComboComputer(ComputerBase):
             player_did_lose_stock = did_lose_stock(player_frame, prev_player_frame)
 
             # reset the combo timeout timer to 0 if the opponent meets the following conditions
-            # list expanded from official parser to allow for higher combo variety and capture more of what we would count as "combos"
+            # list expanded from official parser to allow for higher combo variety
+            #  and captures more of what we would count as "combos"
             # noteably, this list will allow mid-combo shield pressure and edgeguards to be counted as part of a combo
             if (
                 opnt_is_damaged
