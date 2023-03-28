@@ -14,11 +14,12 @@ from ..event import Position, Velocity
 from .common import JoystickRegion, TechType, get_angle
 
 
-#TODO abstract base class:
+# TODO abstract base class:
 class Stat(ABC):
     pass
 
-#TODO add stocks_remaining
+
+# TODO add stocks_remaining
 
 # --------------------------------- Wavedash --------------------------------- #
 
@@ -32,10 +33,16 @@ class WavedashData(Stat):
     airdodge_frames: int
     waveland: bool
 
-    def __init__(self, frame_index: int, r_input_frame: int = 0, stick: Optional[Position] = None, airdodge_frames: int = 0):
+    def __init__(
+        self,
+        frame_index: int,
+        r_input_frame: int = 0,
+        stick: Optional[Position] = None,
+        airdodge_frames: int = 0,
+    ):
         self.frame_index = frame_index
         if stick:
-            # atan2 converts coordinates to degrees without losing information (with tan quadrent 1 and 3 are both positive)
+            # atan2 converts coordinates to degrees without losing information
             self.angle = degrees(get_angle(stick))
             # then we need to normalize the values to degrees-below-horizontal and assign a direction
             if self.angle < 270 and self.angle > 180:
@@ -75,7 +82,14 @@ class DashData(Stat):
     direction: str
     is_dashdance: bool
 
-    def __init__(self, frame_index:int =-1, direction:str ="NONE", is_dashdance:bool =False, start_pos:float =0, end_pos:float =0):
+    def __init__(
+        self,
+        frame_index: int = -1,
+        direction: str = "NONE",
+        is_dashdance: bool = False,
+        start_pos: float = 0,
+        end_pos: float = 0,
+    ):
         self.frame_index = frame_index
         self.start_pos = start_pos
         self.end_pos = end_pos
@@ -84,7 +98,6 @@ class DashData(Stat):
 
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
-
 
 
 # ----------------------------------- Tech ----------------------------------- #
@@ -98,7 +111,7 @@ class TechData(Stat):
     direction: str
     position: Position
     is_on_platform: bool
-    is_missed_tech:bool
+    is_missed_tech: bool
     towards_center: Optional[bool]
     towards_opponent: Optional[bool]
     jab_reset: Optional[bool]
@@ -114,9 +127,8 @@ class TechData(Stat):
         self.towards_opponent = None
 
 
-
 @dataclass
-class TechState():
+class TechState:
     tech: TechData
     last_state: Optional[ActionState | int]
 
@@ -192,12 +204,14 @@ class TakeHitData(Stat):
                 self.sdi_inputs.append(stick_region)
                 continue
 
-            # Diagonal -> cardinal will NOT result in a second SDI input unless the cardinal borders the opposite quadrant
+            # Diagonal -> cardinal will NOT result in a second SDI input
+            # unless the cardinal borders the opposite quadrant
             if prev_stick_region % 2 == 1:
                 if stick_region % 2 == 1:
                     self.sdi_inputs.append(stick_region)
-                # HACK there's probably less stupid way to do this, but I checked and for any valid diagonal->cadinal (DR->L, UL->D, etc.)
-                # the absolute value of the difference between the 2 (order doesn't matter) is always 3 or 5 so this literally works
+                # HACK there's probably less stupid way to do this
+                # I checked and for any valid diagonal->cadinal (DR->L, UL->D, etc.)
+                # the absolute value of the difference between the 2 is always 3 or 5 so this literally works
                 # It should almost never happen though since you'd need to move 3 zones away inbetween frames
                 elif 3 <= abs(stick_region - prev_stick_region) < 7:
                     self.sdi_inputs.append(stick_region)
@@ -243,23 +257,29 @@ class LCancelData(Stat):
 
 # ------------------------------- Recovery Data ------------------------------ #
 
+
 @dataclass
 class RecoveryData(Stat):
     frame_index: int
 
+
 # ------------------------------- Shield Drop Data ------------------------------ #
+
 
 @dataclass
 class ShieldDropData(Stat):
     frame_index: int
     position: IntEnum | int
 
+
 # --------------------------------- Wrappers --------------------------------- #
 
-#TODO ABC, protocol, mixin? for append, to_polars, etc.
+# TODO ABC, protocol, mixin? for append, to_polars, etc.
+
 
 class Wavedashes(UserList):
     """Iterable wrapper for lists of Wavedash data"""
+
     data_header: dict
     data: list
 
@@ -275,13 +295,16 @@ class Wavedashes(UserList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) > 0:
-            return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
+            return pl.DataFrame(
+                [self.data_header | vars(stat) for stat in self if stat is not None]
+            )
         else:
             return
 
 
 class Dashes(UserList):
     """Iterable wrapper for lists of Dash data"""
+
     data_header: dict
     data: list
 
@@ -296,11 +319,14 @@ class Dashes(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected DashData")
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
+        return pl.DataFrame(
+            [self.data_header | vars(stat) for stat in self if stat is not None]
+        )
 
 
 class Techs(UserList):
     """Iterable wrapper for lists of Tech data"""
+
     data_header: dict
     data: list
 
@@ -315,11 +341,14 @@ class Techs(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected TechData")
 
     def to_polars(self):
-        return pl.DataFrame([self.data_header | vars(stat) for stat in self if stat is not None])
+        return pl.DataFrame(
+            [self.data_header | vars(stat) for stat in self if stat is not None]
+        )
 
 
 class TakeHits(UserList):
     """Iterable wrapper rapper for lists of Take Hit data"""
+
     data_header: dict
     data: list
 
@@ -354,9 +383,14 @@ class TakeHits(UserList):
             stat_dict["state_before_hit"] = sbh or "UNKNOWN"
             stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs]
             stat_dict["asdi"] = stat.asdi.name
-            stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
+            stat_dict["stick_regions_during_hitlag"] = [
+                region.name for region in stat.stick_regions_during_hitlag
+            ]
             stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
-            stat_dict["final_kb_velocity"] = [stat.final_kb_velocity.x, stat.final_kb_velocity.y]
+            stat_dict["final_kb_velocity"] = [
+                stat.final_kb_velocity.x,
+                stat.final_kb_velocity.y,
+            ]
             stat_dict["start_pos"] = [stat.start_pos.x, stat.start_pos.y]
             stat_dict["end_pos"] = [stat.end_pos.x, stat.end_pos.y]
             if stat.di_stick_pos is not None:
@@ -366,8 +400,10 @@ class TakeHits(UserList):
             data.append(self.data_header | stat_dict)
         return pl.DataFrame(data)
 
+
 class LCancels(UserList):
     """Iterable wrapper for lists of l-cancel data"""
+
     data_header: dict
     percent: Optional[float]
     data: list[LCancelData]
@@ -411,6 +447,7 @@ class LCancels(UserList):
 
 class ShieldDrops(UserList):
     """Iterable wrapper for lists of Dash data"""
+
     data_header: dict
     data: list
 
@@ -422,7 +459,9 @@ class ShieldDrops(UserList):
         if isinstance(item, ShieldDropData):
             UserList.append(self, item)
         else:
-            raise ValueError(f"Incorrect stat type: {type(item)}, expected ShieldDropData")
+            raise ValueError(
+                f"Incorrect stat type: {type(item)}, expected ShieldDropData"
+            )
 
     def to_polars(self):
         data = []
@@ -438,7 +477,7 @@ class ShieldDrops(UserList):
 
 
 @dataclass
-class Data():
+class Data:
     wavedashes: Wavedashes
     dashes: Dashes
     techs: Techs

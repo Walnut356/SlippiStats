@@ -4,6 +4,7 @@ from ..util import IntEnum, try_enum
 
 from .stage import Stage
 
+
 class Yoshis(IntEnum):
     RANDALL = 0
     LEFT_PLATFORM = 1
@@ -13,6 +14,7 @@ class Yoshis(IntEnum):
     RIGHT_PLATFORM = 5
     RIGHT_SLANT = 6
 
+
 class Battlefield(IntEnum):
     LEFT_EDGE = 0
     MAIN_STAGE = 1
@@ -21,6 +23,7 @@ class Battlefield(IntEnum):
     RIGHT_PLATFORM = 4
     RIGHT_EDGE = 5
 
+
 class Dreamland(IntEnum):
     LEFT_PLATFORM = 0
     RIGHT_PLATFORM = 1
@@ -28,6 +31,7 @@ class Dreamland(IntEnum):
     LEFT_EDGE = 3
     MAIN_STAGE = 4
     RIGHT_EDGE = 5
+
 
 class PokemonStadium(IntEnum):
     MAIN_STAGE = 34
@@ -38,6 +42,7 @@ class PokemonStadium(IntEnum):
     RIGHT_EDGE_INNER = 53
     RIGHT_EDGE_OUTTER = 54
 
+
 class FountainOfDreams(IntEnum):
     LEFT_PLATFORM = 0
     RIGHT_PLATFORM = 1
@@ -47,6 +52,7 @@ class FountainOfDreams(IntEnum):
     MAIN_STAGE = 5
     RIGHT_EDGE_INNER = 6
     RIGHT_EDGE_OUTTER = 7
+
 
 class FinalDestination(IntEnum):
     LEFT_EDGE = 0

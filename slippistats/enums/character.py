@@ -81,4 +81,4 @@ class InGameCharacter(IntEnum):
     SANDBAG = 32
 
 
-#TODO add costume enums?
+# TODO add costume enums?

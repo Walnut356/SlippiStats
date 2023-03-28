@@ -5,7 +5,7 @@ from .util import Base
 
 
 class Triggers(Base):
-    __slots__ = 'logical', 'physical'
+    __slots__ = "logical", "physical"
 
     logical: float  #: Processed analog trigger position
     physical: Triggers.Physical  #: Physical analog trigger positions (useful for APM)
@@ -20,7 +20,7 @@ class Triggers(Base):
         return other.logical == self.logical and other.physical == self.physical
 
     class Physical(Base):
-        __slots__ = 'l', 'r'
+        __slots__ = "l", "r"
 
         l: float
         r: float
@@ -38,7 +38,7 @@ class Triggers(Base):
 
 
 class Buttons(Base):
-    __slots__ = 'logical', 'physical'
+    __slots__ = "logical", "physical"
 
     logical: Buttons.Logical  #: Processed button-state bitmask
     physical: Buttons.Physical  #: Physical button-state bitmask

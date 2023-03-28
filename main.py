@@ -8,10 +8,10 @@ import pandas as pd
 import slippistats as slp
 from slippistats.enums.state import Field5
 
-directory = Path(r"Modern Replays")
-code = r"NUT#356"
+directory = Path(R"Modern Replays")
+code = R"NUT#356"
 
-peach_file = Path(r"Modern Replays/Game_20221227T210010.slp")
+peach_file = Path(R"Modern Replays/Game_20221227T210010.slp")
 
 game = slp.StatsComputer(peach_file)
 

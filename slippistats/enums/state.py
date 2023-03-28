@@ -36,7 +36,7 @@ CHARACTER_STATE_DICT = {
     InGameCharacter.YOSHI: lambda x: Yoshi(x),
     InGameCharacter.YOUNG_LINK: lambda x: YoungLink(x),
     InGameCharacter.ZELDA: lambda x: Zelda(x),
-    }
+}
 
 
 def get_character_state(state: int, character: Optional[int] = None):
@@ -49,7 +49,7 @@ def get_character_state(state: int, character: Optional[int] = None):
 
 class Direction(IntEnum):
     LEFT = -1
-    DOWN = 0  # technically not down, it's used for warp star item, but calling it "DOWN" is useful for stats enumerations
+    DOWN = 0  # technically not down, it's used for warp star item, but calling it "DOWN" is useful for stats enums
     RIGHT = 1
 
 
@@ -165,7 +165,6 @@ class ActionRange(IntEnum):
 
 
 class ActionState(IntEnum):
-
     # Individual IDs
     DEAD_DOWN = 0  # Bottom blast zone death
     DEAD_LEFT = 1  # Left blast zone death
@@ -507,7 +506,7 @@ class ActionState(IntEnum):
     HAMMER_FALL = 311
     HAMMER_JUMP = 312
     HAMMER_LANDING = 313
-    KINOKO_GIANT_START = 314  #super/poison mushroom states
+    KINOKO_GIANT_START = 314  # super/poison mushroom states
     KINOKO_GIANT_START_AIR = 315
     KINOKO_GIANT_END = 316
     KINOKO_GIANT_END_AIR = 317

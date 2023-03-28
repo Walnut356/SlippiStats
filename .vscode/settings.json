@@ -5,7 +5,7 @@
     },
     "python.linting.enabled": true,
     "python.linting.pylintPath": "pylint",
-    "python.formatting.provider": "yapf",
+    "python.formatting.provider": "black",
     "python.linting.pylintEnabled": false,
     "python.testing.unittestArgs": [
         "-v",
@@ -16,7 +16,4 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
-    "python.formatting.yapfArgs": [
-        "--style={based_on_style: google, column_limit: 140, indent_width: 4, allow_split_before_default_or_named_assigns: true, force_multiline_dict: true, align_closing_bracket_with_visual_indent: true, indent_closing_brackets: true}"
-    ],
 }

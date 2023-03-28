@@ -44,8 +44,9 @@ POST_COMBO_BUFFER_FRAMES = 90
 
 
 @dataclass
-class MoveLanded():
+class MoveLanded:
     """Contains all data for a single move connecting"""
+
     frame_index: int = 0
     move_id: int = 0
     hit_count: int = 0
@@ -54,12 +55,13 @@ class MoveLanded():
 
 
 @dataclass
-class ComboData():
+class ComboData:
     """Contains a single complete combo, including movelist
     Helper functions for filtering combos include:
     minimum_damage(num)
     minimum_length(num)
     total_damage()"""
+
     moves: list[MoveLanded] = field(default_factory=list)
     did_kill: bool = False
     death_direction: Optional[str] = None
@@ -88,8 +90,9 @@ class ComboData():
 
 
 @dataclass
-class ComboState():
+class ComboState:
     """Contains info used during combo calculation to build the final combo"""
+
     combo: Optional[ComboData] = field(default_factory=ComboData)
     move: Optional[MoveLanded] = field(default_factory=MoveLanded)
     reset_counter: int = 0
@@ -98,7 +101,7 @@ class ComboState():
 
 class ComboComputer(ComputerBase):
     """Base class for parsing combo events, call .prime_replay(path) to set up the instance,
-    and .combo_compute(connect_code) to populate the computer's .combos list. """
+    and .combo_compute(connect_code) to populate the computer's .combos list."""
 
     combo_state: ComboState
     queue: list[dict]
@@ -122,31 +125,35 @@ class ComboComputer(ComputerBase):
 
     def to_json(self, combo: ComboData):
         self.queue[-1]["path"] = self.replay_path
-        self.queue[-1]["gameStartAt"] = getattr(getattr(self, "metadata"), "date").strftime("%m/%d/%y %I:%M %p")
+        self.queue[-1]["gameStartAt"] = getattr(
+            getattr(self, "metadata"), "date"
+        ).strftime("%m/%d/%y %I:%M %p")
         self.queue[-1]["startFrame"] = combo.start_frame - PRE_COMBO_BUFFER_FRAMES
         self.queue[-1]["endFrame"] = combo.end_frame + POST_COMBO_BUFFER_FRAMES
         return self.queue
 
     def combo_compute(
-            self,
-            connect_code: Optional[str] = None,
-            player: Optional[Player] = None,
-            opponent: Optional[Player] = None,
-            hitstun_check=True,
-            hitlag_check=True,
-            tech_check=True,
-            downed_check=True,
-            offstage_check=True,
-            dodge_check=True,
-            shield_check=True,
-            shield_break_check=True,
-            ledge_check=True
-        ) -> list[ComboData]:
+        self,
+        connect_code: Optional[str] = None,
+        player: Optional[Player] = None,
+        opponent: Optional[Player] = None,
+        hitstun_check=True,
+        hitlag_check=True,
+        tech_check=True,
+        downed_check=True,
+        offstage_check=True,
+        dodge_check=True,
+        shield_check=True,
+        shield_break_check=True,
+        ledge_check=True,
+    ) -> list[ComboData]:
         """Generates list of combos from the replay information parsed using prime_replay(), returns nothing. Output is accessible as a list
         through ComboComputer.combos"""
 
         if connect_code is None and player is None:
-            raise ValueError("Combo compute functions require either a connect_code or player and opponent argument")
+            raise ValueError(
+                "Combo compute functions require either a connect_code or player and opponent argument"
+            )
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -162,7 +169,9 @@ class ComboComputer(ComputerBase):
 
             opnt_is_damaged = is_damaged(opnt_action_state)
             # Bitflags are used because the hitstun frame count is used for a bunch of other things as well
-            opnt_is_in_hitstun = is_in_hitstun(opponent_frame.post.flags) and hitstun_check
+            opnt_is_in_hitstun = (
+                is_in_hitstun(opponent_frame.post.flags) and hitstun_check
+            )
             opnt_is_grabbed = is_grabbed(opnt_action_state)
             opnt_is_cmd_grabbed = is_cmd_grabbed(opnt_action_state)
             opnt_damage_taken = calc_damage_taken(opponent_frame, prev_opponent_frame)
@@ -173,17 +182,24 @@ class ComboComputer(ComputerBase):
             # the actionStateCounter at this point which counts the number of frames since
             # an animation started. Should be more robust, for old files it should always be
             # null and null < null = false" - official parser
-            action_changed_since_hit = not (player_state == self.combo_state.last_hit_animation)
+            action_changed_since_hit = not (
+                player_state == self.combo_state.last_hit_animation
+            )
             action_frame_counter = player_frame.post.state_age
             prev_action_counter = prev_player_frame.post.state_age
             action_state_reset = action_frame_counter < prev_action_counter
-            if (action_changed_since_hit or action_state_reset):
+            if action_changed_since_hit or action_state_reset:
                 self.combo_state.last_hit_animation = None
 
-        # I throw in the extra hitstun check to make it extra robust in case the animations are weird for whatever reason
-        # Don't include hitlag check unless you want shield hits to start combo events.
-        # There might be false positives on self damage like fully charged roy neutral b
-            if (opnt_is_damaged or opnt_is_grabbed or opnt_is_cmd_grabbed or opnt_is_in_hitstun):
+            # I throw in the extra hitstun check to make it extra robust in case the animations are weird for whatever reason
+            # Don't include hitlag check unless you want shield hits to start combo events.
+            # There might be false positives on self damage like fully charged roy neutral b
+            if (
+                opnt_is_damaged
+                or opnt_is_grabbed
+                or opnt_is_cmd_grabbed
+                or opnt_is_in_hitstun
+            ):
                 # if the opponent has been hit and there's no "active" combo, start a new combo
                 if self.combo_state.combo is None:
                     self.combo_state.combo = ComboData(
@@ -192,17 +208,19 @@ class ComboComputer(ComputerBase):
                         start_frame=i - 123,
                         start_percent=prev_opponent_frame.post.percent,
                         current_percent=opponent_frame.post.percent,
-                        end_percent=opponent_frame.post.percent
-                        )
+                        end_percent=opponent_frame.post.percent,
+                    )
 
                     player.combos.append(self.combo_state.combo)
 
-            # if the opponent has been hit and we're sure it's not the same move, record the move's data
+                # if the opponent has been hit and we're sure it's not the same move, record the move's data
                 if opnt_damage_taken:
                     if self.combo_state.last_hit_animation is None:
                         self.combo_state.move = MoveLanded(
-                            frame_index=i - 123, move_id=player_frame.post.most_recent_hit, opponent_position=opponent_frame.post.position
-                            )
+                            frame_index=i - 123,
+                            move_id=player_frame.post.most_recent_hit,
+                            opponent_position=opponent_frame.post.position,
+                        )
 
                         self.combo_state.combo.moves.append(self.combo_state.move)
 
@@ -212,30 +230,41 @@ class ComboComputer(ComputerBase):
 
                     self.combo_state.last_hit_animation = prev_player_frame.post.state
 
-        # If a combo hasn't started and no damage was taken this frame, just skip to the next frame
+            # If a combo hasn't started and no damage was taken this frame, just skip to the next frame
             if self.combo_state.combo is None:
                 continue
 
-        # Otherwise check the rest of the relevant statistics and determine whether to continue or terminate the combo
+            # Otherwise check the rest of the relevant statistics and determine whether to continue or terminate the combo
             opnt_is_in_hitlag = is_in_hitlag(opponent_frame.post.flags) and hitlag_check
             opnt_is_teching = is_teching(opnt_action_state) and tech_check
             opnt_is_downed = is_downed(opnt_action_state) and downed_check
             opnt_is_dying = is_dying(opnt_action_state)
-            opnt_is_offstage = is_offstage(opponent_frame.post.position, self.replay.start.stage) and offstage_check
+            opnt_is_offstage = (
+                is_offstage(opponent_frame.post.position, self.replay.start.stage)
+                and offstage_check
+            )
             opnt_is_dodging = (
-                is_dodging(opnt_action_state) and dodge_check and not is_wavedashing(opnt_action_state, opponent.port, i, self.all_frames)
+                is_dodging(opnt_action_state)
+                and dodge_check
+                and not is_wavedashing(
+                    opnt_action_state, opponent.port, i, self.all_frames
                 )
+            )
             opnt_is_shielding = is_shielding(opnt_action_state) and shield_check
-            opnt_is_shield_broken = is_shield_broken(opnt_action_state) and shield_break_check
+            opnt_is_shield_broken = (
+                is_shield_broken(opnt_action_state) and shield_break_check
+            )
             opnt_did_lose_stock = did_lose_stock(opponent_frame, prev_opponent_frame)
             opnt_is_ledge_action = is_ledge_action(opnt_action_state) and ledge_check
             opnt_is_maybe_juggled = is_maybe_juggled(
                 opponent_frame.post.position,
                 getattr(opponent_frame, "is_airborne"),
                 self.replay.start.stage,
-                )  #TODO and juggled check
+            )  # TODO and juggled check
             opnt_is_special_fall = is_special_fall(opnt_action_state)
-            opnt_is_upb_lag = is_upb_lag(opnt_action_state, prev_opponent_frame.post.state)
+            opnt_is_upb_lag = is_upb_lag(
+                opnt_action_state, prev_opponent_frame.post.state
+            )
             # opnt_is_recovery_lag = is_recovery_lag(opponent_frame.character, opnt_action_state)
 
             if not opnt_did_lose_stock:
@@ -247,24 +276,23 @@ class ComboComputer(ComputerBase):
             # list expanded from official parser to allow for higher combo variety and capture more of what we would count as "combos"
             # noteably, this list will allow mid-combo shield pressure and edgeguards to be counted as part of a combo
             if (
-                opnt_is_damaged or  # Action state range
-                opnt_is_grabbed or  # Action state range
-                opnt_is_cmd_grabbed or  # Action state range
-                opnt_is_in_hitlag or  # Bitflags (will always fail with old replays)
-                opnt_is_in_hitstun or  # Bitflags (will always fail with old replays)
-                opnt_is_shielding or  # Action state range
-                opnt_is_offstage or  # X and Y coordinate check
-                opnt_is_dodging or  # Action state range
-                opnt_is_dying or  # Action state range
-                opnt_is_downed or  # Action state range
-                opnt_is_teching or  # Action state range
-                opnt_is_ledge_action or  # Action state range
-                opnt_is_shield_broken or  # Action state range
-                opnt_is_maybe_juggled or  # Y coordinate check
-                opnt_is_special_fall or  #Action state range
-                opnt_is_upb_lag
-                ):  # Action state range
-
+                opnt_is_damaged
+                or opnt_is_grabbed  # Action state range
+                or opnt_is_cmd_grabbed  # Action state range
+                or opnt_is_in_hitlag  # Action state range
+                or opnt_is_in_hitstun  # Bitflags (will always fail with old replays)
+                or opnt_is_shielding  # Bitflags (will always fail with old replays)
+                or opnt_is_offstage  # Action state range
+                or opnt_is_dodging  # X and Y coordinate check
+                or opnt_is_dying  # Action state range
+                or opnt_is_downed  # Action state range
+                or opnt_is_teching  # Action state range
+                or opnt_is_ledge_action  # Action state range
+                or opnt_is_shield_broken  # Action state range
+                or opnt_is_maybe_juggled  # Action state range
+                or opnt_is_special_fall  # Y coordinate check
+                or opnt_is_upb_lag  # Action state range
+            ):  # Action state range
                 self.combo_state.reset_counter = 0
             else:
                 self.combo_state.reset_counter += 1
@@ -273,7 +301,9 @@ class ComboComputer(ComputerBase):
 
             # All combo termination checks below
             if opnt_is_dying:
-                self.combo_state.combo.death_direction = get_death_direction(opnt_action_state)
+                self.combo_state.combo.death_direction = get_death_direction(
+                    opnt_action_state
+                )
 
             if opnt_did_lose_stock:
                 self.combo_state.combo.did_kill = True
@@ -282,10 +312,10 @@ class ComboComputer(ComputerBase):
 
                 should_terminate = True
 
-            if (self.combo_state.reset_counter > COMBO_LENIENCY or player_did_lose_stock):
+            if self.combo_state.reset_counter > COMBO_LENIENCY or player_did_lose_stock:
                 should_terminate = True
 
-        # If the combo should end, finalize the values, reset the temp storage
+            # If the combo should end, finalize the values, reset the temp storage
             if should_terminate:
                 self.combo_state.combo.end_frame = i - 123
                 self.combo_state.combo.end_percent = prev_opponent_frame.post.percent

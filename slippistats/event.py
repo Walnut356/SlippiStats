@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import struct
+from collections.abc import Sequence
 from enum import IntFlag
-from typing import Optional, Sequence, Union
 
 from .controller import Buttons, Triggers
 from .enums.attack import Attack
@@ -55,6 +55,7 @@ class EventType(IntEnum):
     ITEM = 0x3B
     FRAME_END = 0x3C
 
+
 class MatchType(Enum):
     OFFLINE = -1
     RANKED = 0
@@ -63,35 +64,35 @@ class MatchType(Enum):
     OTHER = 3
 
 
-#TODO make as many of these as possible dataclasses/recordclasses.
+# TODO make as many of these as possible dataclasses/recordclasses.
 class Start(Base):
     """Information used to initialize the game such as the game mode, settings, characters & stage."""
 
-    is_teams: bool  #: True if this was a teams game
-    players: tuple[Optional[Start.Player]]  #: Players in this game by port (port 1 is at index 0; empty ports will contain None)
-    random_seed: int  #: Random seed before the game start
-    slippi_version: Start.SlippiVersion  #: Information about the Slippi recorder that generated this replay
-    stage: Stage  #: Stage on which this game was played
-    is_pal: Optional[bool]  #: `added(1.5.0)` True if this was a PAL version of Melee
-    is_frozen_ps: Optional[bool]  #: `added(2.0.0)` True if frozen Pokemon Stadium was enabled
-    match_id: Optional[str]  #: `added(3.14.0)` Mode (ranked/unranked) and time the match started
+    is_teams: bool  # True if this was a teams game
+    players: tuple[Start.Player | None]  # Players in game, 0 indexed, empty ports will contain None
+    random_seed: int  # Random seed before the game start
+    slippi_version: Start.SlippiVersion  # Information about the Slippi recorder that generated this replay
+    stage: Stage  # Stage on which this game was played
+    is_pal: bool | None  # True if this was a PAL version of Melee
+    is_frozen_ps: bool | None  # True if frozen Pokemon Stadium was enabled
+    match_id: str | None  #  Mode (ranked/unranked) and time the match started
     match_type: bool
-    game_number: Optional[int]  #: `added(3.14.0)` The game number for consecutive games
-    tiebreak_number: Optional[int]
+    game_number: int | None  # The game number for consecutive games
+    tiebreak_number: int | None
 
     def __init__(
-            self,
-            is_teams: bool,
-            players: tuple[Optional[Start.Player]],
-            random_seed: int,
-            slippi: Start.SlippiVersion,
-            stage: Stage,
-            is_pal: Optional[bool] = None,
-            is_frozen_ps: Optional[bool] = None,
-            match_id: Optional[str] = None,
-            game_number: Optional[int] = None,
-            tiebreak_number: Optional[int] = None
-        ):
+        self,
+        is_teams: bool,
+        players: tuple[Start.Player | None],
+        random_seed: int,
+        slippi: Start.SlippiVersion,
+        stage: Stage,
+        is_pal: bool | None = None,
+        is_frozen_ps: bool | None = None,
+        match_id: str | None = None,
+        game_number: int | None = None,
+        tiebreak_number: int | None = None,
+    ):
         self.is_teams = is_teams
         self.players = players
         self.random_seed = random_seed
@@ -100,7 +101,7 @@ class Start(Base):
         self.is_pal = is_pal
         self.is_frozen_ps = is_frozen_ps
         self.match_id = match_id
-        if match_id: #it's lazy, but it works
+        if match_id:  # it's lazy, but it works
             match match_id[5]:
                 case "r":
                     self.match_type = MatchType.RANKED
@@ -127,7 +128,7 @@ class Start(Base):
         stage = Stage(stage)
 
         stream.read(80)  # skip game timer, item spawn bitfields, and damage ratio
-        players = []
+        players: list[cls.Player | None] = []
         for i in range(4):
             (character,) = unpack_uint8(stream.read(1))
             (type,) = unpack_uint8(stream.read(1))
@@ -146,7 +147,13 @@ class Start(Base):
             if type is not None:
                 character = CSSCharacter(character)
                 team = cls.Player.Team(team) if is_teams else None
-                player = cls.Player(character=character, type=type, stocks=stocks, costume=costume, team=team)
+                player = cls.Player(
+                    character=character,
+                    type=type,
+                    stocks=stocks,
+                    costume=costume,
+                    team=team,
+                )
             else:
                 player = None
 
@@ -175,7 +182,7 @@ class Start(Base):
                         tag_bytes = tag_bytes[:null_pos]
                     except ValueError:
                         pass
-                    players[i].tag = tag_bytes.decode('shift-jis').rstrip()
+                    players[i].tag = tag_bytes.decode("shift-jis").rstrip()
         except struct.error:
             pass
 
@@ -196,7 +203,7 @@ class Start(Base):
 
         try:
             (match_id,) = unpack_matchid(stream.read(50))
-            match_id = str(match_id.decode('utf-8')).rstrip('\x00')
+            match_id = str(match_id.decode("utf-8")).rstrip("\x00")
         except struct.error:
             match_id = None
         except EOFError:
@@ -223,26 +230,30 @@ class Start(Base):
             is_frozen_ps=is_frozen_ps,
             match_id=match_id,
             game_number=game_number,
-            tiebreak_number=tiebreak_number
-            )
+            tiebreak_number=tiebreak_number,
+        )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
-            self.is_teams == other.is_teams and self.players == other.players and self.random_seed == other.random_seed and
-            self.slippi_version == other.slippi_version and self.stage is other.stage
-            )
+            self.is_teams == other.is_teams
+            and self.players == other.players
+            and self.random_seed == other.random_seed
+            and self.slippi_version == other.slippi_version
+            and self.stage is other.stage
+        )
 
     class SlippiVersion(Base):
         """Information about the Slippi recorder that generated this replay."""
-        #TODO flatten to Slippi_Version
+
+        # TODO flatten to Slippi_Version
 
         major: int
         minor: int
         revision: int
 
-        def __init__(self, major: int, minor: int, revision: int=0, build=None):
+        def __init__(self, major: int, minor: int, revision: int = 0, build=None):
             self.major = major
             self.minor = minor
             self.revision = revision
@@ -250,12 +261,13 @@ class Start(Base):
 
         @classmethod
         def _parse(cls, stream):
-            # unpack returns a tuple, so we need to flatten the list. Additionally, we need to splat it to send to the constructor
+            # unpack returns a tuple, so we need to flatten the list.
+            # Additionally, we need to splat it to send to the constructor
             # I try not to use this too often because it's annoying to read if you don't already know what it does
             return cls(*[tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(4)]])
 
         def __repr__(self):
-            return f'{self.major}.{self.minor}.{self.revision}'
+            return f"{self.major}.{self.minor}.{self.revision}"
 
         def __eq__(self, other: Start.SlippiVersion | str):
             if isinstance(other, self.__class__):
@@ -266,12 +278,12 @@ class Start(Base):
                 return self.major == major and self.minor == minor and self.revision == revision
 
             raise NotImplementedError(
-                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
+                """Incorrect type for comparison to event.Start.Slippi,
+                accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"""
+            )
 
         def __ge__(self, other: Start.SlippiVersion | str):
             if isinstance(other, self.__class__):
-                # Can't rely on short circuiting, example: 2.11.0 would evaluate as greater than 3.9.0, so we need a smarter check
                 if self.major > other.major:
                     return True
                 if self.major == other.major:
@@ -295,34 +307,35 @@ class Start(Base):
                 return False
 
             raise NotImplementedError(
-                "Incorrect type for comparison to event.Start.Slippi, accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"
-                )
+                """Incorrect type for comparison to event.Start.Slippi,
+                accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"""
+            )
 
         def __lt__(self, other: Start.SlippiVersion | Start.SlippiVersion | str):
             return not self.__ge__(other)
 
-
     class Player(Base):
         """Contains metadata about the player from the console's perspective including:
         character, starting stock count, costume, team, in-game tag, and UCF toggles"""
-        character: CSSCharacter  #: Character selected
-        type: Start.Player.Type  #: Player type (human/cpu)
-        stocks: int  #: Starting stock count
-        costume: int  #: Costume ID
-        team: Optional[Start.Player.Team]  #: Team, if this was a teams game
-        ucf: Optional[Start.Player.UCF]  #: UCF feature toggles
-        tag: Optional[str]  #: Name tag
+
+        character: CSSCharacter  # Character selected
+        type: Start.Player.Type  # Player type (human/cpu)
+        stocks: int  # Starting stock count
+        costume: int  # Costume ID
+        team: Start.Player.Team | None  # Team, if this was a teams game
+        ucf: Start.Player.UCF | None  # UCF feature toggles
+        tag: str | None  # Name tag
 
         def __init__(
-                self,
-                character: CSSCharacter,
-                type: Start.Player.Type,
-                stocks: int,
-                costume: int,
-                team: Optional[Start.Player.Team],
-                ucf: Optional[Start.Player.UCF] = None,
-                tag: Optional[str] = None
-            ):
+            self,
+            character: CSSCharacter,
+            type: Start.Player.Type,
+            stocks: int,
+            costume: int,
+            team: Start.Player.Team | None,
+            ucf: Start.Player.UCF | None = None,
+            tag: str | None = None,
+        ):
             self.character = character
             self.type = type
             self.stocks = stocks
@@ -335,29 +348,38 @@ class Start(Base):
             if not isinstance(other, self.__class__):
                 return NotImplemented
             return (
-                self.character is other.character and self.type is other.type and self.stocks == other.stocks and
-                self.costume == other.costume and self.team is other.team and self.ucf == other.ucf
-                )
+                self.character is other.character
+                and self.type is other.type
+                and self.stocks == other.stocks
+                and self.costume == other.costume
+                and self.team is other.team
+                and self.ucf == other.ucf
+            )
 
         class Type(IntEnum):
             """Human vs CPU"""
+
             HUMAN = 0
             CPU = 1
 
         class Team(IntEnum):
             """Doubles team colors"""
+
             RED = 0
             BLUE = 1
             GREEN = 2
 
         class UCF(Base):
             """UCF Dashback and shield drop, off, on, or arduino"""
-            dash_back: Optional[Start.Player.UCF.DashBack]  #: UCF dashback status
-            shield_drop: Optional[Start.Player.UCF.ShieldDrop]  #: UCF shield drop status
+
+            dash_back: Start.Player.UCF.DashBack | None  # UCF dashback status
+            shield_drop: Start.Player.UCF.ShieldDrop | None  # UCF shield drop status
 
             def __init__(
-                    self, dash_back: Optional[Start.Player.UCF.DashBack] = None, shield_drop: Optional[Start.Player.UCF.ShieldDrop] = None
-                ):
+                self,
+                dash_back: Start.Player.UCF.DashBack | None = None,
+                shield_drop: Start.Player.UCF.ShieldDrop | None = None,
+            ):
                 self.dash_back = dash_back or self.DashBack.OFF
                 self.shield_drop = shield_drop or self.ShieldDrop.OFF
 
@@ -380,12 +402,17 @@ class Start(Base):
 class End(Base):
     """Information about the end of the game."""
 
-    method: End.Method  #: `changed(2.0.0)` How the game ended
-    lras_initiator: Optional[int]  #: `added(2.0.0)` Index of player that LRAS'd, if any
+    method: End.Method  # How the game ended
+    lras_initiator: int | None  # Index of player that LRAS'd, if any
     # Player placements stored as a list. The index represents the port, the value of that element is their placement.
-    player_placements: Optional[list[int]]  #: `added (3.13.0)` 0-indexed placement positions. -1 if player not in game
+    player_placements: list[int] | None  # 0-indexed placement positions. -1 if player not in game
 
-    def __init__(self, method: End.Method, lras_initiator: Optional[int] = None, player_placements: Optional[list[int]] = None):
+    def __init__(
+        self,
+        method: End.Method,
+        lras_initiator: int | None = None,
+        player_placements: list[int] | None = None,
+    ):
         self.method = method
         self.lras_initiator = lras_initiator
         self.player_placements = player_placements
@@ -425,13 +452,13 @@ class End(Base):
 class Frame(Base):
     """A single frame of the game. Includes data for all active bodies (characters, items, etc.)"""
 
-    __slots__ = 'index', 'ports', 'items', 'start', 'end'
+    __slots__ = "index", "ports", "items", "start", "end"
 
     index: int
-    ports: Sequence[Optional[Frame.Port]]  #: Frame data for each port (port 1 is index 0; empty ports will contain None)
-    items: Sequence[Frame.Item]  #: `added(3.0.0)` Active items (includes projectiles)
-    start: Optional[Frame.Start]  #: `added(2.2.0)` Start-of-frame data
-    end: Optional[Frame.End]  #: `added(2.2.0)` End-of-frame data
+    ports: Sequence[Frame.Port | None]  # Frame data for each port (0 indexed, including empty ports)
+    items: Sequence[Frame.Item | None]  # Active items (includes projectiles)
+    start: Frame.Start | None  # Start-of-frame data
+    end: Frame.End | None  # End-of-frame data
 
     def __init__(self, index: int):
         self.index = index
@@ -447,10 +474,10 @@ class Frame(Base):
     class Port(Base):
         """Frame data for a given port. Can include two characters' frame data (ICs)."""
 
-        __slots__ = 'leader', 'follower'
+        __slots__ = "leader", "follower"
 
-        leader: Frame.Port.Data  #: Frame data for the controlled character
-        follower: Optional[Frame.Port.Data]  #: Frame data for the follower (Nana), if any
+        leader: Frame.Port.Data  # Frame data for the controlled character
+        follower: Frame.Port.Data | None  # Frame data for the follower (Nana), if any
 
         def __init__(self):
             self.leader = self.Data()
@@ -459,25 +486,24 @@ class Frame(Base):
         class Data(Base):
             """Frame data for a given character. Includes both pre-frame and post-frame data."""
 
-            __slots__ = '_pre', '_post'
-
-
+            __slots__ = "_pre", "_post"
 
             def __init__(self):
                 self._pre = None
                 self._post = None
 
-            #TODO i think these are used for live parsing? IDC about live parsing so I think i can just rip all this out
-            #should make member access a tiny bit faster
+            # TODO i think these are used for live parsing?
+            # IDC about live parsing so I think i can just rip all this out
+            # should make member access a tiny bit faster
             @property
-            def pre(self) -> Optional[Frame.Port.Data.Pre]:
+            def pre(self) -> Frame.Port.Data.Pre | None:
                 """Pre-frame update data"""
                 if self._pre and not isinstance(self._pre, self.Pre):
                     self._pre = self.Pre._parse(self._pre)
                 return self._pre
 
             @property
-            def post(self) -> Optional[Frame.Port.Data.Post]:
+            def post(self) -> Frame.Port.Data.Post | None:
                 """Post-frame update data"""
                 if self._post and not isinstance(self._post, self.Post):
                     self._post = self.Post._parse(self._post)
@@ -487,10 +513,20 @@ class Frame(Base):
                 """Pre-frame update data, required to reconstruct a replay. Information is collected right before
                 controller inputs are used to figure out the character's next action."""
 
-                __slots__ = 'state', 'position', 'facing_direction', 'joystick', 'cstick', 'triggers', 'buttons',\
-                'random_seed', 'raw_analog_x', 'percent'
+                __slots__ = (
+                    "state",
+                    "position",
+                    "facing_direction",
+                    "joystick",
+                    "cstick",
+                    "triggers",
+                    "buttons",
+                    "random_seed",
+                    "raw_analog_x",
+                    "percent",
+                )
 
-                state: Union[ActionState, int]
+                state: ActionState | int
                 position: Position
                 facing_direction: Direction
                 joystick: Position
@@ -498,32 +534,32 @@ class Frame(Base):
                 triggers: Triggers
                 buttons: Buttons
                 random_seed: int
-                raw_analog_x: Optional[int]
-                percent: Optional[float]
+                raw_analog_x: int | None
+                percent: float | None
 
                 def __init__(
-                        self,
-                        state: Union[ActionState, int],
-                        position: Position,
-                        direction: Direction,
-                        joystick: Position,
-                        cstick: Position,
-                        triggers: Triggers,
-                        buttons: Buttons,
-                        random_seed: int,
-                        raw_analog_x: Optional[int] = None,
-                        damage: Optional[float] = None
-                    ):
-                    self.state = state  #: :py:class:`slippi.id.ActionState` | int: Character's action state
-                    self.position = position  #: :py:class:`Position`: Character's position
-                    self.facing_direction = direction  #: :py:class:`Direction`: Direction the character is facing
-                    self.joystick = joystick  #: :py:class:`Position`: Processed analog joystick position
-                    self.cstick = cstick  #: :py:class:`Position`: Processed analog c-stick position
-                    self.triggers = triggers  #: :py:class:`Triggers`: Trigger state
-                    self.buttons = buttons  #: :py:class:`Buttons`: Button state
-                    self.random_seed = random_seed  #: int: Random seed at this point
-                    self.raw_analog_x = raw_analog_x  #: int | None: `added(1.2.0)` Raw x analog controller input (for UCF)
-                    self.percent = damage  #: float | None: `added(1.4.0)` Current damage percent
+                    self,
+                    state: ActionState | int,
+                    position: Position,
+                    direction: Direction,
+                    joystick: Position,
+                    cstick: Position,
+                    triggers: Triggers,
+                    buttons: Buttons,
+                    random_seed: int,
+                    raw_analog_x: int | None = None,
+                    damage: float | None = None,
+                ):
+                    self.state = state
+                    self.position = position
+                    self.facing_direction = direction
+                    self.joystick = joystick
+                    self.cstick = cstick
+                    self.triggers = triggers
+                    self.buttons = buttons
+                    self.random_seed = random_seed
+                    self.raw_analog_x = raw_analog_x
+                    self.percent = damage
 
                 @classmethod
                 def _parse(cls, stream):
@@ -564,19 +600,40 @@ class Frame(Base):
                         buttons=Buttons(buttons_logical, buttons_physical),
                         random_seed=random_seed,
                         raw_analog_x=raw_analog_x,
-                        damage=damage
-                        )
+                        damage=damage,
+                    )
 
             class Post(Base):
                 """Post-frame update data, for making decisions about game states (such as computing stats).
-                Information is collected at the end of collision detection, which is the last consideration of the game engine."""
+                Information is collected at the end of collision detection,
+                which is the last consideration of the game engine.
+                """
 
                 __slots__ = (
-                    'character', 'state', 'position', 'facing_direction', 'percent', 'shield_size', 'stocks_remaining', 'most_recent_hit',
-                    'last_hit_by', 'combo_count', 'state_age', 'flags', 'misc_timer', 'is_airborne', 'last_ground_id',
-                    'jumps_remaining', 'l_cancel', 'hurtbox_status', 'self_ground_speed', 'self_air_speed', 'knockback_speed',
-                    'hitlag_remaining', 'animation_index'
-                    )
+                    "character",
+                    "state",
+                    "position",
+                    "facing_direction",
+                    "percent",
+                    "shield_size",
+                    "stocks_remaining",
+                    "most_recent_hit",
+                    "last_hit_by",
+                    "combo_count",
+                    "state_age",
+                    "flags",
+                    "misc_timer",
+                    "is_airborne",
+                    "last_ground_id",
+                    "jumps_remaining",
+                    "l_cancel",
+                    "hurtbox_status",
+                    "self_ground_speed",
+                    "self_air_speed",
+                    "knockback_speed",
+                    "hitlag_remaining",
+                    "animation_index",
+                )
 
                 character: InGameCharacter  # In-game character (can only change for Zelda/Sheik).
                 state: ActionState | int  # Character's action state
@@ -586,50 +643,51 @@ class Frame(Base):
                 shield_size: float  # Current size of shield
                 stocks_remaining: int  # Number of stocks remaining
                 most_recent_hit: Attack | int  # Last attack that this character landed
-                last_hit_by: Optional[int]  # Port of character that last hit this character
+                last_hit_by: int | None  # Port of character that last hit this character
                 combo_count: int  # Combo count as defined by the game
-                state_age: Optional[float]  # Number of frames action state has been active. Can be fractional for certain actions
-                flags: Optional[list[IntFlag]]  # State flags
-                misc_timer: Optional[float]  # hitstun frames remaining
-                is_airborne: Optional[bool]  # True if character is airborne
-                last_ground_id: Optional[int]  # ID of ground character is standing on, if any
-                jumps_remaining: Optional[int]  # Jumps remaining
-                l_cancel: Optional[LCancel]  # L-cancel status, if any
-                hurtbox_status: Optional[Hurtbox]
-                # speeds are split into 5 values. A shared Y, a grounded and air X, and a knockback X and Y. Generic Y *DOES* matter
-                # even when grounded. For example, watch velocity values when walking on the slanted edges of yoshi's
-                self_ground_speed: Optional[Velocity]  # Self induced ground X speed and generic Y speed
-                self_air_speed: Optional[Velocity]  # Self induced air X speed and generic Y speed
-                knockback_speed: Optional[Velocity]  # Speed from knockback, adds with self-speeds for total velocity
-                hitlag_remaining: Optional[float]  # 0 means "not in hitlag"
-                animation_index: Optional[int]  # Indicates the animation the character is in, animation derived from state.
+                state_age: float | None  # Number of frames action state has been active. Can be fractional
+                flags: list[IntFlag] | None  # State flags
+                misc_timer: float | None  # hitstun frames remaining
+                is_airborne: bool | None  # True if character is airborne
+                last_ground_id: int | None  # ID of ground character is standing on, if any
+                jumps_remaining: int | None  # Jumps remaining
+                l_cancel: LCancel | None  # L-cancel status, if any
+                hurtbox_status: Hurtbox | None
+                # speeds are split into 5 values. A shared Y, a grounded and air X, and a knockback X and Y.
+                # Generic Y *DOES* matter, even when grounded.
+                # For example, watch velocity values when walking on the slanted edges of yoshi's
+                self_ground_speed: Velocity | None  # Self induced ground X speed and generic Y speed
+                self_air_speed: Velocity | None  # Self induced air X speed and generic Y speed
+                knockback_speed: Velocity | None  # Speed from knockback, adds with self-speeds for total velocity
+                hitlag_remaining: float | None  # 0 means "not in hitlag"
+                animation_index: int | None  # Indicates the animation the character is in, animation derived from state
 
                 def __init__(
-                        self,
-                        character: InGameCharacter,
-                        state: ActionState | int,
-                        position: Position,
-                        direction: Direction,
-                        damage: float,
-                        shield: float,
-                        stocks: int,
-                        most_recent_hit: Attack | int,
-                        last_hit_by: Optional[int],
-                        combo_count: int,
-                        state_age: Optional[float] = None,
-                        flags: Optional[list[IntEnum]] = None,
-                        misc_timer: Optional[float] = None,
-                        airborne: Optional[bool] = None,
-                        last_ground_id: Optional[int] = None,
-                        jumps: Optional[int] = None,
-                        l_cancel: Optional[LCancel] = None,
-                        hurtbox_status: Optional[Hurtbox] = None,
-                        self_ground_speed: Optional[Velocity] = None,
-                        self_air_speed: Optional[Velocity] = None,
-                        knockback_speed: Optional[Velocity] = None,
-                        hitlag_remaining: Optional[float] = None,
-                        animation_index: Optional[int] = None
-                    ):
+                    self,
+                    character: InGameCharacter,
+                    state: ActionState | int,
+                    position: Position,
+                    direction: Direction,
+                    damage: float,
+                    shield: float,
+                    stocks: int,
+                    most_recent_hit: Attack | int,
+                    last_hit_by: int | None,
+                    combo_count: int,
+                    state_age: float | None = None,
+                    flags: list[IntEnum] | None = None,
+                    misc_timer: float | None = None,
+                    airborne: bool | None = None,
+                    last_ground_id: int | None = None,
+                    jumps: int | None = None,
+                    l_cancel: LCancel | None = None,
+                    hurtbox_status: Hurtbox | None = None,
+                    self_ground_speed: Velocity | None = None,
+                    self_air_speed: Velocity | None = None,
+                    knockback_speed: Velocity | None = None,
+                    hitlag_remaining: float | None = None,
+                    animation_index: int | None = None,
+                ):
                     self.character = character
                     self.state = state
                     self.position = position
@@ -685,15 +743,24 @@ class Frame(Base):
                         (jumps,) = unpack_uint8(stream.read(1))
                         (l_cancel,) = unpack_uint8(stream.read(1))
 
-                        flags = [Field1(flags[0]),
-                                Field2(flags[1]),
-                                Field3(flags[2]),
-                                Field4(flags[3]),
-                                Field5(flags[4])]
+                        flags = [
+                            Field1(flags[0]),
+                            Field2(flags[1]),
+                            Field3(flags[2]),
+                            Field4(flags[3]),
+                            Field5(flags[4]),
+                        ]
 
                         l_cancel = LCancel(l_cancel)
                     except struct.error:
-                        (flags, misc_timer, airborne, last_ground_id, jumps, l_cancel) = [None] * 6
+                        (
+                            flags,
+                            misc_timer,
+                            airborne,
+                            last_ground_id,
+                            jumps,
+                            l_cancel,
+                        ) = [None] * 6
 
                     try:  # v2.1.0
                         (hurtbox_status,) = unpack_uint8(stream.read(1))
@@ -746,33 +813,53 @@ class Frame(Base):
                         self_air_speed=self_air_speed,
                         knockback_speed=knockback_speed,
                         hitlag_remaining=hitlag_remaining,
-                        animation_index=animation_index
-                        )
+                        animation_index=animation_index,
+                    )
 
     class Item(Base):
         """An active item (includes projectiles)."""
 
-        __slots__ = 'type', 'state', 'direction', 'velocity', 'position', 'damage', 'timer', 'spawn_id'
+        __slots__ = (
+            "type",
+            "state",
+            "direction",
+            "velocity",
+            "position",
+            "damage",
+            "timer",
+            "spawn_id",
+        )
 
-        type: Item  #: Item type
-        state: int  #: Item's action state
-        direction: Optional[Direction]  #: Direction item is facing
-        velocity: Velocity  #: Item's velocity
-        position: Position  #: Item's position
-        damage: int  #: Amount of damage item has taken
-        timer: int  #: Frames remaining until item expires
-        spawn_id: int  #: Unique ID per item spawned (0, 1, 2, ...)
-        missile_type: Optional[MissileType]
-        turnip_type: Optional[TurnipFace]
-        is_shot_launched: Optional[bool]
-        charge_power: Optional[int]
-        owner: Optional[int]
+        type: Item  # Item type
+        state: int  # Item's action state
+        direction: Direction | None  # Direction item is facing
+        velocity: Velocity  # Item's velocity
+        position: Position  # Item's position
+        damage: int  # Amount of damage item has taken
+        timer: int  # Frames remaining until item expires
+        spawn_id: int  # Unique ID per item spawned (0, 1, 2, ...)
+        missile_type: MissileType | None
+        turnip_type: TurnipFace | None
+        is_shot_launched: bool | None
+        charge_power: int | None
+        owner: int | None
 
         def __init__(
-                self, type: Item, state: int, direction: Optional[Direction], velocity: Velocity, position: Position, damage: int,
-                timer: int, spawn_id: int, missile_type: Optional[int], turnip_type: Optional[TurnipFace], is_shot_launched: Optional[bool],
-                charge_power: Optional[int], owner: Optional[int]
-            ):
+            self,
+            type: Item,
+            state: int,
+            direction: Direction | None,
+            velocity: Velocity,
+            position: Position,
+            damage: int,
+            timer: int,
+            spawn_id: int,
+            missile_type: int | None,
+            turnip_type: TurnipFace | None,
+            is_shot_launched: bool | None,
+            charge_power: int | None,
+            owner: int | None,
+        ):
             self.type = type
             self.state = state
             self.direction = direction
@@ -828,24 +915,29 @@ class Frame(Base):
                 turnip_type=turnip_type,
                 is_shot_launched=is_shot_launched,
                 charge_power=charge_power,
-                owner=owner
-                )
+                owner=owner,
+            )
 
         def __eq__(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
             return (
-                self.type == other.type and self.state == other.state and self.direction == other.direction and
-                self.velocity == other.velocity and self.position == other.position and self.damage == other.damage and
-                self.timer == other.timer and self.spawn_id == other.spawn_id
-                )
+                self.type == other.type
+                and self.state == other.state
+                and self.direction == other.direction
+                and self.velocity == other.velocity
+                and self.position == other.position
+                and self.damage == other.damage
+                and self.timer == other.timer
+                and self.spawn_id == other.spawn_id
+            )
 
     class Start(Base):
         """Start-of-frame data."""
 
-        __slots__ = ('random_seed',)
+        __slots__ = ("random_seed",)
 
-        random_seed: int  #: The random seed at the start of the frame
+        random_seed: int  # The random seed at the start of the frame
 
         def __init__(self, random_seed: int):
             self.random_seed = random_seed
@@ -879,8 +971,7 @@ class Frame(Base):
     class Event(Base):
         """Temporary wrapper used while parsing frame data."""
 
-        __slots__ = 'id', 'type', 'data'
-
+        __slots__ = "id", "type", "data"
 
         def __init__(self, id, type, data):
             self.id = id
@@ -888,13 +979,13 @@ class Frame(Base):
             self.data = data
 
         class Id(Base):
-            __slots__ = ('frame',)
+            __slots__ = ("frame",)
 
             def __init__(self, stream):
                 (self.frame,) = unpack_int32(stream.read(4))
 
         class PortId(Id):
-            __slots__ = 'port', 'is_follower'
+            __slots__ = "port", "is_follower"
 
             def __init__(self, stream):
                 (self.frame,) = unpack_int32(stream.read(4))
@@ -902,15 +993,15 @@ class Frame(Base):
                 (self.is_follower,) = unpack_bool(stream.read(1))
 
         class Type(Enum):
-            START = 'start'
-            END = 'end'
-            PRE = 'pre'
-            POST = 'post'
-            ITEM = 'item'
+            START = "start"
+            END = "end"
+            PRE = "pre"
+            POST = "post"
+            ITEM = "item"
 
 
 class Position(Base):
-    __slots__ = 'x', 'y'
+    __slots__ = "x", "y"
 
     x: float
     y: float
@@ -939,11 +1030,11 @@ class Position(Base):
             yield val
 
     def __repr__(self):
-        return f'({self.x:.2f}, {self.y:.2f})'
+        return f"({self.x:.2f}, {self.y:.2f})"
 
 
 class Velocity(Base):
-    __slots__ = 'x', 'y'
+    __slots__ = "x", "y"
 
     x: float
     y: float
@@ -963,4 +1054,4 @@ class Velocity(Base):
         return Velocity(self.x + other.x, self.y + other.y)
 
     def __repr__(self):
-        return f'({self.x:.2f}, {self.y:.2f})'
+        return f"({self.x:.2f}, {self.y:.2f})"

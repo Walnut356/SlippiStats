@@ -17,32 +17,33 @@ from .util import (
     unpack_int32,
     unpack_uint8,
     unpack_uint16,
-    )
+)
 
-#TODO parse maybe to pass around metadata/start event to allow for "smarter" parsing (e.g. enum char states by char)
+# TODO parse maybe to pass around metadata/start event to allow for "smarter" parsing (e.g. enum char states by char)
 # otherwise, frame event does contain character so that can be used
 
 # It would also carry slippi file version which could make parsing not require try-except
 
-# Also might be worth not enuming anything at parse time and instead using the "get()" to enum. Saves processing time for every
-# enum value not used. try_enum does take a pretty significant portion of the Game instantiation time
+# Also might be worth not enuming anything at parse time and instead using the "get()" to enum.
+# Saves processing time for everyenum value not used.
+# try_enum does take a pretty significant portion of the Game instantiation time
 
 
 class ParseEvent(Enum):
-    """Parser events, used as keys for event handlers. Docstrings indicate the type of object that will be passed to each handler."""
+    """Parser events, used as keys for event handlers.
+    Docstrings indicate the type of object that will be passed to each handler."""
 
-    METADATA = 'metadata'
-    METADATA_RAW = 'metadata_raw'
-    START = 'start'
-    FRAME = 'frame'
-    END = 'end'
-    FRAME_START = 'frame_start'
-    ITEM = 'item'
-    FRAME_END = 'frame_end'
+    METADATA = "metadata"
+    METADATA_RAW = "metadata_raw"
+    START = "start"
+    FRAME = "frame"
+    END = "end"
+    FRAME_START = "frame_start"
+    ITEM = "item"
+    FRAME_END = "frame_end"
 
 
 class ParseError(IOError):
-
     def __init__(self, message, filename=None, pos=None):
         super().__init__(message)
         self.filename = filename
@@ -58,12 +59,12 @@ def _parse_event_payloads(stream):
 
     event_type = EventType(code)
     if event_type is not EventType.EVENT_PAYLOADS:
-        raise ValueError(f'expected event payloads, but got {event_type}')
+        raise ValueError(f"expected event payloads, but got {event_type}")
 
     this_size -= 1  # includes size byte for some reason
     command_count = this_size // 3
     if command_count * 3 != this_size:
-        raise ValueError(f'payload size not divisible by 3: {this_size}')
+        raise ValueError(f"payload size not divisible by 3: {this_size}")
 
     sizes = {}
     for i in range(command_count):
@@ -73,13 +74,14 @@ def _parse_event_payloads(stream):
         try:
             EventType(code)
         except ValueError:
-            log.info('ignoring unknown event type: 0x%02x' % code)
+            log.info("ignoring unknown event type: 0x%02x" % code)
 
     # log.debug(f'event payload sizes: {sizes}')
     return (2 + this_size, sizes)
 
 
-# This essentially acts as a jump table in _parse_event, saves a lot of processing on a potentially very hot match statement and enum call
+# This essentially acts as a jump table in _parse_event,
+# saves a lot of processing on a potentially very hot match statement and enum call
 # If python was compiled, this would probably be unnecessary.
 EVENT_TYPE_PARSE = {
     EventType.GAME_START: lambda stream: Start._parse(stream),
@@ -89,14 +91,14 @@ EVENT_TYPE_PARSE = {
     EventType.ITEM: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.ITEM, stream),
     EventType.FRAME_END: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.END, stream),
     EventType.GAME_END: lambda stream: End._parse(stream),
-    }
+}
 
 
 def _parse_event(event_stream, payload_sizes):
     (code,) = unpack_uint8(event_stream.read(1))
     # log.debug(f'Event: 0x{code:x}')
 
-    # It's not great for debugging, but ripping this out saves something like 15-30% of processing time. .tell() is INCREDIBLY slow
+    # It's not great, but ripping this out saves something like 15-30% of processing time. tell() is INCREDIBLY slow
     # remember starting pos for better error reporting
     # try: base_pos = event_stream.tell() if event_stream.seekable() else None
     # except AttributeError: base_pos = None
@@ -104,7 +106,7 @@ def _parse_event(event_stream, payload_sizes):
     try:
         size = payload_sizes[code]
     except KeyError:
-        raise ValueError('unexpected event type: 0x%02x' % code)
+        raise ValueError("unexpected event type: 0x%02x" % code)
 
     stream = io.BytesIO(event_stream.read(size))
 
@@ -112,37 +114,37 @@ def _parse_event(event_stream, payload_sizes):
         event = EVENT_TYPE_PARSE.get(code, None)
         if callable(event):
             event = event(stream)
-    # try:
-    #     try: event_type = EventType(code)
-    #     except ValueError: event_type = None
+        # try:
+        #     try: event_type = EventType(code)
+        #     except ValueError: event_type = None
 
-    #     match event_type:
-    #         case EventType.FRAME_PRE:
-    #             event = Frame.Event(Frame.Event.PortId(stream),
-    #                                 Frame.Event.Type.PRE,
-    #                                 stream)
-    #         case EventType.FRAME_POST:
-    #             event = Frame.Event(Frame.Event.PortId(stream),
-    #                                 Frame.Event.Type.POST,
-    #                                 stream)
-    #         case EventType.ITEM:
-    #             event = Frame.Event(Frame.Event.Id(stream),
-    #                                 Frame.Event.Type.ITEM,
-    #                                 stream)
-    #         case EventType.FRAME_START:
-    #             event = Frame.Event(Frame.Event.Id(stream),
-    #                                 Frame.Event.Type.START,
-    #                                 stream)
-    #         case EventType.FRAME_END:
-    #             event = Frame.Event(Frame.Event.Id(stream),
-    #                                 Frame.Event.Type.END,
-    #                                 stream)
-    #         case EventType.GAME_START:
-    #             event = Start._parse(stream)
-    #         case EventType.GAME_END:
-    #             event = End._parse(stream)
-    #         case _:
-    #             event = None
+        #     match event_type:
+        #         case EventType.FRAME_PRE:
+        #             event = Frame.Event(Frame.Event.PortId(stream),
+        #                                 Frame.Event.Type.PRE,
+        #                                 stream)
+        #         case EventType.FRAME_POST:
+        #             event = Frame.Event(Frame.Event.PortId(stream),
+        #                                 Frame.Event.Type.POST,
+        #                                 stream)
+        #         case EventType.ITEM:
+        #             event = Frame.Event(Frame.Event.Id(stream),
+        #                                 Frame.Event.Type.ITEM,
+        #                                 stream)
+        #         case EventType.FRAME_START:
+        #             event = Frame.Event(Frame.Event.Id(stream),
+        #                                 Frame.Event.Type.START,
+        #                                 stream)
+        #         case EventType.FRAME_END:
+        #             event = Frame.Event(Frame.Event.Id(stream),
+        #                                 Frame.Event.Type.END,
+        #                                 stream)
+        #         case EventType.GAME_START:
+        #             event = Start._parse(stream)
+        #         case EventType.GAME_END:
+        #             event = End._parse(stream)
+        #         case _:
+        #             event = None
 
         return (1 + size, event, code)
     except Exception as exc:
@@ -156,7 +158,17 @@ def _parse_event(event_stream, payload_sizes):
         raise ParseError(str(exc))  # pos = base_pos + stream.tell() if base_pos else None)
 
 
-def _pre_frame(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+# exceptional ugliness to implement a jump table instead of a bunch of conditionals or a match statement.
+def _pre_frame(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     # Accumulate all events for a single frame into a single `Frame` object.
 
     # We can't use Frame Bookend events to detect end-of-frame,
@@ -183,7 +195,16 @@ def _pre_frame(current_frame, event, handlers, skip_frames, total_size, bytes_re
     return current_frame
 
 
-def _post_frame(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _post_frame(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     # Accumulate all events for a single frame into a single `Frame` object.
 
     # We can't use Frame Bookend events to detect end-of-frame,
@@ -210,7 +231,16 @@ def _post_frame(current_frame, event, handlers, skip_frames, total_size, bytes_r
     return current_frame
 
 
-def _item_frame(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _item_frame(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     # Accumulate all events for a single frame into a single `Frame` object.
 
     # We can't use Frame Bookend events to detect end-of-frame,
@@ -227,7 +257,16 @@ def _item_frame(current_frame, event, handlers, skip_frames, total_size, bytes_r
     return current_frame
 
 
-def _start_frame(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _start_frame(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     # Accumulate all events for a single frame into a single `Frame` object.
 
     # We can't use Frame Bookend events to detect end-of-frame,
@@ -244,7 +283,16 @@ def _start_frame(current_frame, event, handlers, skip_frames, total_size, bytes_
     return current_frame
 
 
-def _end_frame(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _end_frame(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     # Accumulate all events for a single frame into a single `Frame` object.
 
     # We can't use Frame Bookend events to detect end-of-frame,
@@ -261,7 +309,16 @@ def _end_frame(current_frame, event, handlers, skip_frames, total_size, bytes_re
     return current_frame
 
 
-def _game_start(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _game_start(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     handlers[Start](event)
     if skip_frames and total_size != 0:
         skip = total_size - bytes_read - payload_sizes[EventType.GAME_END.value] - 1
@@ -270,12 +327,30 @@ def _game_start(current_frame, event, handlers, skip_frames, total_size, bytes_r
     return current_frame
 
 
-def _game_end(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _game_end(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     handlers[End](event)
     return current_frame
 
 
-def _do_nothing(current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream):
+def _do_nothing(
+    current_frame,
+    event,
+    handlers,
+    skip_frames,
+    total_size,
+    bytes_read,
+    payload_sizes,
+    stream,
+):
     pass
 
 
@@ -288,7 +363,7 @@ thing = {
     EventType.FRAME_END: _end_frame,
     EventType.GAME_END: _game_end,
     16: _do_nothing,
-    }
+}
 
 
 def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
@@ -301,7 +376,16 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
         (b, event, event_code) = _parse_event(stream, payload_sizes)
         bytes_read += b
 
-        current_frame = thing[event_code](current_frame, event, handlers, skip_frames, total_size, bytes_read, payload_sizes, stream)
+        current_frame = thing[event_code](
+            current_frame,
+            event,
+            handlers,
+            skip_frames,
+            total_size,
+            bytes_read,
+            payload_sizes,
+            stream,
+        )
 
         # pattern matching a type requires type constructor, probably doesn't actually construct the type?
         # see: https://stackoverflow.com/questions/70815197
@@ -364,7 +448,7 @@ def _parse(stream, handlers, skip_frames):
     # For efficiency, don't send the whole file through ubjson.
     # Instead, assume `raw` is the first element. This is brittle and
     # ugly, but it's what the official parser does so it should be OK.
-    expect_bytes(b'{U\x03raw[$U#l', stream)
+    expect_bytes(b"{U\x03raw[$U#l", stream)
     (length,) = unpack_int32(stream.read(4))
 
     (bytes_read, payload_sizes) = _parse_event_payloads(stream)
@@ -373,7 +457,7 @@ def _parse(stream, handlers, skip_frames):
 
     _parse_events(stream, payload_sizes, length, handlers, skip_frames)
 
-    expect_bytes(b'U\x08metadata', stream)
+    expect_bytes(b"U\x08metadata", stream)
 
     json = ubjson.load(stream)
     handlers[dict](json)
@@ -381,7 +465,7 @@ def _parse(stream, handlers, skip_frames):
     metadata = Metadata._parse(json)
     handlers[Metadata](metadata)
 
-    expect_bytes(b'}', stream)
+    expect_bytes(b"}", stream)
 
 
 def _parse_try(source: BinaryIO, handlers, skip_frames):
@@ -413,11 +497,16 @@ def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
         _parse_try(f, handlers, skip_frames)
 
 
-def parse(source: BinaryIO | str | os.PathLike, handlers: dict[Any, Callable[..., None]], skip_frames: bool = False) -> None:
+def parse(
+    source: BinaryIO | str | os.PathLike,
+    handlers: dict[Any, Callable[..., None]],
+    skip_frames: bool = False,
+) -> None:
     """Parse a Slippi replay.
     :param input: replay file object or path
     :param handlers: dict of parse event keys to handler functions. Each event will be passed to the corresponding handler as it occurs.
-    :param skip_frames: when true, skip past all frame data. Requires input to be seekable."""
+    :param skip_frames: when true, skip past all frame data. Requires input to be seekable.
+    """
 
     if isinstance(source, str):
         _parse_open(Path(source), handlers, skip_frames)
