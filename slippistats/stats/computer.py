@@ -11,6 +11,10 @@ from ..util import Base, Ports
 from .stat_types import Data
 
 
+class IdentifierError(Exception):
+    pass
+
+
 @dataclass
 class Player(Base):
     """Aggregate class for event.Start.Player and metadata.Player.
@@ -79,9 +83,7 @@ class ComputerBase:
             parsed_replay = replay
             self.replay_path = ""
         else:
-            raise TypeError(
-                "prime_replay accepts only PathLikes, strings, and Game objects."
-            )
+            raise TypeError("prime_replay accepts only PathLikes, strings, and Game objects.")
 
         self.replay = parsed_replay
         self.replay_version = self.replay.start.slippi_version
@@ -94,9 +96,7 @@ class ComputerBase:
             "slippi_version": str(self.replay_version),
             "match_type": self.replay.start.match_type.name,
             "game_number": self.replay.start.game_number,
-            "duration": datetime.timedelta(
-                seconds=((self.replay.metadata.duration) / 60)
-            ),
+            "duration": datetime.timedelta(seconds=((self.replay.metadata.duration) / 60)),
         }
 
         # HACK ugly garbage to pass opponent character correctly
@@ -106,16 +106,32 @@ class ComputerBase:
         # this only works for 2 players, but double stats is a pretty rare usecase so it's fine for now.
         characters = list(
             permutations(
-                [
-                    player.character
-                    for player in self.replay.start.players
-                    if player is not None
-                ]
+                [player.character for player in self.replay.start.players if player.type == Start.Player.Type.HUMAN]
             )
         )
+        if len(characters) != 2:
+            raise ValueError(f"Got {len(characters)} human players in {self.replay_path}, expected 2")
 
+        # handling for bugged replays without a game end event
+        _game_end = False
+        if self.replay.end:
+            _game_end = True
         for port in Ports:
-            if self.replay.start.players[port] is not None:
+            if _game_end:
+
+                if self.replay.end.player_placements is not None:
+                    did_win = True if self.replay.end.player_placements[port] == 0 else False
+                elif self.replay.end.lras_initiator is not None and self.replay.end.lras_initiator != -1:
+                    did_win = True if port != self.replay.end.lras_initiator else False
+                else:
+                    # TODO this is going to need better logic eventually to account for timeouts, old replay LRAS's, etc.
+                    if self.replay.frames[-1].ports[port].leader.post.stocks_remaining > 0:
+                        did_win = True
+                    else:
+                        did_win = False
+            else:
+                did_win = False
+            if self.replay.start.players[port].type == Start.Player.Type.HUMAN:
                 self.players.append(
                     Player(
                         characters=characters.pop(0),
@@ -123,21 +139,11 @@ class ComputerBase:
                         connect_code=self.replay.metadata.players[port].connect_code,
                         display_name=self.replay.metadata.players[port].display_name,
                         costume=self.replay.start.players[port].costume,
-                        did_win=True
-                        if self.replay.end.player_placements[port] == 0
-                        else False,
-                        frames=tuple(
-                            [frame.ports[port].leader for frame in self.replay.frames]
-                        ),
+                        did_win=did_win,
+                        frames=tuple([frame.ports[port].leader for frame in self.replay.frames]),
                         nana_frames=(
-                            tuple(
-                                [
-                                    frame.ports[port].follower
-                                    for frame in self.replay.frames
-                                ]
-                            )
-                            if self.replay.start.players[port].character
-                            == CSSCharacter.ICE_CLIMBERS
+                            tuple([frame.ports[port].follower for frame in self.replay.frames])
+                            if self.replay.start.players[port].character == CSSCharacter.ICE_CLIMBERS
                             else None
                         ),
                         stats_header=stats_header,
@@ -160,13 +166,11 @@ class ComputerBase:
                         return player
                 else:
                     # TODO probably rip this out and just replace it with a log warning when done debugging
-                    raise ValueError(
-                        f"No player matching given connect code {identifier}"
-                    )
+                    raise IdentifierError(f"No player matching given connect code {identifier}")
             case int() | Ports():
                 return self.players[identifier]
             case _:
-                raise ValueError(
+                raise IdentifierError(
                     f"Invalid identifier type: {identifier} {type(identifier)}. get_player() accepts str, int, or Port"
                 )
 
@@ -178,9 +182,7 @@ class ComputerBase:
                         return player
                 else:
                     # TODO probably rip this out and just replace it with a log warning when done debugging
-                    raise ValueError(
-                        f"No player matching given connect code {identifier}"
-                    )
+                    raise ValueError(f"No player matching given connect code {identifier}")
             case int() | Ports():
                 return self.players[identifier - 1]
             case _:

@@ -37,7 +37,7 @@ from .common import (
     just_input_l_cancel,
     just_took_damage,
 )
-from .computer import ComputerBase, Player
+from .computer import ComputerBase, Player, IdentifierError
 from .stat_types import (
     DashData,
     Dashes,
@@ -320,7 +320,6 @@ class StatsComputer(ComputerBase):
             if not in_hitlag:
                 if was_in_hitlag and self.take_hit_state is not None:
                     self.take_hit_state.end_pos = prev_player_frame.post.position
-                    self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
 
                     effective_stick = player_frame.pre.joystick
                     match get_joystick_region(player_frame.pre.joystick):
@@ -376,6 +375,7 @@ class StatsComputer(ComputerBase):
             if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
                 self.take_hit_state = TakeHitData()
                 self.take_hit_state.frame_index = i
+                self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
                 self.take_hit_state.state_before_hit = player.frames[i - 1].post.state
                 self.take_hit_state.start_pos = player_frame.post.position
                 self.take_hit_state.percent = player_frame.post.percent
@@ -555,30 +555,46 @@ class StatsComputer(ComputerBase):
 
 def _eef(file, connect_code):
     try:
-        return StatsComputer(file)._compute(connect_code).to_polars()
-    except:
-        return None
+        thing = StatsComputer(file).take_hit_compute(connect_code)
+    except IdentifierError:
+        return (None, file)
+    if len(thing) > 0:
+        return (thing, file)
+    else:
+        return (None, file)
 
 
 def get_stats(directory, connect_code):
-    ind = 1
+    count = 0
     dfs = None
-    files = []
     with os.scandir(directory) as dir:
-        for entry in dir:
-            files.append(os.path.join(directory, entry.name))
-        with concurrent.futures.ProcessPoolExecutor() as executor_1:
-            futures = {executor_1.submit(_eef, file, connect_code) for file in files}
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            futures = {
+                executor.submit(_eef, os.path.join(directory, entry.name), connect_code)
+                for entry in dir
+                if ".slp" in entry.name
+            }
 
-            for df in concurrent.futures.as_completed(futures):
-                if df.result() is not None:
-                    if dfs is None:
-                        dfs = df.result()
-                    else:
-                        dfs = pl.concat([dfs, df.result()], how="vertical")
-                        print("concatting")
+            # dasdf = concurrent.futures.wait(futures, return_when=concurrent.futures.FIRST_EXCEPTION)
 
-    dfs.write_parquet("wavedashdata_temp2.parquet")
-    print("file written")
+            # print("okay")
 
+            for future in concurrent.futures.as_completed(futures):
+                if future.exception() is not None:
+                    print(future.exception())
+                else:
+                    data, fpath = future.result()
+                    count += 1
+                    print(f"{count}: {fpath}")
+
+                    if data is not None:
+                        df = data.to_polars()
+                        if dfs is None:
+                            dfs = df
+                        else:
+                            dfs = pl.concat([dfs, df], how="vertical")
+
+                data = None
+        dfs.write_parquet("take_hit_test_2.parquet")
+        print("file written\n")
     return dfs

@@ -143,7 +143,7 @@ class TechState:
 class TakeHitData(Stat):
     frame_index: int
     last_hit_by: Attack | None
-    state_before_hit: ActionState | None
+    state_before_hit: IntEnum | None
     grounded: bool | None
     crouch_cancel: bool | None
     hitlag_frames: int | None
@@ -344,10 +344,42 @@ class TakeHits(UserList):
 
     data_header: dict
     data: list[TakeHitData]
+    schema: dict
 
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+        self.schema = {
+            "match_id": pl.Utf8,
+            "date_time": pl.Datetime,
+            "slippi_version": pl.Utf8,
+            "match_type": pl.Utf8,
+            "game_number": pl.Int64,
+            "duration": pl.Duration,
+            "result": pl.Utf8,
+            "port": pl.Utf8,
+            "connect_code": pl.Utf8,
+            "chara": pl.Utf8,
+            "opnt_chara": pl.Utf8,
+            "frame_index": pl.Int64,
+            "grounded": pl.Boolean,
+            "percent": pl.Float64,
+            "last_hit_by": pl.Utf8,
+            "state_before_hit": pl.Utf8,
+            "crouch_cancel": pl.Boolean,
+            "hitlag_frames": pl.Int64,
+            "stick_regions_during_hitlag": pl.List(pl.Utf8),
+            "sdi_inputs": pl.List(pl.Utf8),
+            "asdi": pl.Utf8,
+            "start_pos": pl.List(pl.Float64),
+            "end_pos": pl.List(pl.Float64),
+            "kb_angle": pl.Float64,
+            "di_stick_pos": pl.List(pl.Float64),
+            "di_efficacy": pl.Float64,
+            "final_kb_angle": pl.Float64,
+            "kb_velocity": pl.List(pl.Float64),
+            "final_kb_velocity": pl.List(pl.Float64),
+        }
 
     def append(self, item):
         if isinstance(item, TakeHitData):
@@ -355,41 +387,44 @@ class TakeHits(UserList):
         else:
             raise TypeError(f"Incorrect stat type: {type(item)}, expected TakeHitData")
 
-    def to_polars(self):
+    def to_polars(self) -> pl.DataFrame:
         if len(self.data) == 0:
-            raise
-        data = []
+            df = pl.DataFrame([], self.schema)
+        else:
+            rows = []
 
-        # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for stat in self.data:
-            stat_dict = vars(stat).copy()
-            try:
-                lhb = try_enum(Attack, stat.last_hit_by).name
-            except AttributeError:
-                lhb = None
-            try:
-                sbh = try_enum(ActionState, stat.state_before_hit).name
-            except AttributeError:
-                sbh = None
+            # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
+            for stat in self.data:
+                stat_dict = vars(stat).copy()
+                try:
+                    lhb = try_enum(Attack, stat.last_hit_by).name
+                except AttributeError:
+                    lhb = None
+                try:
+                    sbh = stat.state_before_hit.name
+                except AttributeError:
+                    sbh = str(stat.state_before_hit)
 
-            stat_dict["last_hit_by"] = lhb or "UNKNOWN"
-            stat_dict["state_before_hit"] = sbh or "UNKNOWN"
-            stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs]
-            stat_dict["asdi"] = stat.asdi.name
-            stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
-            stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
-            stat_dict["final_kb_velocity"] = [
-                stat.final_kb_velocity.x,
-                stat.final_kb_velocity.y,
-            ]
-            stat_dict["start_pos"] = [stat.start_pos.x, stat.start_pos.y]
-            stat_dict["end_pos"] = [stat.end_pos.x, stat.end_pos.y]
-            if stat.di_stick_pos is not None:
-                stat_dict["di_stick_pos"] = [stat.di_stick_pos.x, stat.di_stick_pos.y]
-            else:
-                stat_dict["di_stick_pos"] = None
-            data.append(self.data_header | stat_dict)
-        return pl.DataFrame(data)
+                stat_dict["last_hit_by"] = lhb or "UNKNOWN"
+                stat_dict["state_before_hit"] = sbh or "UNKNOWN"
+                stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs] or None
+                stat_dict["asdi"] = stat.asdi.name
+                stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
+                stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
+                stat_dict["final_kb_velocity"] = [
+                    stat.final_kb_velocity.x,
+                    stat.final_kb_velocity.y,
+                ]
+                stat_dict["start_pos"] = [stat.start_pos.x, stat.start_pos.y]
+                stat_dict["end_pos"] = [stat.end_pos.x, stat.end_pos.y]
+                if stat.di_stick_pos is not None:
+                    stat_dict["di_stick_pos"] = [stat.di_stick_pos.x, stat.di_stick_pos.y]
+                else:
+                    stat_dict["di_stick_pos"] = None
+                rows.append(self.data_header | stat_dict)
+
+            df = pl.DataFrame(rows, schema=self.schema)
+        return df
 
 
 class LCancels(UserList):

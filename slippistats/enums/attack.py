@@ -2,6 +2,7 @@ from ..util import IntEnum
 
 
 class Attack(IntEnum):
+    NONE = 0
     NON_STALING = 1
     JAB_1 = 2
     JAB_2 = 3

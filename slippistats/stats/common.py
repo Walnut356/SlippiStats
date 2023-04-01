@@ -40,18 +40,14 @@ def just_entered_state(
     return curr_state == action_state and prev_state != action_state
 
 
-def just_exited_state(
-    action_state: int, curr_state: ActionState | int, prev_state: ActionState | int
-) -> bool:
+def just_exited_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
     if isinstance(action_state, Callable):
         return action_state(prev_state) and not action_state(curr_state)
 
     return prev_state == action_state and curr_state != action_state
 
 
-def just_input_l_cancel(
-    curr_frame: Frame.Port.Data, prev_frame: Frame.Port.Data
-) -> bool:
+def just_input_l_cancel(curr_frame: Frame.Port.Data, prev_frame: Frame.Port.Data) -> bool:
     curr = curr_frame.pre.buttons.logical
     prev = prev_frame.pre.buttons.logical
 
@@ -85,9 +81,8 @@ def is_damaged(action_state: int) -> bool:
 def is_in_hitstun(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitstun bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    for field in flags:
-        if Field4.HIT_STUN in field:
-            return True
+    if Field4.HITSTUN in flags[3]:
+        return True
     else:
         return False
 
@@ -95,9 +90,8 @@ def is_in_hitstun(flags: list[IntEnum]) -> bool:
 def is_in_hitlag(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitlag bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    for field in flags:
-        if Field2.HIT_LAG in field:
-            return True
+    if Field2.HITLAG in flags[1]:
+        return True
     else:
         return False
 
@@ -110,16 +104,8 @@ def is_cmd_grabbed(action_state: int) -> bool:
     """Reieves action state, returns whether or not player is command grabbed (falcon up b, kirby succ, cargo throw, etc)"""
     # Includes sing, bury, ice, cargo throw, mewtwo side B, koopa claw, kirby suck, and yoshi egg
     return (
-        (
-            ActionRange.COMMAND_GRAB_RANGE1_START
-            <= action_state
-            <= ActionRange.COMMAND_GRAB_RANGE1_END
-        )
-        or (
-            ActionRange.COMMAND_GRAB_RANGE2_START
-            <= action_state
-            <= ActionRange.COMMAND_GRAB_RANGE2_END
-        )
+        (ActionRange.COMMAND_GRAB_RANGE1_START <= action_state <= ActionRange.COMMAND_GRAB_RANGE1_END)
+        or (ActionRange.COMMAND_GRAB_RANGE2_START <= action_state <= ActionRange.COMMAND_GRAB_RANGE2_END)
     ) and not action_state == ActionState.BARREL_WAIT
 
 
@@ -186,9 +172,7 @@ def is_dodging(action_state: int) -> bool:
     return ActionRange.DODGE_START <= action_state <= ActionRange.DODGE_END
 
 
-def did_lose_stock(
-    curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post
-) -> bool:
+def did_lose_stock(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> bool:
     """Recieves current and previous frame, returns stock difference between the two"""
     if not curr_frame or not prev_frame:
         return False
@@ -197,21 +181,14 @@ def did_lose_stock(
 
 def is_ledge_action(action_state: int):
     """Recieves action state, returns whether or not player is currently hanging from the ledge, or doing any ledge action."""
-    return (
-        ActionRange.LEDGE_ACTION_START <= action_state <= ActionRange.LEDGE_ACTION_END
-    )
+    return ActionRange.LEDGE_ACTION_START <= action_state <= ActionRange.LEDGE_ACTION_END
 
 
-def is_wavedashing(
-    action_state: int, port: int, frame_index: int, all_frames: list[Frame]
-) -> bool:
+def is_wavedashing(action_state: int, port: int, frame_index: int, all_frames: list[Frame]) -> bool:
     if action_state != ActionState.ESCAPE_AIR:
         return False
     for i in range(1, 4):
-        if (
-            all_frames[frame_index - i].ports[port].leader.post.state
-            == ActionState.LAND_FALL_SPECIAL
-        ):
+        if all_frames[frame_index - i].ports[port].leader.post.state == ActionState.LAND_FALL_SPECIAL:
             return True
     return False
 
@@ -252,10 +229,7 @@ def is_upb_lag(state: int, prev_state: int) -> bool:
         and prev_state != ActionState.LAND_FALL_SPECIAL
         and prev_state != ActionState.KNEE_BEND
         and prev_state != ActionState.ESCAPE_AIR
-        and (
-            prev_state <= ActionRange.CONTROLLED_JUMP_START
-            or prev_state >= ActionRange.CONTROLLED_JUMP_END
-        )
+        and (prev_state <= ActionRange.CONTROLLED_JUMP_START or prev_state >= ActionRange.CONTROLLED_JUMP_END)
     )
 
 
@@ -468,9 +442,7 @@ def max_di_angles(angle):
     return angles
 
 
-def calc_damage_taken(
-    curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post
-) -> float:
+def calc_damage_taken(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> float:
     """Recieves current and previous frames, returns float of the difference in damage between the two"""
     percent = curr_frame.percent
     prev_percent = prev_frame.percent

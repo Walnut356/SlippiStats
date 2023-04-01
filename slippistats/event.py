@@ -54,6 +54,8 @@ class EventType(IntEnum):
     FRAME_START = 0x3A
     ITEM = 0x3B
     FRAME_END = 0x3C
+    GECKO_LIST = 0x3D
+    MESSAGE_SPLITTER = 0x10
 
 
 class MatchType(Enum):
@@ -361,6 +363,8 @@ class Start(Base):
 
             HUMAN = 0
             CPU = 1
+            DEMO = 2
+            EMPTY = 3
 
         class Team(IntEnum):
             """Doubles team colors"""

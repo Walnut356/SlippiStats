@@ -54,18 +54,13 @@ class Metadata(Base):
 
         platform = cls.Platform(json["playedOn"])
 
-        try:
-            console_name = json["consoleNick"]
-        except KeyError:
-            console_name = None
+        console_name = json.get("consoleNick", None)
 
         players = [None, None, None, None]
 
-        for i in range(4):
-            try:
-                players[i] = cls.Player._parse(json["players"][str(i)])
-            except KeyError:
-                pass
+        for port, player in json["players"].items():
+            players[int(port)] = cls.Player._parse(player)
+
         return cls(
             date=date,
             duration=duration,
@@ -119,7 +114,7 @@ class Metadata(Base):
             return self.characters == other.characters and self.connect_code == other.connect_code
 
         class Netplay(Base):
-            """Contains netplay name and netpaly display name"""
+            """Contains netplay name and netplay display name"""
 
             code: str  #: Netplay code (e.g. "ABCD#123")
             name: str  #: Netplay nickname
