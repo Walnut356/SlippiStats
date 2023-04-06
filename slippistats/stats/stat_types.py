@@ -276,6 +276,15 @@ class ShieldDropData(Stat):
 
 # TODO ABC, protocol, mixin? for append, to_polars, etc.
 
+class StatList(ABC, UserList):
+    data_header: dict
+    data: list[Stat]
+
+    def append(self, item):
+        pass
+
+    def to_polars(self) -> pl.DataFrame:
+        pass
 
 class Wavedashes(UserList):
     """Iterable wrapper for lists of Wavedash data"""

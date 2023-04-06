@@ -540,15 +540,31 @@ class StatsComputer(ComputerBase):
                 or prev_player_state == ActionState.GUARD_ON
                 or prev_player_state == ActionState.GUARD_REFLECT
                 or prev_player_state == ActionState.GUARD_DAMAGE
+                or prev_player_state == ActionState.GUARD_SET_OFF
             )
+
+
             if player_state == ActionState.PASS and player_was_shielding:
+
+                for j in range(1, 8):
+                    past_frame = player.frames[i - j]
+                    if past_frame.post.state == ActionState.GUARD_SET_OFF:
+                        oo_shieldstun_frame = j
+                        break
+                else:
+                    oo_shieldstun_frame = None
+
                 player.stats.shield_drops.append(
                     ShieldDropData(
                         frame_index=i,
                         position=get_ground(stage, player_frame.post.last_ground_id),
+                        oo_shieldstun_frame=oo_shieldstun_Frame,
+
                     )
                 )
                 # TODO check for shieldstun and maybe followup option
+
+
 
         return player.stats.shield_drops
 

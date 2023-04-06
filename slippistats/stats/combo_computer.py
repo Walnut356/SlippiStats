@@ -112,7 +112,6 @@ class ComboComputer(ComputerBase):
         self.rules = None
         self.combos = []
         self.players = []
-        self.all_frames = []
         self.combo_state = ComboState()
         self.metadata = None
         self.queue = []
@@ -248,7 +247,7 @@ class ComboComputer(ComputerBase):
                 is_dodging(opnt_action_state)
                 and dodge_check
                 and not is_wavedashing(
-                    opnt_action_state, opponent.port, i, self.all_frames
+                    opnt_action_state, opponent.port, i, opponent.frames
                 )
             )
             opnt_is_shielding = is_shielding(opnt_action_state) and shield_check

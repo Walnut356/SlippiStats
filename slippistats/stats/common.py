@@ -81,19 +81,13 @@ def is_damaged(action_state: int) -> bool:
 def is_in_hitstun(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitstun bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    if Field4.HITSTUN in flags[3]:
-        return True
-    else:
-        return False
+    return Field4.HITSTUN in flags[3]
 
 
 def is_in_hitlag(flags: list[IntEnum]) -> bool:
     """Recieves StateFlags, returns whether or not the hitlag bitflag is active.
     Always returns false on older replays that do not support stateflags."""
-    if Field2.HITLAG in flags[1]:
-        return True
-    else:
-        return False
+    return Field2.HITLAG in flags[1]
 
 
 def is_grabbed(action_state: int) -> bool:
@@ -131,7 +125,7 @@ def is_downed(action_state: int) -> bool:
 
 def is_offstage(position: Position, stage) -> bool:
     """Recieves current frame and stage ID, returns whether or not the player is outside the X coordinates denoting the on-stage bounds"""
-    stage_bounds = [0, 0]
+    stage_bounds: tuple = (0, 0)
 
     if position.y < -5:
         return True
@@ -141,17 +135,17 @@ def is_offstage(position: Position, stage) -> bool:
     # In the future I'll add a Y value check, but i'll handle that when i handle ading Y value for juggles.
     match stage:
         case Stage.FOUNTAIN_OF_DREAMS:
-            stage_bounds = [-64, 64]
+            stage_bounds = (-64, 64)
         case Stage.YOSHIS_STORY:
-            stage_bounds = [-56, 56]
+            stage_bounds = (-56, 56)
         case Stage.DREAM_LAND_N64:
-            stage_bounds = [-73, 73]
+            stage_bounds = (-73, 73)
         case Stage.POKEMON_STADIUM:
-            stage_bounds = [-88, 88]
+            stage_bounds = (-88, 88)
         case Stage.BATTLEFIELD:
-            stage_bounds = [-67, 67]
+            stage_bounds = (-67, 67)
         case Stage.FINAL_DESTINATION:
-            stage_bounds = [-89, 89]
+            stage_bounds = (-89, 89)
 
     return position.x < stage_bounds[0] or position.x > stage_bounds[1]
 
@@ -174,8 +168,6 @@ def is_dodging(action_state: int) -> bool:
 
 def did_lose_stock(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> bool:
     """Recieves current and previous frame, returns stock difference between the two"""
-    if not curr_frame or not prev_frame:
-        return False
     return prev_frame.stocks_remaining - curr_frame.stocks_remaining > 0
 
 
@@ -184,11 +176,11 @@ def is_ledge_action(action_state: int):
     return ActionRange.LEDGE_ACTION_START <= action_state <= ActionRange.LEDGE_ACTION_END
 
 
-def is_wavedashing(action_state: int, port: int, frame_index: int, all_frames: list[Frame]) -> bool:
+def is_wavedashing(action_state: int, port: int, frame_index: int, player_frames: list[Frame]) -> bool:
     if action_state != ActionState.ESCAPE_AIR:
         return False
     for i in range(1, 4):
-        if all_frames[frame_index - i].ports[port].leader.post.state == ActionState.LAND_FALL_SPECIAL:
+        if player_frames[frame_index - i].post.state == ActionState.LAND_FALL_SPECIAL:
             return True
     return False
 
