@@ -78,7 +78,7 @@ class Start(Base):
     is_pal: bool | None  # True if this was a PAL version of Melee
     is_frozen_ps: bool | None  # True if frozen Pokemon Stadium was enabled
     match_id: str | None  #  Mode (ranked/unranked) and time the match started
-    match_type: bool
+    match_type: MatchType
     game_number: int | None  # The game number for consecutive games
     tiebreak_number: int | None
 
@@ -146,7 +146,7 @@ class Start(Base):
             except ValueError:
                 type = None
 
-            if type is not None:
+            if type is not None and type != cls.Player.Type.EMPTY:
                 character = CSSCharacter(character)
                 team = cls.Player.Team(team) if is_teams else None
                 player = cls.Player(
@@ -243,7 +243,7 @@ class Start(Base):
             and self.players == other.players
             and self.random_seed == other.random_seed
             and self.slippi_version == other.slippi_version
-            and self.stage is other.stage
+            and self.stage == other.stage
         )
 
     class SlippiVersion(Base):

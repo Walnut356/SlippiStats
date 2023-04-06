@@ -106,7 +106,7 @@ def _parse_event(event_stream, payload_sizes):
     try:
         size = payload_sizes[code]
     except KeyError:
-        raise ValueError("unexpected event type: 0x%02x" % code)
+        log.warn("unexpected event type: 0x%02x" % code)
 
     stream = io.BytesIO(event_stream.read(size))
 
@@ -279,7 +279,7 @@ def _start_frame(
     if not current_frame:
         current_frame = Frame(event.id.frame)
 
-    current_frame.items.append(Frame.Start._parse(event.data))
+    current_frame.start = Frame.Start._parse(event.data)
     return current_frame
 
 
@@ -376,17 +376,19 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
         (b, event, event_code) = _parse_event(stream, payload_sizes)
         bytes_read += b
 
-        current_frame = thing[event_code](
-            current_frame,
-            event,
-            handlers,
-            skip_frames,
-            total_size,
-            bytes_read,
-            payload_sizes,
-            stream,
-        )
-
+        try:
+            current_frame = thing[event_code](
+                current_frame,
+                event,
+                handlers,
+                skip_frames,
+                total_size,
+                bytes_read,
+                payload_sizes,
+                stream,
+            )
+        except KeyError:
+            continue
         # pattern matching a type requires type constructor, probably doesn't actually construct the type?
         # see: https://stackoverflow.com/questions/70815197
         # match event:
