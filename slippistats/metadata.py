@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
 
+import tzlocal
+
 from .event import FIRST_FRAME_INDEX
 from .enums.character import InGameCharacter
 from .util import Base, Enum
@@ -44,8 +46,10 @@ class Metadata(Base):
                 r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|\+(\d{2})(\d{2}))?$", raw_date
             ).groups()
         ]
-
-        date = datetime(*raw_date[:7], timezone(timedelta(hours=raw_date[7], minutes=raw_date[8])))
+        # MatchID already contains UTC time, so timezone will be the timezone of the device that parsed the replay.
+        date = datetime(*raw_date[:7], timezone(timedelta(hours=raw_date[7], minutes=raw_date[8]))).astimezone(
+            tzlocal.get_localzone()
+        )
         # Duration is stored as the final frame index + the "pre-Go" frames.
         try:
             duration = 1 + json["lastFrame"] - FIRST_FRAME_INDEX
@@ -58,8 +62,11 @@ class Metadata(Base):
 
         players = [None, None, None, None]
 
-        for port, player in json["players"].items():
-            players[int(port)] = cls.Player._parse(player)
+        try:
+            for port, player in json["players"].items():
+                players[int(port)] = cls.Player._parse(player)
+        except KeyError:
+            pass
 
         return cls(
             date=date,

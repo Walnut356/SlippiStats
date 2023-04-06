@@ -15,6 +15,10 @@ class IdentifierError(Exception):
     pass
 
 
+class PlayerCountError(Exception):
+    pass
+
+
 @dataclass
 class Player(Base):
     """Aggregate class for event.Start.Player and metadata.Player.
@@ -89,13 +93,12 @@ class ComputerBase:
         self.replay_version = self.replay.start.slippi_version
 
         stats_header = {
-            "match_id": self.replay.start.match_id,
-            "date_time": self.replay.metadata.date.replace(
-                tzinfo=None
-            ),  # TODO maybe add timezone back in? Iirc timezone doesn't parse correctly anyway
+            "date_time": self.replay.metadata.date,
             "slippi_version": str(self.replay_version),
+            "match_id": self.replay.start.match_id,
             "match_type": self.replay.start.match_type.name,
             "game_number": self.replay.start.game_number,
+            "stage": self.replay.start.stage.name,
             "duration": datetime.timedelta(seconds=((self.replay.metadata.duration) / 60)),
         }
 
@@ -110,7 +113,7 @@ class ComputerBase:
             )
         )
         if len(characters) != 2:
-            raise ValueError(f"Got {len(characters)} human players in {self.replay_path}, expected 2")
+            raise PlayerCountError(f"Got {len(characters)} human players in {self.replay_path}, expected 2")
 
         # handling for bugged replays without a game end event
         _game_end = False

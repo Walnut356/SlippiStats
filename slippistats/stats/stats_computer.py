@@ -142,8 +142,8 @@ class StatsComputer(ComputerBase):
                             self.wavedash_state.r_frame = k
                             self.wavedash_state.waveland = False
                             break
-
-            player.stats.wavedashes.append(self.wavedash_state)
+            if self.wavedash_state is not None:
+                player.stats.wavedashes.append(self.wavedash_state)
 
         # TODO think of some better way to return things
         return player.stats.wavedashes
@@ -555,7 +555,7 @@ class StatsComputer(ComputerBase):
 
 def _eef(file, connect_code):
     try:
-        thing = StatsComputer(file).take_hit_compute(connect_code)
+        thing = StatsComputer(file).wavedash_compute(connect_code)
     except IdentifierError:
         return (None, file)
     if len(thing) > 0:
@@ -564,7 +564,7 @@ def _eef(file, connect_code):
         return (None, file)
 
 
-def get_stats(directory, connect_code):
+def get_stats(directory, connect_code, target_name):
     count = 0
     dfs = None
     with os.scandir(directory) as dir:
@@ -595,6 +595,7 @@ def get_stats(directory, connect_code):
                             dfs = pl.concat([dfs, df], how="vertical")
 
                 data = None
-        dfs.write_parquet("take_hit_test_2.parquet")
+        dfs = dfs.sort(pl.col("date_time"))
+        dfs.write_parquet(target_name)
         print("file written\n")
     return dfs

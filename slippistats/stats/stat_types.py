@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from math import degrees, dist
 
 import polars as pl
+from tzlocal import get_localzone_name
 
 from slippistats.util import IntEnum, try_enum
 
@@ -285,6 +286,26 @@ class Wavedashes(UserList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+        self.schema = {
+            "date_time": pl.Datetime(time_zone=get_localzone_name()),
+            "slippi_version": pl.Utf8,
+            "match_id": pl.Utf8,
+            "match_type": pl.Utf8,
+            "game_number": pl.Int64,
+            "stage": pl.Utf8,
+            "duration": pl.Duration(time_unit="ms"),
+            "result": pl.Utf8,
+            "port": pl.Utf8,
+            "connect_code": pl.Utf8,
+            "chara": pl.Utf8,
+            "opnt_chara": pl.Utf8,
+            "frame_index": pl.Int64,
+            "angle": pl.Float64,
+            "direction": pl.Utf8,
+            "r_frame": pl.Int64,
+            "airdodge_frames": pl.Int64,
+            "waveland": pl.Boolean,
+        }
 
     def append(self, item):
         if isinstance(item, WavedashData):
@@ -294,9 +315,12 @@ class Wavedashes(UserList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) > 0:
-            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+            return pl.DataFrame(
+                [self.data_header | vars(stat) for stat in self.data if stat is not None],
+                schema=self.schema,
+            )
         else:
-            return
+            return pl.DataFrame([], schema=self.schema)
 
 
 class Dashes(UserList):
@@ -315,8 +339,12 @@ class Dashes(UserList):
         else:
             raise TypeError(f"Incorrect stat type: {type(item)}, expected DashData")
 
-    def to_polars(self):
+    def to_polars(self) -> pl.DataFrame:
+        # if len(self.data) > 0:
         return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+
+    # else:
+    #     return pl.DataFrame([], schema=self.schema)
 
 
 class Techs(UserList):
@@ -335,7 +363,7 @@ class Techs(UserList):
         else:
             raise TypeError(f"Incorrect stat type: {type(item)}, expected TechData")
 
-    def to_polars(self):
+    def to_polars(self) -> pl.DataFrame:
         return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
 
 
@@ -350,12 +378,13 @@ class TakeHits(UserList):
         self.data_header = data_header
         self.data = []
         self.schema = {
-            "match_id": pl.Utf8,
-            "date_time": pl.Datetime,
+            "date_time": pl.Datetime(time_zone=get_localzone_name()),
             "slippi_version": pl.Utf8,
+            "match_id": pl.Utf8,
             "match_type": pl.Utf8,
             "game_number": pl.Int64,
-            "duration": pl.Duration,
+            "stage": pl.Utf8,
+            "duration": pl.Duration(time_unit="ms"),
             "result": pl.Utf8,
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
