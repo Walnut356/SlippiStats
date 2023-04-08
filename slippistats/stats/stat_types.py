@@ -1,6 +1,6 @@
 from abc import ABC
 from collections import UserList
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import degrees, dist
 
 import polars as pl
@@ -27,6 +27,7 @@ class Stat(ABC):
 @dataclass
 class WavedashData(Stat):
     frame_index: int
+    stocks_remaining: int | None
     angle: float | None  # in degrees
     direction: str | None
     r_frame: int  # which airborne frame was the airdodge input on?
@@ -36,11 +37,13 @@ class WavedashData(Stat):
     def __init__(
         self,
         frame_index: int,
-        r_input_frame: int = 0,
+        stocks_remaining: int = None,
+        r_frame: int = 0,
         stick: Position | None = None,
         airdodge_frames: int = 0,
     ):
         self.frame_index = frame_index
+        self.stocks_remaining = stocks_remaining
         if stick:
             # atan2 converts coordinates to degrees without losing information
             self.angle = degrees(get_angle(stick))
@@ -63,7 +66,7 @@ class WavedashData(Stat):
         else:
             self.angle = None
             self.direction = None
-        self.r_frame = r_input_frame
+        self.r_frame = r_frame
         self.airdodge_frames = airdodge_frames
         self.waveland = True
 
@@ -76,25 +79,12 @@ class WavedashData(Stat):
 
 @dataclass
 class DashData(Stat):
-    frame_index: int
-    start_pos: float
-    end_pos: float
-    direction: str
-    is_dashdance: bool
-
-    def __init__(
-        self,
-        frame_index: int = -1,
-        direction: str = "NONE",
-        is_dashdance: bool = False,
-        start_pos: float = 0,
-        end_pos: float = 0,
-    ):
-        self.frame_index = frame_index
-        self.start_pos = start_pos
-        self.end_pos = end_pos
-        self.direction = direction
-        self.is_dashdance = is_dashdance
+    frame_index: int = -1
+    stocks_remaining: int | None = None
+    start_pos: float = 0.0
+    end_pos: float = 0.0
+    direction: str | None = None
+    is_dashdance: bool = False
 
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
@@ -105,26 +95,19 @@ class DashData(Stat):
 
 @dataclass
 class TechData(Stat):
-    frame_index: int
-    tech_type: TechType | None
-    was_punished: bool
-    direction: str
-    position: Position
-    is_on_platform: bool
-    is_missed_tech: bool
-    towards_center: bool | None
-    towards_opponent: bool | None
-    jab_reset: bool | None
-    last_hit_by: str
-
-    def __init__(self):
-        self.frame_index = -1
-        self.tech_type = None
-        self.is_missed_tech = False
-        self.was_punished = False
-        self.jab_reset = None
-        self.towards_center = None
-        self.towards_opponent = None
+    frame_index: int = -1
+    stocks_remaining: int | None = None
+    tech_type: TechType | None = None
+    was_punished: bool = False
+    direction: str = None
+    position: Position = field(default_factory=Position)
+    ground_id: IntEnum | None = None
+    is_on_platform: bool = False
+    is_missed_tech: bool = False
+    towards_center: bool | None = None
+    towards_opponent: bool | None = None
+    jab_reset: bool | None = None
+    last_hit_by: str = field(default_factory=str)
 
 
 @dataclass
@@ -234,11 +217,13 @@ class LCancelData(Stat):
     move: Attack
     position: IntEnum
     trigger_input_frame: int
+    during_hitlag: bool
 
-    def __init__(self, frame_index, l_cancel, move, position, trigger_input_frame):
+    def __init__(self, frame_index, l_cancel, move, position, trigger_input_frame, during_hitlag):
         self.frame_index = frame_index
         self.l_cancel = l_cancel
         self.trigger_input_frame = trigger_input_frame
+        self.during_hitlag = during_hitlag
         match move:
             case ActionState.ATTACK_AIR_N:
                 self.move = Attack.NAIR
@@ -276,6 +261,7 @@ class ShieldDropData(Stat):
 
 # TODO ABC, protocol, mixin? for append, to_polars, etc.
 
+
 class StatList(ABC, UserList):
     data_header: dict
     data: list[Stat]
@@ -285,6 +271,7 @@ class StatList(ABC, UserList):
 
     def to_polars(self) -> pl.DataFrame:
         pass
+
 
 class Wavedashes(UserList):
     """Iterable wrapper for lists of Wavedash data"""
@@ -306,8 +293,8 @@ class Wavedashes(UserList):
             "result": pl.Utf8,
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
-            "chara": pl.Utf8,
-            "opnt_chara": pl.Utf8,
+            "character": pl.Utf8,
+            "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
             "angle": pl.Float64,
             "direction": pl.Utf8,
@@ -341,6 +328,26 @@ class Dashes(UserList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+        self.schema = {
+            "date_time": pl.Datetime(time_zone=get_localzone_name()),
+            "slippi_version": pl.Utf8,
+            "match_id": pl.Utf8,
+            "match_type": pl.Utf8,
+            "game_number": pl.Int64,
+            "stage": pl.Utf8,
+            "duration": pl.Duration(time_unit="us"),
+            "result": pl.Utf8,
+            "port": pl.Utf8,
+            "connect_code": pl.Utf8,
+            "character": pl.Utf8,
+            "opnt_character": pl.Utf8,
+            "frame_index": pl.Int64,
+            "stocks_remaining": pl.Int64,
+            "start_pos": pl.Float64,
+            "end_pos": pl.Float64,
+            "direction": pl.Utf8,
+            "is_dashdance": pl.Boolean,
+        }
 
     def append(self, item):
         if isinstance(item, DashData):
@@ -365,6 +372,21 @@ class Techs(UserList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
+        self.schema = {
+            "frame_index": pl.Int64,
+            "stocks_remaining": pl.Int64,
+            "tech_type": pl.Utf8,
+            "was_punished": pl.Boolean,
+            "direction": pl.Boolean,
+            "position": pl.List(pl.Float64),
+            "ground_id": pl.Int64,
+            "is_on_platform": pl.Boolean,
+            "is_missed_tech": pl.Boolean,
+            "towards_center": pl.Boolean,
+            "towards_opponent": pl.Boolean,
+            "jab_reset": pl.Boolean,
+            "last_hit_by": pl.Utf8,
+        }
 
     def append(self, item):
         if isinstance(item, TechData):
@@ -373,7 +395,20 @@ class Techs(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected TechData")
 
     def to_polars(self) -> pl.DataFrame:
-        return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+        if len(self.data) == 0:
+            pass
+            # df = pl.DataFrame([], self.schema)
+        else:
+            rows = []
+
+            # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
+            for stat in self.data:
+                stat_dict = vars(stat).copy()
+                stat_dict["position"] = [stat.position.x, stat.position.y]
+                rows.append(stat_dict)
+
+            df = pl.DataFrame(rows)
+            return df
 
 
 class TakeHits(UserList):
@@ -397,8 +432,8 @@ class TakeHits(UserList):
             "result": pl.Utf8,
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
-            "chara": pl.Utf8,
-            "opnt_chara": pl.Utf8,
+            "character": pl.Utf8,
+            "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
             "grounded": pl.Boolean,
             "percent": pl.Float64,

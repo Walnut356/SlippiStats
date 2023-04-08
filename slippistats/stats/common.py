@@ -90,6 +90,12 @@ def is_in_hitlag(flags: list[IntEnum]) -> bool:
     return Field2.HITLAG in flags[1]
 
 
+def is_fastfalling(flags: list[IntEnum]) -> bool:
+    """Recieves StateFlags, returns whether or not the fastfall bitflag is active.
+    Always returns false on older replays that do not support stateflags."""
+    return Field2.FASTFALL in flags[1]
+
+
 def is_grabbed(action_state: int) -> bool:
     return ActionRange.CAPTURE_START <= action_state <= ActionRange.CAPTURE_END
 

@@ -1,9 +1,9 @@
 import concurrent.futures
 import os
 import warnings
+from collections import deque
 from itertools import permutations
 from math import degrees
-
 
 import polars as pl
 
@@ -26,6 +26,7 @@ from .common import (
     get_tech_type,
     is_damaged,
     is_dying,
+    is_fastfalling,
     is_in_hitlag,
     is_in_hitstun,
     is_ledge_action,
@@ -37,7 +38,7 @@ from .common import (
     just_input_l_cancel,
     just_took_damage,
 )
-from .computer import ComputerBase, Player, IdentifierError
+from .computer import ComputerBase, IdentifierError, Player
 from .stat_types import (
     DashData,
     Dashes,
@@ -57,7 +58,7 @@ from .stat_types import (
 
 class StatsComputer(ComputerBase):
     wavedash_state: WavedashData | None
-    tech_state: TechState | None
+    tech_state: TechData | None
     dash_state: DashData | None
     take_hit_state: TakeHitData | None
     recovery_state: RecoveryData | None
@@ -134,7 +135,13 @@ class StatsComputer(ComputerBase):
                     Buttons.Physical.R in past_frame.pre.buttons.physical.pressed()
                     or Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()
                 ):
-                    self.wavedash_state = WavedashData(i, 0, player_frame.pre.joystick, j)
+                    self.wavedash_state = WavedashData(
+                        frame_index=i,
+                        stocks_remaining=player_frame.post.stocks_remaining,
+                        r_frame=0,
+                        stick=player_frame.pre.joystick,
+                        airdodge_frames=j,
+                    )
 
                     for k in range(0, 5):
                         past_frame = player.frames[i - j - k]
@@ -145,7 +152,6 @@ class StatsComputer(ComputerBase):
             if self.wavedash_state is not None:
                 player.stats.wavedashes.append(self.wavedash_state)
 
-        # TODO think of some better way to return things
         return player.stats.wavedashes
 
     def dash_compute(
@@ -160,7 +166,8 @@ class StatsComputer(ComputerBase):
             player = self.get_player(connect_code)
 
         for i, player_frame in enumerate(player.frames):
-            player_state = player_frame.post.state
+            player_post = player_frame.post
+            player_state = player_post.state
             prev_player_frame = player.frames[i - 1]
             prev_player_state = prev_player_frame.post.state
             prev_prev_player_frame = player.frames[i - 2]
@@ -173,8 +180,9 @@ class StatsComputer(ComputerBase):
             if just_entered_state(ActionState.DASH, player_state, prev_player_state):
                 self.dash_state = DashData(
                     frame_index=i,
-                    direction=player_frame.post.facing_direction.name,
-                    start_pos=player_frame.post.position.x,
+                    stocks_remaining=player_post.stocks_remaining,
+                    direction=player_post.facing_direction.name,
+                    start_pos=player_post.position.x,
                     is_dashdance=False,
                 )
 
@@ -184,7 +192,7 @@ class StatsComputer(ComputerBase):
                     player.stats.dashes[-1].is_dashdance = True
 
             if just_exited_state(ActionState.DASH, player_state, prev_player_state):
-                # If not dashing for 2 consecutive frames, finalize the dash and reset the state
+                # finalize the dash and reset the state
                 self.dash_state.end_pos = player_frame.post.position.x
                 player.stats.dashes.append(self.dash_state)
                 self.dash_state = None
@@ -204,7 +212,16 @@ class StatsComputer(ComputerBase):
             player = self.get_player(connect_code)
             opponent = self.get_opponent(connect_code)
 
-        self.tech_state = TechState()
+        ground_check = True
+        if self.replay_version < (2, 0, 0):
+            ground_check = False
+            warnings.warn(
+                f"""Limited computation: some fields in tech_compute() require at least replay version 2.0.0,
+                          got replay version: {self.replay_version}""",
+                RuntimeWarning,
+            )
+
+        self.tech_state = None
         for i, player_frame in enumerate(player.frames):
             player_state = player_frame.post.state
             prev_player_frame = player.frames[i - 1]
@@ -216,67 +233,71 @@ class StatsComputer(ComputerBase):
 
             # Close out active techs if we were teching, and save some processing power if we weren't
             if not curr_teching:
-                if was_teching and self.tech_state.tech is not None:
+                if was_teching and self.tech_state is not None:
                     if is_damaged(player_state):
-                        self.tech_state.tech.was_punished = True
-                    player.stats.techs.append(self.tech_state.tech)
-                    self.tech_state.tech = None
-                    self.tech_state.last_state = -1
+                        self.tech_state.was_punished = True
+                    player.stats.techs.append(self.tech_state)
+                    self.tech_state = None
                 continue
 
             opponent_frame = opponent.frames[i]
 
             # If we are, create a tech event, and start filling out fields based on the info we have
             if not was_teching:
-                self.tech_state.tech = TechData()
-                self.tech_state.tech.frame_index = i
+                self.tech_state = TechData(
+                    frame_index=i,
+                    stocks_remaining=player_frame.post.stocks_remaining,
+                    position=player_frame.post.position,
+                    is_on_platform=player_frame.post.position.y > 5,  # kindof arbitrary, but it should work
+                )
+
                 if opponent_frame.post.most_recent_hit:
-                    self.tech_state.tech.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit).name
-                self.tech_state.tech.position = player_frame.post.position
-                self.tech_state.tech.is_on_platform = (
-                    player_frame.post.position.y > 5
-                )  # Arbitrary value, i'll have to fact check this
+                    self.tech_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit).name
+                if ground_check:
+                    self.tech_state.ground_id = get_ground(self.replay.start.stage, player_frame.post.last_ground_id)
 
-            if player_state == self.tech_state.last_state:
+            # this allows the tech data to update exactly once on the frame where the option is chosen
+            # (e.g. missed tech -> tech right)
+            # this matters for the positional checks, as we only want the earliest possible position values for
+            # each "decision" or "event" that happens during the tech situation
+            if player_state == prev_player_state:
                 continue
-
-            self.tech_state.last_state = player_state
 
             tech_type = get_tech_type(player_state, player_frame.post.facing_direction)
 
             match tech_type:
                 case TechType.MISSED_TECH:
-                    self.tech_state.tech.is_missed_tech = True
-                    self.tech_state.tech.jab_reset = False
+                    self.tech_state.is_missed_tech = True
+                    self.tech_state.jab_reset = False
 
                 case TechType.JAB_RESET:
-                    self.tech_state.tech.jab_reset = True
-
+                    self.tech_state.jab_reset = True
+                # TODO If opponent isn't dead
                 case TechType.TECH_LEFT | TechType.MISSED_TECH_ROLL_LEFT:
                     opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
-                        self.tech_state.tech.towards_center = True
+                        self.tech_state.towards_center = True
                     else:
-                        self.tech_state.tech.towards_center = False
+                        self.tech_state.towards_center = False
                     if opnt_relative_position > 0:
-                        self.tech_state.tech.towards_opponent = True
+                        self.tech_state.towards_opponent = True
                     else:
-                        self.tech_state.tech.towards_opponent = False
+                        self.tech_state.towards_opponent = False
                 case TechType.TECH_RIGHT | TechType.MISSED_TECH_ROLL_RIGHT:
                     opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
-                        self.tech_state.tech.towards_center = False
+                        self.tech_state.towards_center = False
                     else:
-                        self.tech_state.tech.towards_center = True
+                        self.tech_state.towards_center = True
                     if opnt_relative_position > 0:
-                        self.tech_state.tech.towards_opponent = False
+                        self.tech_state.towards_opponent = False
                     else:
-                        self.tech_state.tech.towards_opponent = True
+                        self.tech_state.towards_opponent = True
 
                 case _:  # Tech in place, getup attack
                     pass
 
-            self.tech_state.tech.tech_type = tech_type.name
+            self.tech_state.tech_type = tech_type.name
         return player.stats.techs
 
     def take_hit_compute(
@@ -292,14 +313,17 @@ class StatsComputer(ComputerBase):
             player = self.get_player(connect_code)
             opponent = self.get_opponent(connect_code)
 
-        if self.replay_version < "2.0.0":
+        if self.replay_version < (2, 0, 0):
             warnings.warn(
                 f"""No computation: take_hit_compute() requires at least replay version 2.0.0,
                           got replay version: {self.replay_version}""",
                 RuntimeWarning,
             )
             return player.stats.take_hits
-        if self.replay_version < "3.5.0":
+
+        knockback_check = True
+        if self.replay_version < (3, 5, 0):
+            knockback_check = False
             warnings.warn(
                 f"""Partial computation: take_hit_compute() DI and knockback calculations
                 require at least replay version 3.5.0, got replay version {self.replay_version}.""",
@@ -340,7 +364,7 @@ class StatsComputer(ComputerBase):
 
                     self.take_hit_state.di_stick_pos = effective_stick
 
-                    if self.replay_version >= "3.5.0":
+                    if knockback_check:
                         if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0.0:
                             self.take_hit_state.final_kb_angle = get_post_di_angle(
                                 effective_stick, self.take_hit_state.kb_velocity
@@ -380,7 +404,7 @@ class StatsComputer(ComputerBase):
                 self.take_hit_state.start_pos = player_frame.post.position
                 self.take_hit_state.percent = player_frame.post.percent
                 self.take_hit_state.grounded = not player_frame.post.is_airborne
-                if self.replay_version >= "3.5.0":
+                if knockback_check:
                     self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
                     self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
                 else:
@@ -412,7 +436,7 @@ class StatsComputer(ComputerBase):
         if connect_code is not None:
             player = self.get_player(connect_code)
 
-        if self.replay_version < "2.0.0":
+        if self.replay_version < (2, 0, 0):
             warnings.warn(
                 f"""No computation: l_cancel_compute() requires at least replay version 2.0.0,
                           got replay version: {self.replay_version}""",
@@ -420,41 +444,55 @@ class StatsComputer(ComputerBase):
             )
             return player.stats.l_cancels
 
+        # l_cancel_window: int | None = None
+        # input_frame: int | None = None
+        during_hitlag: bool = False
         for i, player_frame in enumerate(player.frames):
             l_cancel = player_frame.post.l_cancel
+
+            if just_input_l_cancel(player_frame, player.frames[i - 1]):
+                trigger_input_frame = i
+                during_hitlag = is_in_hitlag(player_frame.post.flags)
+
+            # TODO possible compatibility mode in the future
+            # if player_just_input:
+            #     l_cancel_window = 7
+
+            #     if player_in_hitlag:
+            #         during_hitlag = True
+
+            # if player_in_hitlag and l_cancel_window is not None:
+            #     pass
+            # else:
+            #     l_cancel_window -= 1
+            #     # if you're more than 8 frames early, you probably weren't trying to l cancel
+            #     if l_cancel_window <= 8:
+            #         l_cancel_window = None
 
             if l_cancel == LCancel.NOT_APPLICABLE:
                 continue
 
-            # Check for l/r press either 15 frames prior, or j + hitlag frames prior
-            trigger_input_frame: int | None = None
-            in_hitlag = False
-            j = 0
+            # If you're more than a few frames early, it probably wasn't an l cancel input
+            if (trigger_input_frame := trigger_input_frame - i) > 15:
+                # unless you input during hitlag
+                if (not during_hitlag) and trigger_input_frame < 25:
+                    trigger_input_frame = None
 
-            while j < 15 and not in_hitlag:
-                if i - j >= 0:
-                    if is_in_hitlag(player.frames[i - j].post.flags):
-                        in_hitlag = True
-
-                    if just_input_l_cancel(player.frames[i - j], player.frames[i - j - 1]):
-                        trigger_input_frame = -j
-                        break
-
-                j += 1
-
-            if trigger_input_frame is not None:
-                for j in range(5):
-                    if i + j < len(player.frames):
-                        if just_input_l_cancel(player.frames[i + j], player.frames[i + j - 1]):
-                            trigger_input_frame = j
+            # Same deal if you're more than 5 frames late, but we also prioritize early over late
+            if not (did_l_cancel := l_cancel == LCancel.SUCCESS) and trigger_input_frame is not None:
+                for j in range(1, 6):
+                    if just_input_l_cancel(player.frames[i + j], player.frames[i + j - 1]):
+                        trigger_input_frame = j
 
             player.stats.l_cancels.append(
                 LCancelData(
                     frame_index=i,
                     move=player.frames[i - 1].post.state,
-                    l_cancel=True if l_cancel == 1 else False,
+                    l_cancel=did_l_cancel,
                     trigger_input_frame=trigger_input_frame,
                     position=get_ground(self.replay.start.stage, player_frame.post.last_ground_id),
+                    fast_fall=is_fastfalling(player.frames[i - 1].post.flags),
+                    during_hitlag=during_hitlag,
                 )
             )
 
@@ -543,9 +581,7 @@ class StatsComputer(ComputerBase):
                 or prev_player_state == ActionState.GUARD_SET_OFF
             )
 
-
             if player_state == ActionState.PASS and player_was_shielding:
-
                 for j in range(1, 8):
                     past_frame = player.frames[i - j]
                     if past_frame.post.state == ActionState.GUARD_SET_OFF:
@@ -558,13 +594,10 @@ class StatsComputer(ComputerBase):
                     ShieldDropData(
                         frame_index=i,
                         position=get_ground(stage, player_frame.post.last_ground_id),
-                        oo_shieldstun_frame=oo_shieldstun_Frame,
-
+                        oo_shieldstun_frame=oo_shieldstun_frame,
                     )
                 )
                 # TODO check for shieldstun and maybe followup option
-
-
 
         return player.stats.shield_drops
 

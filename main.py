@@ -6,6 +6,7 @@ from pathlib import Path
 import polars as pl
 
 import slippistats as slp
+from slippistats.stats.stat_types import *
 
 replay = Path(R"Modern Replays\Game_20221227T194333.slp")
 
@@ -13,9 +14,10 @@ directory = Path(R"E:\Slippi Replays\Netplay")
 code = R"NUT#356"
 
 
-thing = slp.Game(replay)
+thing = slp.StatsComputer(replay).tech_compute("NUT#356").to_polars()
 
-print(thing.metadata.date)
+print(thing)
+
 
 # if __name__ == "__main__":
 
@@ -25,7 +27,6 @@ print(thing.metadata.date)
 # thing = slp.get_stats(directory, code, target_name)
 # print(time.time() - start)
 # print("Done")
-
 
 # dfs = None
 # count = 0

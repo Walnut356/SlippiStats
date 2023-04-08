@@ -272,6 +272,16 @@ class Start(Base):
             return f"{self.major}.{self.minor}.{self.revision}"
 
         def __eq__(self, other: Start.SlippiVersion | str):
+            if isinstance(other, Sequence):
+                if len(other) == 3:
+                    major, minor, revision = other
+                else:
+                    raise ValueError(
+                        f"""Incorrect Sequence {other} for SlippiVersion.
+                                     Must have 3 elements (major, minor, revision)"""
+                    )
+
+                return self.major == major and self.minor == minor and self.revision == revision
             if isinstance(other, self.__class__):
                 return self.major == other.major and self.minor == other.minor and self.revision == other.revision
 
@@ -284,29 +294,35 @@ class Start(Base):
                 accepted types are event.Start.Slippi, event.Start.Slippi.Version, and str"""
             )
 
-        def __ge__(self, other: Start.SlippiVersion | str):
+        def __ge__(self, other: Start.SlippiVersion | str | Sequence):
+            if isinstance(other, Sequence):
+                if len(other) == 3:
+                    major, minor, revision = other
+                else:
+                    raise ValueError(
+                        f"""Incorrect Sequence {other} for SlippiVersion.
+                                     Must have 3 elements (major, minor, revision)"""
+                    )
+
+                return (
+                    self.major > major
+                    or (self.major == major and self.minor > minor)
+                    or (self.minor == minor and self.revision >= revision)
+                )
+
             if isinstance(other, self.__class__):
-                if self.major > other.major:
-                    return True
-                if self.major == other.major:
-                    if self.minor > other.minor:
-                        return True
-                    if self.minor == other.minor:
-                        if self.revision >= other.revision:
-                            return True
-                return False
+                return (
+                    self.major > other.major
+                    or (self.major == other.major and self.minor > other.minor)
+                    or (self.minor == other.minor and self.revision >= other.revision)
+                )
 
             if isinstance(other, str):
-                major, minor, revision = [int(n) for n in other.split(".", 2)]
-                if self.major > major:
-                    return True
-                if self.major == major:
-                    if self.minor > minor:
-                        return True
-                    if self.minor == minor:
-                        if self.revision >= revision:
-                            return True
-                return False
+                return (
+                    self.major > other.major
+                    or (self.major == other.major and self.minor > other.minor)
+                    or (self.minor == other.minor and self.revision >= other.revision)
+                )
 
             raise NotImplementedError(
                 """Incorrect type for comparison to event.Start.Slippi,
@@ -1010,7 +1026,7 @@ class Position(Base):
     x: float
     y: float
 
-    def __init__(self, x: float, y: float):
+    def __init__(self, x: float = 0.0, y: float = 0.0):
         self.x = x
         self.y = y
 

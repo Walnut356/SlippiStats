@@ -60,8 +60,8 @@ class Player(Base):
             "result": "win" if self.did_win else "loss",
             "port": self.port.name,
             "connect_code": self.connect_code,
-            "chara": self.character.name,
-            "opnt_chara": characters[1].name,
+            "character": self.character.name,
+            "opnt_character": characters[1].name,
         }
         data_header = stats_header | data_header
 
@@ -108,9 +108,7 @@ class ComputerBase:
         # object 1 in the list is the current player's character and object 2 is the opponent's character.
         # this only works for 2 players, but double stats is a pretty rare usecase so it's fine for now.
         characters = list(
-            permutations(
-                [player.character for player in self.replay.start.players if player.type == Start.Player.Type.HUMAN]
-            )
+            permutations([player.character for player in self.replay.start.players if player is not None])
         )
         if len(characters) != 2:
             raise PlayerCountError(f"Got {len(characters)} human players in {self.replay_path}, expected 2")
@@ -127,14 +125,14 @@ class ComputerBase:
                 elif self.replay.end.lras_initiator is not None and self.replay.end.lras_initiator != -1:
                     did_win = True if port != self.replay.end.lras_initiator else False
                 else:
-                    # TODO this is going to need better logic eventually to account for timeouts, old replay LRAS's, etc.
+                    # TODO this is going to need better logic eventually to account for timeouts, old replay LRAS's, etc
                     if self.replay.frames[-1].ports[port].leader.post.stocks_remaining > 0:
                         did_win = True
                     else:
                         did_win = False
             else:
                 did_win = False
-            if self.replay.start.players[port].type == Start.Player.Type.HUMAN:
+            if self.replay.start.players[port] is not None:
                 self.players.append(
                     Player(
                         characters=characters.pop(0),
