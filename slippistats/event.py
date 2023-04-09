@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import struct
 from collections.abc import Sequence
 from enum import IntFlag
@@ -512,21 +513,23 @@ class Frame(Base):
                 self._pre = None
                 self._post = None
 
-            # TODO i think these are used for live parsing?
-            # IDC about live parsing so I think i can just rip all this out
-            # should make member access a tiny bit faster
+            # Creates write-only, lazy access to
             @property
             def pre(self) -> Frame.Port.Data.Pre | None:
                 """Pre-frame update data"""
-                if self._pre and not isinstance(self._pre, self.Pre):
-                    self._pre = self.Pre._parse(self._pre)
+                # could flatten these ifs, but it saves us a comparison the vast majority of the time we access it
+                # since type(self._pre) is None is the same thing as not isinstance(self._pre, self.Pre)
+                if not isinstance(self._pre, self.Pre):
+                    if self._pre:
+                        self._pre = self.Pre._parse(self._pre)
                 return self._pre
 
             @property
             def post(self) -> Frame.Port.Data.Post | None:
                 """Post-frame update data"""
-                if self._post and not isinstance(self._post, self.Post):
-                    self._post = self.Post._parse(self._post)
+                if not isinstance(self._post, self.Post):
+                    if self._post:
+                        self._post = self.Post._parse(self._post)
                 return self._post
 
             class Pre(Base):
@@ -582,40 +585,52 @@ class Frame(Base):
                     self.percent = damage
 
                 @classmethod
-                def _parse(cls, stream):
-                    (random_seed,) = unpack_uint32(stream.read(4))
-                    (state,) = unpack_uint16(stream.read(2))
-                    (position_x,) = unpack_float(stream.read(4))
-                    (position_y,) = unpack_float(stream.read(4))
-                    (direction,) = unpack_float(stream.read(4))
-                    (joystick_x,) = unpack_float(stream.read(4))
-                    (joystick_y,) = unpack_float(stream.read(4))
-                    (cstick_x,) = unpack_float(stream.read(4))
-                    (cstick_y,) = unpack_float(stream.read(4))
-                    (trigger_logical,) = unpack_float(stream.read(4))
-                    (buttons_logical,) = unpack_uint32(stream.read(4))
-                    (buttons_physical,) = unpack_uint16(stream.read(2))
-                    (trigger_physical_l,) = unpack_float(stream.read(4))
-                    (trigger_physical_r,) = unpack_float(stream.read(4))
+                def _parse(
+                    cls,
+                    stream: io.BytesIO,
+                    # it's dumb, but this promotes the functions to locals which are slightly faster to access
+                    unpack_float=unpack_float,
+                    unpack_uint32=unpack_uint32,
+                    unpack_uint16=unpack_uint16,
+                    unpack_uint8=unpack_uint8,
+                ):
+                    read = stream.read
+                    (random_seed,) = unpack_uint32(read(4))
+                    state = try_enum(ActionState, *unpack_uint16(read(2)))
+                    position = Position(*unpack_float(read(4)), *unpack_float(read(4)))
+                    # (position_x,) = unpack_float(read(4))
+                    # (position_y,) = unpack_float(read(4))
+                    direction = Direction(*unpack_float(read(4)))
+                    joystick = Position(*unpack_float(read(4)), *unpack_float(read(4)))
+                    # (joystick_x,) = unpack_float(read(4))
+                    # (joystick_y,) = unpack_float(read(4))
+                    cstick = Position(*unpack_float(read(4)), *unpack_float(read(4)))
+                    # (cstick_x,) = unpack_float(read(4))
+                    # (cstick_y,) = unpack_float(read(4))
+                    (trigger_logical,) = unpack_float(read(4))
+                    (buttons_logical,) = unpack_uint32(read(4))
+                    (buttons_physical,) = unpack_uint16(read(2))
+                    (trigger_physical_l,) = unpack_float(read(4))
+                    (trigger_physical_r,) = unpack_float(read(4))
 
                     # v1.2.0
                     try:
-                        (raw_analog_x,) = unpack_uint8(stream.read(1))
+                        (raw_analog_x,) = unpack_uint8(read(1))
                     except struct.error:
                         raw_analog_x = None
 
                     # v1.4.0
                     try:
-                        (damage,) = unpack_float(stream.read(4))
+                        (damage,) = unpack_float(read(4))
                     except struct.error:
                         damage = None
 
                     return cls(
-                        state=try_enum(ActionState, state),
-                        position=Position(position_x, position_y),
-                        direction=Direction(direction),
-                        joystick=Position(joystick_x, joystick_y),
-                        cstick=Position(cstick_x, cstick_y),
+                        state=state,
+                        position=position,
+                        direction=direction,
+                        joystick=joystick,
+                        cstick=cstick,
                         triggers=Triggers(trigger_logical, trigger_physical_l, trigger_physical_r),
                         buttons=Buttons(buttons_logical, buttons_physical),
                         random_seed=random_seed,
@@ -733,45 +748,48 @@ class Frame(Base):
                     self.animation_index = animation_index
 
                 @classmethod
-                def _parse(cls, stream):
-                    (character,) = unpack_uint8(stream.read(1))
-                    (state,) = unpack_uint16(stream.read(2))
-                    (position_x,) = unpack_float(stream.read(4))
-                    (position_y,) = unpack_float(stream.read(4))
-                    (direction,) = unpack_float(stream.read(4))
-                    (damage,) = unpack_float(stream.read(4))
-                    (shield,) = unpack_float(stream.read(4))
-                    (last_attack_landed,) = unpack_uint8(stream.read(1))
-                    (combo_count,) = unpack_uint8(stream.read(1))
-                    (last_hit_by,) = unpack_uint8(stream.read(1))
-                    (stocks,) = unpack_uint8(stream.read(1))
-                    character = try_enum(InGameCharacter, character)
+                def _parse(
+                    cls,
+                    stream: io.BytesIO,
+                    unpack_uint8=unpack_uint8,
+                    unpack_uint16=unpack_uint16,
+                    unpack_float=unpack_float,
+                    unpack_bool=unpack_bool,
+                    unpack_uint32=unpack_uint32,
+                ):
+                    read = stream.read
+                    character = try_enum(InGameCharacter, *unpack_uint8(read(1)))
+                    state = get_character_state(*unpack_uint16(read(2)), character)
+                    position = Position(*unpack_float(read(4)), *unpack_float(read(4)))
+                    direction = Direction(*unpack_float(read(4)))
+                    (damage,) = unpack_float(read(4))
+                    (shield,) = unpack_float(read(4))
+                    last_attack_landed = try_enum(Attack, *unpack_uint8(read(1)))
+                    (combo_count,) = unpack_uint8(read(1))
+                    (last_hit_by,) = unpack_uint8(read(1))
+                    (stocks,) = unpack_uint8(read(1))
                     # v0.2.0
                     try:
-                        (state_age,) = unpack_float(stream.read(4))
+                        (state_age,) = unpack_float(read(4))
                     except struct.error:
                         state_age = None
 
                     try:  # v2.0.0
-                        # unpack returns a tuple, so we need to flatten the list.
-                        # I try not to use this too often because it's annoying to read if you don't already know what it does
-                        flags = [tup[0] for tup in [unpack_uint8(stream.read(1)) for i in range(5)]]
-
-                        (misc_timer,) = unpack_float(stream.read(4))
-                        (airborne,) = unpack_bool(stream.read(1))
-                        (last_ground_id,) = unpack_uint16(stream.read(2))
-                        (jumps,) = unpack_uint8(stream.read(1))
-                        (l_cancel,) = unpack_uint8(stream.read(1))
 
                         flags = [
-                            Field1(flags[0]),
-                            Field2(flags[1]),
-                            Field3(flags[2]),
-                            Field4(flags[3]),
-                            Field5(flags[4]),
+                            Field1(*unpack_uint8(read(1))),
+                            Field2(*unpack_uint8(read(1))),
+                            Field3(*unpack_uint8(read(1))),
+                            Field4(*unpack_uint8(read(1))),
+                            Field5(*unpack_uint8(read(1)))
                         ]
 
-                        l_cancel = LCancel(l_cancel)
+                        (misc_timer,) = unpack_float(read(4))
+                        (airborne,) = unpack_bool(read(1))
+                        (last_ground_id,) = unpack_uint16(read(2))
+                        (jumps,) = unpack_uint8(read(1))
+                        l_cancel = LCancel(*unpack_uint8(read(1)))
+
                     except struct.error:
                         (
                             flags,
@@ -783,43 +801,38 @@ class Frame(Base):
                         ) = [None] * 6
 
                     try:  # v2.1.0
-                        (hurtbox_status,) = unpack_uint8(stream.read(1))
+                        (hurtbox_status,) = unpack_uint8(read(1))
                     except struct.error:
                         hurtbox_status = None
 
                     try:  # v3.5.0
-                        (self_air_x,) = unpack_float(stream.read(4))
-                        (self_y,) = unpack_float(stream.read(4))
-                        (kb_x,) = unpack_float(stream.read(4))
-                        (kb_y,) = unpack_float(stream.read(4))
-                        (self_ground_x,) = unpack_float(stream.read(4))
+                        self_air_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
+                        knockback_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
+                        self_ground_speed = Velocity(*unpack_float(read(4)), self_air_speed.y)
 
-                        self_ground_speed = Velocity(self_ground_x, self_y)
-                        self_air_speed = Velocity(self_air_x, self_y)
-                        knockback_speed = Velocity(kb_x, kb_y)
                     except struct.error:
                         (self_ground_speed, self_air_speed, knockback_speed) = [None] * 3
 
                     try:  # v3.8.0
-                        (hitlag_remaining,) = unpack_float(stream.read(4))
+                        (hitlag_remaining,) = unpack_float(read(4))
                     except struct.error:
                         hitlag_remaining = None
 
                     try:  # v3.11.0
-                        (animation_index,) = unpack_uint32(stream.read(4))
+                        (animation_index,) = unpack_uint32(read(4))
                     except struct.error:
                         animation_index = None
 
                     return cls(
                         character=character,
-                        state=get_character_state(state, character),
+                        state=state,
                         state_age=state_age,
-                        position=Position(position_x, position_y),
-                        direction=Direction(direction),
+                        position=position,
+                        direction=direction,
                         damage=damage,
                         shield=shield,
                         stocks=stocks,
-                        most_recent_hit=try_enum(Attack, last_attack_landed),
+                        most_recent_hit=last_attack_landed,
                         last_hit_by=last_hit_by if last_hit_by < 4 else None,
                         combo_count=combo_count,
                         flags=flags,
@@ -1072,6 +1085,10 @@ class Velocity(Base):
         if not isinstance(other, self.__class__):
             return NotImplemented
         return Velocity(self.x + other.x, self.y + other.y)
+
+    def __iter__(self):
+        for val in [self.x, self.y]:
+            yield val
 
     def __repr__(self):
         return f"({self.x:.2f}, {self.y:.2f})"
