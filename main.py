@@ -8,15 +8,21 @@ import polars as pl
 import slippistats as slp
 from slippistats.stats.stat_types import *
 
-replay = Path(R"Modern Replays\Game_20221227T194333.slp")
+replay = Path(R"Modern Replays/Game_20221227T194333.slp")
 
-directory = Path(R"E:\Slippi Replays\Netplay")
+# directory = Path(R"E:\Slippi Replays\Netplay")
 code = R"NUT#356"
 
+thing = slp.Game(replay)
+# thing = slp.StatsComputer(replay).take_hit_compute("NUT#356").to_polars()
+i = 0
+for frame in thing.frames:
+    if i < 100:
+        i += 1
+        print(frame.ports[1].leader.post)
+    else: break
 
-thing = slp.StatsComputer(replay).tech_compute("NUT#356").to_polars()
-
-print(thing)
+pass
 
 
 # if __name__ == "__main__":
