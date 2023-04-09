@@ -41,6 +41,8 @@ def just_entered_state(
 
 
 def just_exited_state(action_state: int, curr_state: ActionState | int, prev_state: ActionState | int) -> bool:
+    """Takes a desired action state, a current state, and a previous state. Returns True if previous state was the
+    desired state and the current state is any other state"""
     if isinstance(action_state, Callable):
         return action_state(prev_state) and not action_state(curr_state)
 
@@ -48,6 +50,8 @@ def just_exited_state(action_state: int, curr_state: ActionState | int, prev_sta
 
 
 def just_input_l_cancel(curr_frame: Frame.Port.Data, prev_frame: Frame.Port.Data) -> bool:
+    """Takes current and previous frame, returns True if any valid L-cancel button (L/R Digital/Analog, or Z)
+    changed from unpressed -> pressed"""
     curr = curr_frame.pre.buttons.logical
     prev = prev_frame.pre.buttons.logical
 
@@ -65,11 +69,12 @@ def just_input_l_cancel(curr_frame: Frame.Port.Data, prev_frame: Frame.Port.Data
 
 
 def just_took_damage(percent: int, prev_percent: int) -> bool:
+    """Takes current and previous frame percent, returns True if these values are float point equivalent"""
     return not isclose(percent, prev_percent, abs_tol=1e-03)
 
 
 def is_damaged(action_state: int) -> bool:
-    """Recieves action state, returns whether or not the player is in a damaged state.
+    """Takes action state, returns whether or not the player is in a damaged state.
     This includes all generic variants."""
     return (
         (ActionRange.DAMAGE_START <= action_state <= ActionRange.DAMAGE_END)
@@ -79,29 +84,31 @@ def is_damaged(action_state: int) -> bool:
 
 
 def is_in_hitstun(flags: list[IntEnum]) -> bool:
-    """Recieves StateFlags, returns whether or not the hitstun bitflag is active.
+    """Takes StateFlags, returns whether or not the hitstun bitflag is active.
     Always returns false on older replays that do not support stateflags."""
     return Field4.HITSTUN in flags[3]
 
 
 def is_in_hitlag(flags: list[IntEnum]) -> bool:
-    """Recieves StateFlags, returns whether or not the hitlag bitflag is active.
+    """Takes StateFlags, returns whether or not the hitlag bitflag is active.
     Always returns false on older replays that do not support stateflags."""
     return Field2.HITLAG in flags[1]
 
 
 def is_fastfalling(flags: list[IntEnum]) -> bool:
-    """Recieves StateFlags, returns whether or not the fastfall bitflag is active.
+    """Takes StateFlags, returns whether or not the fastfall bitflag is active.
     Always returns false on older replays that do not support stateflags."""
     return Field2.FASTFALL in flags[1]
 
 
 def is_grabbed(action_state: int) -> bool:
+    """Takes action state, returns whether or not player is command grabbed"""
     return ActionRange.CAPTURE_START <= action_state <= ActionRange.CAPTURE_END
 
 
 def is_cmd_grabbed(action_state: int) -> bool:
-    """Reieves action state, returns whether or not player is command grabbed (falcon up b, kirby succ, cargo throw, etc)"""
+    """Takes action state, returns whether or not player is command grabbed
+    (falcon up b, kirby succ, cargo throw, etc)"""
     # Includes sing, bury, ice, cargo throw, mewtwo side B, koopa claw, kirby suck, and yoshi egg
     return (
         (ActionRange.COMMAND_GRAB_RANGE1_START <= action_state <= ActionRange.COMMAND_GRAB_RANGE1_END)
@@ -110,7 +117,8 @@ def is_cmd_grabbed(action_state: int) -> bool:
 
 
 def is_teching(action_state: int) -> bool:
-    """Recieves action state, returns whether or not it falls into the tech action states, includes walljump/ceiling techs"""
+    """Takes action state, returns whether or not it falls into the tech action states,
+    includes walljump/ceiling techs"""
     return (
         ActionRange.TECH_START <= action_state <= ActionRange.TECH_END
         or ActionRange.DOWN_START <= action_state <= ActionRange.DOWN_END
@@ -125,20 +133,22 @@ def is_dying(action_state: int) -> bool:
 
 
 def is_downed(action_state: int) -> bool:
-    """Recieves action state, returns whether or not player is downed (i.e. missed tech)"""
+    """Takes action state, returns whether or not player is downed (i.e. missed tech)"""
     return ActionRange.DOWN_START <= action_state <= ActionRange.DOWN_END
 
 
 def is_offstage(position: Position, stage) -> bool:
-    """Recieves current frame and stage ID, returns whether or not the player is outside the X coordinates denoting the on-stage bounds"""
+    """Takes current frame and stage ID,
+    returns whether or not the player is outside the X coordinates denoting the on-stage bounds"""
     stage_bounds: tuple = (0, 0)
 
     if position.y < -5:
         return True
 
-    # I manually grabbed these values using uncle punch and just moving as close to the edge as I could and rounding away from 0.
-    # They don't cover 100% of cases (such as being underneath BF), but it's accurate enough for most standard edgeguard situations
-    # In the future I'll add a Y value check, but i'll handle that when i handle ading Y value for juggles.
+    # I manually grabbed these values using uncle punch
+    # by just moving as close to the edge as I could and rounding away from 0.
+    # They don't cover 100% of cases (such as being underneath BF),
+    # but it's accurate enough for most standard edgeguard situations
     match stage:
         case Stage.FOUNTAIN_OF_DREAMS:
             stage_bounds = (-64, 64)
@@ -157,28 +167,29 @@ def is_offstage(position: Position, stage) -> bool:
 
 
 def is_shielding(action_state: int) -> bool:
-    """Recieves action state, returns whether or not it falls into the guard action states"""
+    """Takes action state, returns whether or not it falls into the guard action states"""
     return ActionRange.GUARD_START <= action_state <= ActionRange.GUARD_END
 
 
 def is_shield_broken(action_state: int) -> bool:
-    """Recieves action state, returns whether or not it falls into the guard_break action states"""
+    """Takes action state, returns whether or not it falls into the guard_break action states"""
     return ActionRange.GUARD_BREAK_START <= action_state <= ActionRange.GUARD_BREAK_END
 
 
 def is_dodging(action_state: int) -> bool:
-    """Recieves action state and returns whether or not it falls into the 'dodging' category.
+    """Takes action state and returns whether or not it falls into the 'dodging' category.
     Category includes shielded escape options (roll, spot dodge, airdodge)"""
     return ActionRange.DODGE_START <= action_state <= ActionRange.DODGE_END
 
 
 def did_lose_stock(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> bool:
-    """Recieves current and previous frame, returns stock difference between the two"""
+    """Takes current and previous frame, returns stock difference between the two"""
     return prev_frame.stocks_remaining - curr_frame.stocks_remaining > 0
 
 
 def is_ledge_action(action_state: int):
-    """Recieves action state, returns whether or not player is currently hanging from the ledge, or doing any ledge action."""
+    """Takes action state,
+    returns whether or not player is currently hanging from the ledge, or doing any ledge action."""
     return ActionRange.LEDGE_ACTION_START <= action_state <= ActionRange.LEDGE_ACTION_END
 
 
@@ -441,7 +452,7 @@ def max_di_angles(angle):
 
 
 def calc_damage_taken(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.Data.Post) -> float:
-    """Recieves current and previous frames, returns float of the difference in damage between the two"""
+    """Takes current and previous frames, returns float of the difference in damage between the two"""
     percent = curr_frame.percent
     prev_percent = prev_frame.percent
 
