@@ -404,7 +404,7 @@ class Techs(UserList):
             # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
             for stat in self.data:
                 stat_dict = vars(stat).copy()
-                stat_dict["position"] = [stat.position.x, stat.position.y]
+                stat_dict["position"] = list(stat.position)
                 rows.append(stat_dict)
 
             df = pl.DataFrame(rows)
@@ -483,15 +483,12 @@ class TakeHits(UserList):
                 stat_dict["sdi_inputs"] = [region.name for region in stat.sdi_inputs] or None
                 stat_dict["asdi"] = stat.asdi.name
                 stat_dict["stick_regions_during_hitlag"] = [region.name for region in stat.stick_regions_during_hitlag]
-                stat_dict["kb_velocity"] = [stat.kb_velocity.x, stat.kb_velocity.y]
-                stat_dict["final_kb_velocity"] = [
-                    stat.final_kb_velocity.x,
-                    stat.final_kb_velocity.y,
-                ]
-                stat_dict["start_pos"] = [stat.start_pos.x, stat.start_pos.y]
-                stat_dict["end_pos"] = [stat.end_pos.x, stat.end_pos.y]
+                stat_dict["kb_velocity"] = list(stat.kb_velocity)
+                stat_dict["final_kb_velocity"] = list(stat.final_kb_velocity)
+                stat_dict["start_pos"] = list(stat.start_pos)
+                stat_dict["end_pos"] = list(stat.end_pos)
                 if stat.di_stick_pos is not None:
-                    stat_dict["di_stick_pos"] = [stat.di_stick_pos.x, stat.di_stick_pos.y]
+                    stat_dict["di_stick_pos"] = list(stat.di_stick_pos)
                 else:
                     stat_dict["di_stick_pos"] = None
                 rows.append(self.data_header | stat_dict)
