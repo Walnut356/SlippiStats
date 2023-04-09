@@ -3,6 +3,5 @@ build/
 dist/
 *.egg-info/
 *.pyc
-.vscode/
+.*/
 docs/
-.devcontainer
