@@ -19,15 +19,10 @@ from .util import (
     unpack_uint16,
 )
 
-# TODO parse maybe to pass around metadata/start event to allow for "smarter" parsing (e.g. enum char states by char)
+# TODO parse maybe to pass around metadata/start event to allow for "smarter" parsing
 # otherwise, frame event does contain character so that can be used
 
-# It would also carry slippi file version which could make parsing not require try-except
-
-# Also might be worth not enuming anything at parse time and instead using the "get()" to enum.
-# Saves processing time for everyenum value not used.
-# try_enum does take a pretty significant portion of the Game instantiation time
-
+# It would also carry slippi file version
 
 class ParseEvent(Enum):
     """Parser events, used as keys for event handlers.
@@ -94,7 +89,7 @@ EVENT_TYPE_PARSE = {
 }
 
 
-def _parse_event(event_stream, payload_sizes):
+def _parse_event(event_stream: io.BytesIO, payload_sizes: dict):
     (code,) = unpack_uint8(event_stream.read(1))
     # log.debug(f'Event: 0x{code:x}')
 
@@ -114,39 +109,9 @@ def _parse_event(event_stream, payload_sizes):
         event = EVENT_TYPE_PARSE.get(code, None)
         if callable(event):
             event = event(stream)
-        # try:
-        #     try: event_type = EventType(code)
-        #     except ValueError: event_type = None
-
-        #     match event_type:
-        #         case EventType.FRAME_PRE:
-        #             event = Frame.Event(Frame.Event.PortId(stream),
-        #                                 Frame.Event.Type.PRE,
-        #                                 stream)
-        #         case EventType.FRAME_POST:
-        #             event = Frame.Event(Frame.Event.PortId(stream),
-        #                                 Frame.Event.Type.POST,
-        #                                 stream)
-        #         case EventType.ITEM:
-        #             event = Frame.Event(Frame.Event.Id(stream),
-        #                                 Frame.Event.Type.ITEM,
-        #                                 stream)
-        #         case EventType.FRAME_START:
-        #             event = Frame.Event(Frame.Event.Id(stream),
-        #                                 Frame.Event.Type.START,
-        #                                 stream)
-        #         case EventType.FRAME_END:
-        #             event = Frame.Event(Frame.Event.Id(stream),
-        #                                 Frame.Event.Type.END,
-        #                                 stream)
-        #         case EventType.GAME_START:
-        #             event = Start._parse(stream)
-        #         case EventType.GAME_END:
-        #             event = End._parse(stream)
-        #         case _:
-        #             event = None
 
         return (1 + size, event, code)
+
     except Exception as exc:
         # Calculate the stream position of the exception as best we can.
         # This won't be perfect: for an invalid enum, the calculated position
@@ -155,10 +120,11 @@ def _parse_event(event_stream, payload_sizes):
         # leaving it up to the `catch` clause in `parse`, because that will
         # always report a position that's at the end of an event (due to
         # `event_stream.read` above).
-        raise ParseError(str(exc))  # pos = base_pos + stream.tell() if base_pos else None)
+        raise ParseError(str(exc), pos=stream.tell())  # pos = base_pos + stream.tell() if base_pos else None)
 
 
 # exceptional ugliness to implement a jump table instead of a bunch of conditionals or a match statement.
+# It's gross but it increases parse speed by ~15%
 def _pre_frame(
     current_frame,
     event,
@@ -199,11 +165,7 @@ def _post_frame(
     current_frame,
     event,
     handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -235,11 +197,7 @@ def _item_frame(
     current_frame,
     event,
     handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -261,11 +219,7 @@ def _start_frame(
     current_frame,
     event,
     handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -287,11 +241,7 @@ def _end_frame(
     current_frame,
     event,
     handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -331,28 +281,17 @@ def _game_end(
     current_frame,
     event,
     handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     handlers[End](event)
     return current_frame
 
 
 def _do_nothing(
-    current_frame,
-    event,
-    handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    *_,
 ):
     pass
-
+    
 
 thing = {
     EventType.GAME_START: _game_start,
@@ -389,57 +328,6 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
             )
         except KeyError:
             continue
-        # pattern matching a type requires type constructor, probably doesn't actually construct the type?
-        # see: https://stackoverflow.com/questions/70815197
-        # match event:
-        #     case Frame.Event() if not skip_frames:
-        #         # Accumulate all events for a single frame into a single `Frame` object.
-
-        #         # We can't use Frame Bookend events to detect end-of-frame,
-        #         # as they don't exist before Slippi 3.0.0.
-        #         if current_frame and current_frame.index != event.id.frame:
-        #             current_frame._finalize()
-        #             handlers[Frame](current_frame)
-        #             current_frame = None
-
-        #         if not current_frame:
-        #             current_frame = Frame(event.id.frame)
-
-        #         match event.type:
-        #             case Frame.Event.Type.PRE | Frame.Event.Type.POST:
-        #                 port = current_frame.ports[event.id.port]
-        #                 if not port:
-        #                     port = Frame.Port()
-        #                     current_frame.ports[event.id.port] = port
-        #                 if event.id.is_follower:
-        #                     if port.follower is None:
-        #                         port.follower = Frame.Port.Data()
-        #                         data = port.follower
-        #                 else:
-        #                     data = port.leader
-
-        #                 if event.type is Frame.Event.Type.PRE:
-        #                     data._pre = event.data
-        #                 else:
-        #                     data._post = event.data
-        #             case Frame.Event.Type.ITEM:
-        #                 current_frame.items.append(Frame.Item._parse(event.data))
-        #             case Frame.Event.Type.START:
-        #                 current_frame.start = Frame.Start._parse(event.data)
-        #             case Frame.Event.Type.END:
-        #                 current_frame.end = Frame.End._parse(event.data)
-        #             case _:
-        #                 raise ValueError(f'unknown frame data type: {event.data}')
-        #     # Start/End events are put at the end for optimization purposes - frame events happen far more frequently.
-        #     case Start():
-        #         handlers[Start](event)
-        #         if skip_frames and total_size !=0:
-        #             skip = total_size - bytes_read - payload_sizes[EventType.GAME_END.value] - 1
-        #             stream.seek(skip, os.SEEK_CUR)
-        #             bytes_read += skip
-        #             continue
-        #     case End():
-        #         handlers[End](event)
 
     if current_frame:
         current_frame._finalize()
@@ -470,7 +358,7 @@ def _parse(stream, handlers, skip_frames):
     expect_bytes(b"}", stream)
 
 
-def _parse_try(source: BinaryIO, handlers, skip_frames):
+def _parse_try(source: BinaryIO, handlers, skip_frames, path):
     """Wrap parsing exceptions with additional information."""
 
     try:
@@ -479,7 +367,7 @@ def _parse_try(source: BinaryIO, handlers, skip_frames):
         exception = exception if isinstance(exception, ParseError) else ParseError(str(exception))
 
         try:
-            exception.filename = source.name  # type: ignore
+            exception.filename = path # type: ignore
         except AttributeError:
             pass
 
@@ -496,7 +384,8 @@ def _parse_try(source: BinaryIO, handlers, skip_frames):
 
 def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
     with mmap.mmap(os.open(source, os.O_RDONLY), 0, access=mmap.ACCESS_READ) as f:
-        _parse_try(f, handlers, skip_frames)
+        f.madvise(mmap.MADV_SEQUENTIAL)
+        _parse_try(f, handlers, skip_frames, source)
 
 
 def parse(
