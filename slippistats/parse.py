@@ -24,6 +24,7 @@ from .util import (
 
 # It would also carry slippi file version
 
+
 class ParseEvent(Enum):
     """Parser events, used as keys for event handlers.
     Docstrings indicate the type of object that will be passed to each handler."""
@@ -78,7 +79,7 @@ def _parse_event_payloads(stream):
 # This essentially acts as a jump table in _parse_event,
 # saves a lot of processing on a potentially very hot match statement and enum call
 # If python was compiled, this would probably be unnecessary.
-EVENT_TYPE_PARSE = {
+EVENT_PARSE_DISPATCH = {
     EventType.GAME_START: lambda stream: Start._parse(stream),
     EventType.FRAME_START: lambda stream: Frame.Event(Frame.Event.Id(stream), Frame.Event.Type.START, stream),
     EventType.FRAME_PRE: lambda stream: Frame.Event(Frame.Event.PortId(stream), Frame.Event.Type.PRE, stream),
@@ -106,7 +107,7 @@ def _parse_event(event_stream: io.BytesIO, payload_sizes: dict):
     stream = io.BytesIO(event_stream.read(size))
 
     try:
-        event = EVENT_TYPE_PARSE.get(code, None)
+        event = EVENT_PARSE_DISPATCH.get(code, None)
         if callable(event):
             event = event(stream)
 
@@ -287,13 +288,7 @@ def _game_end(
     return current_frame
 
 
-def _do_nothing(
-    *_,
-):
-    pass
-    
-
-thing = {
+BUILD_GAME_DISPATCH = {
     EventType.GAME_START: _game_start,
     EventType.FRAME_START: _start_frame,
     EventType.FRAME_PRE: _pre_frame,
@@ -301,7 +296,6 @@ thing = {
     EventType.ITEM: _item_frame,
     EventType.FRAME_END: _end_frame,
     EventType.GAME_END: _game_end,
-    16: _do_nothing,
 }
 
 
@@ -314,20 +308,17 @@ def _parse_events(stream, payload_sizes, total_size, handlers, skip_frames):
     while (total_size == 0 or bytes_read < total_size) and not isinstance(event, End):
         (b, event, event_code) = _parse_event(stream, payload_sizes)
         bytes_read += b
-
-        try:
-            current_frame = thing[event_code](
-                current_frame,
-                event,
-                handlers,
-                skip_frames,
-                total_size,
-                bytes_read,
-                payload_sizes,
-                stream,
-            )
-        except KeyError:
-            continue
+        #                                                        lmao
+        current_frame = BUILD_GAME_DISPATCH.get(event_code, lambda *_: None)(
+            current_frame,
+            event,
+            handlers,
+            skip_frames,
+            total_size,
+            bytes_read,
+            payload_sizes,
+            stream,
+        )
 
     if current_frame:
         current_frame._finalize()
@@ -367,7 +358,7 @@ def _parse_try(source: BinaryIO, handlers, skip_frames, path):
         exception = exception if isinstance(exception, ParseError) else ParseError(str(exception))
 
         try:
-            exception.filename = path # type: ignore
+            exception.filename = path  # type: ignore
         except AttributeError:
             pass
 
