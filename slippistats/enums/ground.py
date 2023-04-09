@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from functools import lru_cache
 
 from ..util import IntEnum, try_enum
 
@@ -59,7 +59,7 @@ class FinalDestination(IntEnum):
     MAIN_STAGE = 1
     RIGHT_EDGE = 2
 
-
+@lru_cache(maxsize=4)
 def get_ground(stage: Stage, ground_id: int) -> IntEnum:
     if stage is None or ground_id is None:
         return ground_id

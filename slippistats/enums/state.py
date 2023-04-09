@@ -1,4 +1,5 @@
 from enum import IntFlag
+from functools import lru_cache
 from .character import InGameCharacter
 from ..util import IntEnum
 
@@ -35,9 +36,10 @@ CHARACTER_STATE_DICT = {
     InGameCharacter.YOSHI: lambda x: Yoshi(x),
     InGameCharacter.YOUNG_LINK: lambda x: YoungLink(x),
     InGameCharacter.ZELDA: lambda x: Zelda(x),
+    None: lambda x: x,
 }
 
-
+@lru_cache
 def get_character_state(state: int, character: int | None = None):
     if state < 0:
         raise ValueError()
