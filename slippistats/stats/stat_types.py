@@ -1,7 +1,9 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections import UserList
 from dataclasses import dataclass, field
 from math import degrees, dist
+from pathlib import Path
+from typing import NamedTuple
 
 import polars as pl
 from tzlocal import get_localzone_name
@@ -18,8 +20,6 @@ from .common import JoystickRegion, TechType, get_angle
 class Stat(ABC):
     pass
 
-
-# TODO add stocks_remaining
 
 # --------------------------------- Wavedash --------------------------------- #
 
@@ -265,12 +265,26 @@ class ShieldDropData(Stat):
 class StatList(ABC, UserList):
     data_header: dict
     data: list[Stat]
+    schema: dict
 
+    @abstractmethod
     def append(self, item):
         pass
 
     def to_polars(self) -> pl.DataFrame:
-        pass
+        if len(self.data) > 0:
+            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+        else:
+            return pl.DataFrame([], schema=self.schema)
+
+    def write_excel(self, target: str | Path, utc_time: bool = False) -> None:
+        """Writes excel file with target path. Excel cannot accept timezone-aware dataframes. If utc_time is False,
+        the document will contain naive time local to the machine that parsed the replay. If utc_time is True,
+        the document will contain naive UTC time."""
+        df = self.to_polars()
+        if utc_time:
+            df = df.with_columns(pl.col("date_time").dt.convert_time_zone("UTC"))
+        df.with_columns(pl.col("date_time").dt.replace_time_zone(None)).to_excel(target)
 
 
 class Wavedashes(UserList):
@@ -570,8 +584,7 @@ class ShieldDrops(UserList):
         return pl.DataFrame(data)
 
 
-@dataclass
-class Data:
+class Data(NamedTuple):
     wavedashes: Wavedashes
     dashes: Dashes
     techs: Techs

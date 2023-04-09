@@ -577,7 +577,6 @@ class StatsComputer(ComputerBase):
                 prev_player_state == ActionState.GUARD
                 or prev_player_state == ActionState.GUARD_ON
                 or prev_player_state == ActionState.GUARD_REFLECT
-                or prev_player_state == ActionState.GUARD_DAMAGE
                 or prev_player_state == ActionState.GUARD_SET_OFF
             )
 
