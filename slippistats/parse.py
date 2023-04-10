@@ -349,7 +349,7 @@ def _parse(stream, handlers, skip_frames):
     expect_bytes(b"}", stream)
 
 
-def _parse_try(source: BinaryIO, handlers, skip_frames, path):
+def _parse_try(source: BinaryIO, handlers, skip_frames, path=None):
     """Wrap parsing exceptions with additional information."""
 
     try:
@@ -375,7 +375,6 @@ def _parse_try(source: BinaryIO, handlers, skip_frames, path):
 
 def _parse_open(source: os.PathLike, handlers, skip_frames) -> None:
     with mmap.mmap(os.open(source, os.O_RDONLY), 0, access=mmap.ACCESS_READ) as f:
-        f.madvise(mmap.MADV_SEQUENTIAL)
         _parse_try(f, handlers, skip_frames, source)
 
 

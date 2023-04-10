@@ -584,7 +584,7 @@ class ShieldDrops(UserList):
         return pl.DataFrame(data)
 
 
-class Data(NamedTuple):
+class Data():
     wavedashes: Wavedashes
     dashes: Dashes
     techs: Techs

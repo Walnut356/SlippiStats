@@ -15,12 +15,18 @@ dir = Path(R"test/Bench Replays")
 
 def eef(replay):
     thing = slp.Game(replay)
+    for frame in thing.frames:
+        for player in frame.ports:
+            if player is not None:
+                dang = player.leader.pre
+                dang = player.leader.post
 
 
 def freef(replay):
     thing = slp.Game(replay)
 
 
+eef(file)
 # print(timeit.timeit(eef, number=50))
 # print(timeit.timeit(freef, number=50))
 
@@ -28,7 +34,7 @@ def freef(replay):
 with os.scandir(dir) as d:
     for entry in d:
         file = os.path.join(dir, entry.name)
-        print(*timeit.repeat("eef(file)", number=1, timer=time.process_time, globals=globals(), repeat=5))
+        print(timeit.timeit("eef(file)", number=1, timer=time.process_time, globals=globals()))
 
 # for i in range(100000):
 #     freef(file)

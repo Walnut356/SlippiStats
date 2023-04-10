@@ -15,13 +15,13 @@ class Ports(enum.IntEnum):
 
 # Pre-allocating these prevents python from recreating the object on every struct.unpack() call
 # which saves a non-negligable amount of processing time.
-unpack_uint8 = cache(struct.Struct(">B").unpack)
+unpack_uint8 = struct.Struct(">B").unpack
 
 unpack_uint16 = struct.Struct(">H").unpack
 
 unpack_uint32 = struct.Struct(">I").unpack
 
-unpack_int8 = cache(struct.Struct(">b").unpack)
+unpack_int8 = struct.Struct(">b").unpack
 
 unpack_int16 = struct.Struct(">h").unpack
 
@@ -29,7 +29,7 @@ unpack_int32 = struct.Struct(">i").unpack
 
 unpack_float = struct.Struct(">f").unpack
 
-unpack_bool = cache(struct.Struct(">?").unpack)
+unpack_bool = struct.Struct(">?").unpack
 
 unpack_matchid = struct.Struct(">50s").unpack  # this one is special =)
 
@@ -58,7 +58,8 @@ def _format(obj):
     else:
         return str(obj)
 
-@lru_cache(maxsize=256)
+
+@lru_cache(maxsize=512)
 def try_enum(enum_type, val):
     try:
         return enum_type(val)

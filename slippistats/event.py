@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import cached_property
 
 import io
 import struct
@@ -514,7 +515,7 @@ class Frame(Base):
                 self._post = None
 
             # Creates write-only, lazy access to
-            @property
+            @cached_property
             def pre(self) -> Frame.Port.Data.Pre | None:
                 """Pre-frame update data"""
                 # could flatten these ifs, but it saves us a comparison the vast majority of the time we access it
@@ -524,7 +525,7 @@ class Frame(Base):
                         self._pre = self.Pre._parse(self._pre)
                 return self._pre
 
-            @property
+            @cached_property
             def post(self) -> Frame.Port.Data.Post | None:
                 """Post-frame update data"""
                 if not isinstance(self._post, self.Post):
@@ -588,11 +589,6 @@ class Frame(Base):
                 def _parse(
                     cls,
                     stream: io.BytesIO,
-                    # it's dumb, but this promotes the functions to locals which are slightly faster to access
-                    unpack_float=unpack_float,
-                    unpack_uint32=unpack_uint32,
-                    unpack_uint16=unpack_uint16,
-                    unpack_uint8=unpack_uint8,
                 ):
                     read = stream.read
                     (random_seed,) = unpack_uint32(read(4))
@@ -751,11 +747,6 @@ class Frame(Base):
                 def _parse(
                     cls,
                     stream: io.BytesIO,
-                    unpack_uint8=unpack_uint8,
-                    unpack_uint16=unpack_uint16,
-                    unpack_float=unpack_float,
-                    unpack_bool=unpack_bool,
-                    unpack_uint32=unpack_uint32,
                 ):
                     read = stream.read
                     character = try_enum(InGameCharacter, *unpack_uint8(read(1)))
@@ -775,13 +766,12 @@ class Frame(Base):
                         state_age = None
 
                     try:  # v2.0.0
-
                         flags = [
                             Field1(*unpack_uint8(read(1))),
                             Field2(*unpack_uint8(read(1))),
                             Field3(*unpack_uint8(read(1))),
                             Field4(*unpack_uint8(read(1))),
-                            Field5(*unpack_uint8(read(1)))
+                            Field5(*unpack_uint8(read(1))),
                         ]
 
                         (misc_timer,) = unpack_float(read(4))
@@ -908,14 +898,12 @@ class Frame(Base):
             self.owner = owner
 
         @classmethod
-        def _parse(cls, stream):
-            (type,) = unpack_uint16(stream.read(2))
+        def _parse(cls, stream: io.BytesIO, unpack_float=unpack_float, unpack_uint8=unpack_uint8):
+            type = try_enum(Item, *unpack_uint16(stream.read(2)))
             (state,) = unpack_uint8(stream.read(1))
-            (direction,) = unpack_float(stream.read(4))
-            (x_vel,) = unpack_float(stream.read(4))
-            (y_vel,) = unpack_float(stream.read(4))
-            (x_pos,) = unpack_float(stream.read(4))
-            (y_pos,) = unpack_float(stream.read(4))
+            direction = Direction(*unpack_float(stream.read(4)))
+            velocity = Velocity(*unpack_float(stream.read(4)), *unpack_float(stream.read(4)))
+            position = Position(*unpack_float(stream.read(4)), *unpack_float(stream.read(4)))
             (damage,) = unpack_uint16(stream.read(2))
             (timer,) = unpack_float(stream.read(4))
             (spawn_id,) = unpack_uint32(stream.read(4))
@@ -936,11 +924,11 @@ class Frame(Base):
                 owner = None
 
             return cls(
-                type=try_enum(Item, type),
+                type=type,
                 state=state,
-                direction=Direction(direction) if direction != 0 else None,
-                velocity=Velocity(x_vel, y_vel),
-                position=Position(x_pos, y_pos),
+                direction=direction,
+                velocity=velocity,
+                position=position,
                 damage=damage,
                 timer=timer,
                 spawn_id=spawn_id,
@@ -976,7 +964,7 @@ class Frame(Base):
             self.random_seed = random_seed
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: io.BytesIO):
             (random_seed,) = unpack_uint32(stream.read(4))
             # random_seed = random_seed ??? why was this here?
             return cls(random_seed)
@@ -993,7 +981,7 @@ class Frame(Base):
             pass
 
         @classmethod
-        def _parse(cls, stream):
+        def _parse(cls, stream: io.BytesIO):
             return cls()
 
         def __eq__(self, other):
@@ -1006,7 +994,7 @@ class Frame(Base):
 
         __slots__ = "id", "type", "data"
 
-        def __init__(self, id, type, data):
+        def __init__(self, id: int, type: int, data: io.BytesIO):
             self.id = id
             self.type = type
             self.data = data
@@ -1014,13 +1002,13 @@ class Frame(Base):
         class Id(Base):
             __slots__ = ("frame",)
 
-            def __init__(self, stream):
+            def __init__(self, stream: io.BytesIO):
                 (self.frame,) = unpack_int32(stream.read(4))
 
         class PortId(Id):
             __slots__ = "port", "is_follower"
 
-            def __init__(self, stream):
+            def __init__(self, stream: io.BytesIO):
                 (self.frame,) = unpack_int32(stream.read(4))
                 (self.port,) = unpack_uint8(stream.read(1))
                 (self.is_follower,) = unpack_bool(stream.read(1))
