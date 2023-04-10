@@ -1,5 +1,4 @@
 from __future__ import annotations
-from functools import cached_property
 
 import io
 import struct
@@ -515,7 +514,7 @@ class Frame(Base):
                 self._post = None
 
             # Creates write-only, lazy access to
-            @cached_property
+            @property
             def pre(self) -> Frame.Port.Data.Pre | None:
                 """Pre-frame update data"""
                 # could flatten these ifs, but it saves us a comparison the vast majority of the time we access it
@@ -525,7 +524,7 @@ class Frame(Base):
                         self._pre = self.Pre._parse(self._pre)
                 return self._pre
 
-            @cached_property
+            @property
             def post(self) -> Frame.Port.Data.Post | None:
                 """Post-frame update data"""
                 if not isinstance(self._post, self.Post):
