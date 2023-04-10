@@ -26,6 +26,21 @@ class Stat(ABC):
 
 @dataclass
 class WavedashData(Stat):
+    """
+    Contains all data for a single Wavedash Event
+
+    Attributes:
+        * frame_index (int): The first frame of the event
+        * stocks_remaining (int): Stocks remaining at the start of the event
+        * r_frame (int): The number of frames between the last kneebend frame and the trigger press
+        * stick (Position): The coordinate position where the event occurred
+        * airdodge_frames (int): number of airdodge frames between the trigger press and landing
+
+    Methods:
+        * total_startup(): Returns the total number of frames between the last kneebend frame and
+        the first land_fall_special frame
+    """
+
     frame_index: int
     stocks_remaining: int | None
     angle: float | None  # in degrees
@@ -71,6 +86,7 @@ class WavedashData(Stat):
         self.waveland = True
 
     def total_startup(self) -> int:
+        """Returns the total number of frames between the last kneebend frame and the first land_fall_special frame"""
         return self.r_frame + self.airdodge_frames
 
 
@@ -79,6 +95,18 @@ class WavedashData(Stat):
 
 @dataclass
 class DashData(Stat):
+    """
+    Contains all data for a single Wavedash Event
+
+    Attributes:
+        * frame_index (int): The first frame of the event
+        * stocks_remaining (int): Stocks remaining at the start of the event
+        * start_position (float): The x coordinate on the first frame of the event
+        * end_position (float): The x coordinate on the last frame of the event
+        * direction (Direction): number of airdodge frames between the trigger press and landing
+        * is_dashdancing (Bool): True if this was part of a dashdance
+    """
+
     frame_index: int = -1
     stocks_remaining: int | None = None
     start_pos: float = 0.0
@@ -212,15 +240,44 @@ class TakeHitData(Stat):
 
 @dataclass
 class LCancelData(Stat):
+    """
+    Contains all data for a single L-Cancel Event
+
+    ### Attributes
+
+        `frame_index` : `int`
+            The first frame of the event
+        ```python
+        stocks_remaining: int
+            Stocks remaining at the start of the event
+        * l_cancel (bool): True if successful l-cancel
+        * move (Attack): Which move was l-canceled
+        * position (GroundID): Which platform or ground the player landed on
+        * trigger_input_frame (int): Relative timing of the L/R/Z press. Negative values occur before landing,
+        * positive values occur after
+        * during_hitlag (bool): True if the l-cancel input occurred during hitlag (thus extending the timing window)
+    """
+
     frame_index: int
+    stocks_remaining: int
     l_cancel: bool
     move: Attack
     position: IntEnum
     trigger_input_frame: int
     during_hitlag: bool
 
-    def __init__(self, frame_index, l_cancel, move, position, trigger_input_frame, during_hitlag):
+    def __init__(
+        self,
+        frame_index: int,
+        stocks_remaining: int,
+        l_cancel: bool,
+        move: Attack,
+        position: IntEnum,
+        trigger_input_frame: int,
+        during_hitlag: bool,
+    ):
         self.frame_index = frame_index
+        self.stocks_remaining = stocks_remaining
         self.l_cancel = l_cancel
         self.trigger_input_frame = trigger_input_frame
         self.during_hitlag = during_hitlag
@@ -584,7 +641,17 @@ class ShieldDrops(UserList):
         return pl.DataFrame(data)
 
 
-class Data():
+class Data:
+    """Iterable container of Stat Type containers. Stat Type containers are effectively list[StatType]
+
+    Stat Containers:
+        * wavedashes
+        * dashes
+        * techs
+        * take_hits
+        * l_cancels
+    """
+
     wavedashes: Wavedashes
     dashes: Dashes
     techs: Techs
@@ -601,3 +668,7 @@ class Data():
         self.l_cancels = LCancels(data_header)
 
         self.shield_drops = ShieldDrops(data_header)
+
+    def __iter__(self):
+        for item in (self.wavedashes, self.dashes, self.techs, self.take_hits, self.l_cancels):
+            yield item

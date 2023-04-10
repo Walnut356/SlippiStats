@@ -487,6 +487,7 @@ class StatsComputer(ComputerBase):
             player.stats.l_cancels.append(
                 LCancelData(
                     frame_index=i,
+                    stocks_remaining=player_frame.post.stocks_remaining,
                     move=player.frames[i - 1].post.state,
                     l_cancel=did_l_cancel,
                     trigger_input_frame=trigger_input_frame,
