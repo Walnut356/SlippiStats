@@ -67,9 +67,45 @@ class MatchType(Enum):
     OTHER = 3
 
 
-# TODO make as many of these as possible dataclasses/recordclasses.
 class Start(Base):
-    """Information used to initialize the game such as the game mode, settings, characters & stage."""
+    """Information used to initialize the game such as the game mode, settings, characters & stage.
+
+    Attributes:
+        slippi_version : SlippiVersion
+            Version of the recorder that generated the replay. Major releases:
+
+            v0.1.0 Initial Release
+
+            v1.0.0 Dolphin Slippi Release
+
+            v2.0.0 Slippi Rollback Release
+
+            v3.0.0 Slippi Ranked Pre-release
+
+        players : tuple[Player | None]
+            Four elements corresponding to in-game ports with metadata for each port. Empty ports will contain None.
+        random_seed : int
+            Random seed upon initializing the game
+        stage : Stage
+            Which stage the game was played on
+    `Minimum Replay Version: 1.5.0`
+        is_pal : bool
+            True if recorded on the PAL version of Melee
+    `Minimum Replay Version: 2.0.0`
+        is_frozen_ps : bool
+            True if Pokemon Stadium transformations were disabled
+    `Minimum Replay Version: 3.14.0`
+        match_id : str
+            In format mode.[mode]-[ISO 8601 timestamp]. For slippi matchmaking, Match IDs correspond to one instance of
+            queuing into another player. Each game before disconnecting will have the same Match ID, but a different
+            `game_number`.
+        match_type : MatchType
+            Enum representing one of the slippi matchmaking modes: Direct, Unranked, Ranked, Offline, and Other
+        game_number : int
+            Which game number this replay is for the current `match_id`
+        tiebreak_number : int
+            If `MatchType.RANKED` and a tiebreak is necessary, acts as `game_number` for tiebreaks.
+    """
 
     is_teams: bool  # True if this was a teams game
     players: tuple[Start.Player | None]  # Players in game, 0 indexed, empty ports will contain None
@@ -127,8 +163,7 @@ class Start(Base):
         (is_teams,) = unpack_bool(stream.read(1))
 
         stream.read(5)  # skip item spawn behavior and self destruct score value
-        (stage,) = unpack_uint16(stream.read(2))
-        stage = Stage(stage)
+        stage = Stage(*unpack_uint16(stream.read(2)))
 
         stream.read(80)  # skip game timer, item spawn bitfields, and damage ratio
         players: list[cls.Player | None] = []
@@ -167,10 +202,9 @@ class Start(Base):
 
         try:  # v1.0.0
             for i in range(4):
-                (dash_back,) = unpack_uint32(stream.read(4))
-                (shield_drop,) = unpack_uint32(stream.read(4))
-                dash_back = cls.Player.UCF.DashBack(dash_back)
-                shield_drop = cls.Player.UCF.ShieldDrop(shield_drop)
+                dash_back = cls.Player.UCF.DashBack(*unpack_uint32(stream.read(4)))
+                shield_drop = cls.Player.UCF.ShieldDrop(*unpack_uint32(stream.read(4)))
+
                 if players[i]:
                     players[i].ucf = cls.Player.UCF(dash_back, shield_drop)
         except struct.error:
@@ -205,8 +239,7 @@ class Start(Base):
         stream.read(283)  # skip major/minor scene and slippi info
 
         try:
-            (match_id,) = unpack_matchid(stream.read(50))
-            match_id = str(match_id.decode("utf-8")).rstrip("\x00")
+            match_id = str(unpack_matchid(stream.read(50))[0].decode("utf-8")).rstrip("\x00")
         except struct.error:
             match_id = None
         except EOFError:
@@ -248,7 +281,10 @@ class Start(Base):
         )
 
     class SlippiVersion(Base):
-        """Information about the Slippi recorder that generated this replay."""
+        """Information about the Slippi recorder that generated this replay.
+
+        Can be compared to tuples (0, 1, 0), strings '0.1.0', or other SlippiVersion objects SlippiVersion(0, 1, 0)
+        """
 
         # TODO flatten to Slippi_Version
 
@@ -334,15 +370,31 @@ class Start(Base):
             return not self.__ge__(other)
 
     class Player(Base):
-        """Contains metadata about the player from the console's perspective including:
-        character, starting stock count, costume, team, in-game tag, and UCF toggles"""
+        """Contains metadata about the player from the console's perspective.
+
+        Attributes:
+            character : CSSCharacter
+                The character chosen on the character select screen
+            type : Type
+                Enumerated classification of the player. Can be Human, CPU, Demo, or Empty
+            stocks : int
+                How many stocks the player starts the game with
+            costume : int
+                Index of the selected costume
+            team : Team
+                Enumerated team color if applicable
+        `Minimum Replay Version: 1.0.0`
+            ucf : UCF
+                Information on which UCF toggles were enabled, if any
+            tag : str
+                The in-game tag that hovers over the player, if any"""
 
         character: CSSCharacter  # Character selected
-        type: Start.Player.Type  # Player type (human/cpu)
+        type: Type  # Player type (human/cpu)
         stocks: int  # Starting stock count
         costume: int  # Costume ID
-        team: Start.Player.Team | None  # Team, if this was a teams game
-        ucf: Start.Player.UCF | None  # UCF feature toggles
+        team: Team | None  # Team, if this was a teams game
+        ucf: UCF | None  # UCF feature toggles
         tag: str | None  # Name tag
 
         def __init__(
@@ -376,7 +428,7 @@ class Start(Base):
             )
 
         class Type(IntEnum):
-            """Human vs CPU"""
+            """The game's classification of the type of player: Human, CPU, Demo, or Empty"""
 
             HUMAN = 0
             CPU = 1
@@ -391,7 +443,7 @@ class Start(Base):
             GREEN = 2
 
         class UCF(Base):
-            """UCF Dashback and shield drop, off, on, or arduino"""
+            """UCF Dashback and shield drop. Can be off, on, or arduino"""
 
             dash_back: Start.Player.UCF.DashBack | None  # UCF dashback status
             shield_drop: Start.Player.UCF.ShieldDrop | None  # UCF shield drop status
@@ -421,9 +473,20 @@ class Start(Base):
 
 
 class End(Base):
-    """Information about the end of the game."""
+    """Information about the end of the game.
 
-    method: End.Method  # How the game ended
+    Attributes:
+        method : Method
+            Enumeration of game end methods: Inconclusive, Time, Game, Conclusive, No Contest
+    `Minimum Replay Version: 2.0.0`
+        lras_initiatior : int
+            Index of the player that LRAS'd. None if not applicable
+    `Minimum Replay Version: 3.13.0`
+        player_placements : list[int]
+            List of placements, lower is better. List is in port order, 0 indexed. Placement is -1 if port is Type.Empty
+    """
+
+    method: Method  # How the game ended
     lras_initiator: int | None  # Index of player that LRAS'd, if any
     # Player placements stored as a list. The index represents the port, the value of that element is their placement.
     player_placements: list[int] | None  # 0-indexed placement positions. -1 if player not in game
@@ -448,11 +511,13 @@ class End(Base):
             lras_initiator = None
 
         try:  # v3.13.0
-            (p1_placement,) = unpack_int8(stream.read(1))
-            (p2_placement,) = unpack_int8(stream.read(1))
-            (p3_placement,) = unpack_int8(stream.read(1))
-            (p4_placement,) = unpack_int8(stream.read(1))
-            player_placements = [p1_placement, p2_placement, p3_placement, p4_placement]
+            player_placements = [
+                *unpack_uint8(stream.read(1)),  # p1 placement
+                *unpack_uint8(stream.read(1)),
+                *unpack_uint8(stream.read(1)),
+                *unpack_uint8(stream.read(1)),  # p4 placement
+            ]
+
         except struct.error:
             player_placements = None
         return cls(cls.Method(method), lras_initiator, player_placements)
@@ -463,15 +528,27 @@ class End(Base):
         return self.method is other.method
 
     class Method(IntEnum):
-        INCONCLUSIVE = 0  # `obsoleted(2.0.0)`
-        TIME = 1  # `added(2.0.0)`
-        GAME = 2  # `added(2.0.0)`
-        CONCLUSIVE = 3  # `obsoleted(2.0.0)`
-        NO_CONTEST = 7  # `added(2.0.0)`
+        INCONCLUSIVE = 0
+        TIME = 1
+        GAME = 2
+        CONCLUSIVE = 3
+        NO_CONTEST = 7
 
 
 class Frame(Base):
-    """A single frame of the game. Includes data for all active bodies (characters, items, etc.)"""
+    """A single frame of the game. Includes data for all active bodies (characters, items, etc.)
+
+    Attributes:
+        index : int
+            -123 indexed Frame counter
+        ports : Sequence[Frame.Port | None]
+            Data for each port on a single frame
+        items : Sequence[Frame.Item | None]
+            Data for up to 15 items on a single frame
+        start : Frame.Start
+            Information given at the start of the frame to help keep netplay clients in sync
+        end : Frame.End
+            Information given at the end of a frame to mark that there is no further information for that frame."""
 
     __slots__ = "index", "ports", "items", "start", "end"
 
@@ -505,7 +582,13 @@ class Frame(Base):
             self.follower = None
 
         class Data(Base):
-            """Frame data for a given character. Includes both pre-frame and post-frame data."""
+            """Frame data for a given character
+
+            Attributes:
+                pre : Data.Pre
+                    Data about the given player, used by the engine to update the player's state for the frame
+                post : Data.Post
+                    Data about the given player, after the game engine has updated for the frame"""
 
             __slots__ = "_pre", "_post"
 
@@ -516,7 +599,7 @@ class Frame(Base):
             # Creates write-only, lazy access to
             @property
             def pre(self) -> Frame.Port.Data.Pre | None:
-                """Pre-frame update data"""
+                """Pre-frame update data used by the game engine to update the player's state"""
                 # could flatten these ifs, but it saves us a comparison the vast majority of the time we access it
                 # since type(self._pre) is None is the same thing as not isinstance(self._pre, self.Pre)
                 if not isinstance(self._pre, self.Pre):
@@ -526,7 +609,7 @@ class Frame(Base):
 
             @property
             def post(self) -> Frame.Port.Data.Post | None:
-                """Post-frame update data"""
+                """Post-frame update data after the game engine has updated the player's state"""
                 if not isinstance(self._post, self.Post):
                     if self._post:
                         self._post = self.Post._parse(self._post)
@@ -534,7 +617,28 @@ class Frame(Base):
 
             class Pre(Base):
                 """Pre-frame update data, required to reconstruct a replay. Information is collected right before
-                controller inputs are used to figure out the character's next action."""
+                controller inputs are used to figure out the character's next action.
+
+                Attributes:
+                    state : ActionState | int
+                        Enumeration representing the characters current Action State
+                    position : Position
+                        X, Y coordinates of the player's in-engine position. Position does not necessarily corrispond to
+                        the character model.
+                    facing_direction : Direction
+                        Enumeration with values LEFT and RIGHT. DOWN is used for stats, but also represents the facing
+                        direction when using the Warp Star item
+                    joystick : Position
+                        X, Y coordinates of the player's joystick position
+                    cstick : Position
+                        X, Y coordinates of the player's cstick position
+                    triggers : Triggers
+                        Contains the physical (controller perspective) and logical (game engine perspective) trigger
+                        values
+                    buttons : Buttons
+                        Contains the physical (controller perspective) and logical (game engine perspective)
+                        button values. Also contains generalized stick/trigger values
+                """
 
                 __slots__ = (
                     "state",
@@ -635,8 +739,50 @@ class Frame(Base):
 
             class Post(Base):
                 """Post-frame update data, for making decisions about game states (such as computing stats).
-                Information is collected at the end of collision detection,
-                which is the last consideration of the game engine.
+
+                Information is collected at the end of collision detection, which is the last consideration of the game
+                engine.
+
+                Attributes:
+                    character : InGameCharacter
+                        Which character is active on the current frame (should only change for zelda/shiek)
+                    state : ActionState | int
+                        Enumeration representing the characters current Action State
+                    position : Position
+                        X, Y coordinates of the player's in-engine position. Position does not necessarily corrispond to
+                        the character model.
+                    facing_direction : Direction
+                        Enumeration with values LEFT and RIGHT. DOWN is used for stats, but also represents the facing
+                        direction when using the Warp Star item
+                    percent : float
+                        The player's current percent (Min 0.0, Max ~999)
+                    shield_size : float
+                        The remaining health of the player's shield (Max 60.0)
+                    stocks_remaining : int
+                        The number of stocks remaining. Will be 0 for 1 frame if player loses all stocks in 1v1
+                    most_recent_hit : Attack | int
+                        The last attack that this character landed, directly corresponds to Stale Move Queue
+                    last_hit_by : int
+                        0-indexed port of the character that last hit this character
+                    combo_count : int
+                        Current combo count as defined by the game
+                    state_age : float
+                        Number of frames the current action state has been active. Can be fractiona;
+                    flags : list[IntFlag]
+                        Set of 5 bitfields with values pertaining to the character's current state
+                    misc_timer : float
+                        Timer used by various states. If HITSTUN flag is active, this timer is the number of hitstun
+                        frames remaining
+                    is_airborne : bool
+                        True if the character is in the air
+                    last_ground_id : int
+                        In-game ID of the last ground the character stood on
+                    jumps_remaining : int
+                        The number of jumps remaining. Grounded jumps count (e.g. most characters: 2 when grounded,
+                        1 when airborne, 0 after double jumping)
+                    l_cancel : LCancel
+                        Enumeration representing current L cancel status. LCancel.SUCCESS or LCancel.FAILURE
+                        for 1 frame upon landing during an aerial, otherwise LCancel.NOTAPPLICABLE
                 """
 
                 __slots__ = (
@@ -645,7 +791,7 @@ class Frame(Base):
                     "position",
                     "facing_direction",
                     "percent",
-                    "shield_size",
+                    "shield_health",
                     "stocks_remaining",
                     "most_recent_hit",
                     "last_hit_by",
@@ -670,7 +816,7 @@ class Frame(Base):
                 position: Position  # Character's position
                 facing_direction: Direction  # Direction the character is facing
                 percent: float  # Current damage percent
-                shield_size: float  # Current size of shield
+                shield_health: float  # Current size of shield
                 stocks_remaining: int  # Number of stocks remaining
                 most_recent_hit: Attack | int  # Last attack that this character landed
                 last_hit_by: int | None  # Port of character that last hit this character
@@ -699,7 +845,7 @@ class Frame(Base):
                     position: Position,
                     direction: Direction,
                     damage: float,
-                    shield: float,
+                    shield_health: float,
                     stocks: int,
                     most_recent_hit: Attack | int,
                     last_hit_by: int | None,
@@ -723,7 +869,7 @@ class Frame(Base):
                     self.position = position
                     self.facing_direction = direction
                     self.percent = damage
-                    self.shield_size = shield
+                    self.shield_health = shield_health
                     self.stocks_remaining = stocks
                     self.most_recent_hit = most_recent_hit
                     self.last_hit_by = last_hit_by
@@ -753,7 +899,7 @@ class Frame(Base):
                     position = Position(*unpack_float(read(4)), *unpack_float(read(4)))
                     direction = Direction(*unpack_float(read(4)))
                     (damage,) = unpack_float(read(4))
-                    (shield,) = unpack_float(read(4))
+                    (shield_health,) = unpack_float(read(4))
                     last_attack_landed = try_enum(Attack, *unpack_uint8(read(1)))
                     (combo_count,) = unpack_uint8(read(1))
                     (last_hit_by,) = unpack_uint8(read(1))
@@ -819,7 +965,7 @@ class Frame(Base):
                         position=position,
                         direction=direction,
                         damage=damage,
-                        shield=shield,
+                        shield_health=shield_health,
                         stocks=stocks,
                         most_recent_hit=last_attack_landed,
                         last_hit_by=last_hit_by if last_hit_by < 4 else None,
