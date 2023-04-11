@@ -7,7 +7,7 @@ from math import degrees
 
 import polars as pl
 
-from ..enums.ground import Yoshis, get_ground
+from ..enums.stage import Yoshis, get_ground
 from ..enums.state import (
     ActionRange,
     ActionState,
@@ -57,19 +57,19 @@ from .stat_types import (
 
 
 class StatsComputer(ComputerBase):
-    wavedash_state: WavedashData | None
-    tech_state: TechData | None
-    dash_state: DashData | None
-    take_hit_state: TakeHitData | None
-    recovery_state: RecoveryData | None
+    _wavedash_state: WavedashData | None
+    _tech_state: TechData | None
+    _dash_state: DashData | None
+    _take_hit_state: TakeHitData | None
+    _recovery_state: RecoveryData | None
 
     def __init__(self, replay: os.PathLike | Game | str | None = None):
         self.players = []
-        self.wavedash_state = None
-        self.tech_state = None
-        self.dash_state = None
-        self.take_hit_state = None
-        self.recovery_state = None
+        self._wavedash_state = None
+        self._tech_state = None
+        self._dash_state = None
+        self._take_hit_state = None
+        self._recovery_state = None
         if replay is not None:
             self.prime_replay(replay)
         else:
@@ -135,10 +135,10 @@ class StatsComputer(ComputerBase):
                     Buttons.Physical.R in past_frame.pre.buttons.physical.pressed()
                     or Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()
                 ):
-                    self.wavedash_state = WavedashData(
+                    self._wavedash_state = WavedashData(
                         frame_index=i,
                         stocks_remaining=player_frame.post.stocks_remaining,
-                        r_frame=0,
+                        trigger_frame=0,
                         stick=player_frame.pre.joystick,
                         airdodge_frames=j,
                     )
@@ -146,11 +146,11 @@ class StatsComputer(ComputerBase):
                     for k in range(0, 5):
                         past_frame = player.frames[i - j - k]
                         if past_frame.post.state == ActionState.KNEE_BEND:
-                            self.wavedash_state.r_frame = k
-                            self.wavedash_state.waveland = False
+                            self._wavedash_state.trigger_frame = k
+                            self._wavedash_state.waveland = False
                             break
-            if self.wavedash_state is not None:
-                player.stats.wavedashes.append(self.wavedash_state)
+            if self._wavedash_state is not None:
+                player.stats.wavedashes.append(self._wavedash_state)
 
         return player.stats.wavedashes
 
@@ -178,7 +178,7 @@ class StatsComputer(ComputerBase):
             # if prev prev state was dash, prev state was not dash, and curr state isn't dash, end dash event
 
             if just_entered_state(ActionState.DASH, player_state, prev_player_state):
-                self.dash_state = DashData(
+                self._dash_state = DashData(
                     frame_index=i,
                     stocks_remaining=player_post.stocks_remaining,
                     direction=player_post.facing_direction.name,
@@ -188,14 +188,14 @@ class StatsComputer(ComputerBase):
 
                 if prev_player_state == ActionState.TURN and prev_prev_player_state == ActionState.DASH:
                     # if a dashdance pattern (dash -> turn -> dash) is detected, mark both dashes as part of dashdance
-                    self.dash_state.is_dashdance = True
+                    self._dash_state.is_dashdance = True
                     player.stats.dashes[-1].is_dashdance = True
 
             if just_exited_state(ActionState.DASH, player_state, prev_player_state):
                 # finalize the dash and reset the state
-                self.dash_state.end_pos = player_frame.post.position.x
-                player.stats.dashes.append(self.dash_state)
-                self.dash_state = None
+                self._dash_state.end_pos = player_frame.post.position.x
+                player.stats.dashes.append(self._dash_state)
+                self._dash_state = None
 
         return player.stats.dashes
 
@@ -221,7 +221,7 @@ class StatsComputer(ComputerBase):
                 RuntimeWarning,
             )
 
-        self.tech_state = None
+        self._tech_state = None
         for i, player_frame in enumerate(player.frames):
             player_state = player_frame.post.state
             prev_player_frame = player.frames[i - 1]
@@ -233,18 +233,18 @@ class StatsComputer(ComputerBase):
 
             # Close out active techs if we were teching, and save some processing power if we weren't
             if not curr_teching:
-                if was_teching and self.tech_state is not None:
+                if was_teching and self._tech_state is not None:
                     if is_damaged(player_state):
-                        self.tech_state.was_punished = True
-                    player.stats.techs.append(self.tech_state)
-                    self.tech_state = None
+                        self._tech_state.was_punished = True
+                    player.stats.techs.append(self._tech_state)
+                    self._tech_state = None
                 continue
 
             opponent_frame = opponent.frames[i]
 
             # If we are, create a tech event, and start filling out fields based on the info we have
             if not was_teching:
-                self.tech_state = TechData(
+                self._tech_state = TechData(
                     frame_index=i,
                     stocks_remaining=player_frame.post.stocks_remaining,
                     position=player_frame.post.position,
@@ -252,9 +252,9 @@ class StatsComputer(ComputerBase):
                 )
 
                 if opponent_frame.post.most_recent_hit:
-                    self.tech_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit).name
+                    self._tech_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
                 if ground_check:
-                    self.tech_state.ground_id = get_ground(self.replay.start.stage, player_frame.post.last_ground_id)
+                    self._tech_state.ground_id = get_ground(self.replay.start.stage, player_frame.post.last_ground_id)
 
             # this allows the tech data to update exactly once on the frame where the option is chosen
             # (e.g. missed tech -> tech right)
@@ -267,37 +267,37 @@ class StatsComputer(ComputerBase):
 
             match tech_type:
                 case TechType.MISSED_TECH:
-                    self.tech_state.is_missed_tech = True
-                    self.tech_state.jab_reset = False
+                    self._tech_state.is_missed_tech = True
+                    self._tech_state.jab_reset = False
 
                 case TechType.JAB_RESET:
-                    self.tech_state.jab_reset = True
+                    self._tech_state.jab_reset = True
                 # TODO If opponent isn't dead
                 case TechType.TECH_LEFT | TechType.MISSED_TECH_ROLL_LEFT:
                     opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
-                        self.tech_state.towards_center = True
+                        self._tech_state.towards_center = True
                     else:
-                        self.tech_state.towards_center = False
+                        self._tech_state.towards_center = False
                     if opnt_relative_position > 0:
-                        self.tech_state.towards_opponent = True
+                        self._tech_state.towards_opponent = True
                     else:
-                        self.tech_state.towards_opponent = False
+                        self._tech_state.towards_opponent = False
                 case TechType.TECH_RIGHT | TechType.MISSED_TECH_ROLL_RIGHT:
                     opnt_relative_position = opponent_frame.post.position.x - player_frame.post.position.x
                     if player_frame.post.facing_direction > 0:
-                        self.tech_state.towards_center = False
+                        self._tech_state.towards_center = False
                     else:
-                        self.tech_state.towards_center = True
+                        self._tech_state.towards_center = True
                     if opnt_relative_position > 0:
-                        self.tech_state.towards_opponent = False
+                        self._tech_state.towards_opponent = False
                     else:
-                        self.tech_state.towards_opponent = True
+                        self._tech_state.towards_opponent = True
 
                 case _:  # Tech in place, getup attack
                     pass
 
-            self.tech_state.tech_type = tech_type.name
+            self._tech_state.tech_type = tech_type.name
         return player.stats.techs
 
     def take_hit_compute(
@@ -342,8 +342,8 @@ class StatsComputer(ComputerBase):
             )
 
             if not in_hitlag:
-                if was_in_hitlag and self.take_hit_state is not None:
-                    self.take_hit_state.end_pos = prev_player_frame.post.position
+                if was_in_hitlag and self._take_hit_state is not None:
+                    self._take_hit_state.end_pos = prev_player_frame.post.position
 
                     effective_stick = player_frame.pre.joystick
                     match get_joystick_region(player_frame.pre.joystick):
@@ -362,66 +362,66 @@ class StatsComputer(ComputerBase):
                         case _:
                             pass
 
-                    self.take_hit_state.di_stick_pos = effective_stick
+                    self._take_hit_state.di_stick_pos = effective_stick
 
                     if knockback_check:
-                        if self.take_hit_state.kb_velocity.x != 0.0 and self.take_hit_state.kb_velocity.y != 0.0:
-                            self.take_hit_state.final_kb_angle = get_post_di_angle(
-                                effective_stick, self.take_hit_state.kb_velocity
+                        if self._take_hit_state.kb_velocity.x != 0.0 and self._take_hit_state.kb_velocity.y != 0.0:
+                            self._take_hit_state.final_kb_angle = get_post_di_angle(
+                                effective_stick, self._take_hit_state.kb_velocity
                             )
 
                             di_efficacy = (
-                                abs(self.take_hit_state.final_kb_angle - self.take_hit_state.kb_angle) / 18
+                                abs(self._take_hit_state.final_kb_angle - self._take_hit_state.kb_angle) / 18
                             ) * 100
                             # modulo magic to truncate to 2 decimal place
                             # see: https://stackoverflow.com/a/49183117
-                            self.take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
+                            self._take_hit_state.di_efficacy = di_efficacy - di_efficacy % 1e-2
                         else:
-                            self.take_hit_state.final_kb_angle = self.take_hit_state.kb_angle
+                            self._take_hit_state.final_kb_angle = self._take_hit_state.kb_angle
 
-                        self.take_hit_state.final_kb_velocity = get_post_di_velocity(
-                            self.take_hit_state.final_kb_angle,
-                            self.take_hit_state.kb_velocity,
+                        self._take_hit_state.final_kb_velocity = get_post_di_velocity(
+                            self._take_hit_state.final_kb_angle,
+                            self._take_hit_state.kb_velocity,
                         )
 
                     cstick = get_joystick_region(player_frame.pre.cstick)
                     if cstick != JoystickRegion.DEAD_ZONE:
-                        self.take_hit_state.asdi = cstick
+                        self._take_hit_state.asdi = cstick
                     else:
-                        self.take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
+                        self._take_hit_state.asdi = get_joystick_region(player_frame.pre.joystick)
 
-                    self.take_hit_state.find_valid_sdi()
+                    self._take_hit_state._find_valid_sdi()
 
-                    player.stats.take_hits.append(self.take_hit_state)
-                    self.take_hit_state = None
+                    player.stats.take_hits.append(self._take_hit_state)
+                    self._take_hit_state = None
                 continue
 
             if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
-                self.take_hit_state = TakeHitData()
-                self.take_hit_state.frame_index = i
-                self.take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
-                self.take_hit_state.state_before_hit = player.frames[i - 1].post.state
-                self.take_hit_state.start_pos = player_frame.post.position
-                self.take_hit_state.percent = player_frame.post.percent
-                self.take_hit_state.grounded = not player_frame.post.is_airborne
+                self._take_hit_state = TakeHitData()
+                self._take_hit_state.frame_index = i
+                self._take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
+                self._take_hit_state.state_before_hit = player.frames[i - 1].post.state
+                self._take_hit_state.start_pos = player_frame.post.position
+                self._take_hit_state.percent = player_frame.post.percent
+                self._take_hit_state.grounded = not player_frame.post.is_airborne
                 if knockback_check:
-                    self.take_hit_state.kb_velocity = player_frame.post.knockback_speed
-                    self.take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
+                    self._take_hit_state.kb_velocity = player_frame.post.knockback_speed
+                    self._take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
                 else:
-                    self.take_hit_state.kb_velocity = None
-                    self.take_hit_state.kb_angle = None
+                    self._take_hit_state.kb_velocity = None
+                    self._take_hit_state.kb_angle = None
 
                 if ActionRange.SQUAT_START <= prev_player_frame.post.state < ActionRange.SQUAT_END:
-                    self.take_hit_state.crouch_cancel = True
+                    self._take_hit_state.crouch_cancel = True
                 else:
-                    self.take_hit_state.crouch_cancel = False
+                    self._take_hit_state.crouch_cancel = False
             # TODO this failed during all_stats(), DF had 1872 entries.
             # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
             # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
 
-            if self.take_hit_state is not None:
-                self.take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
-                self.take_hit_state.hitlag_frames += 1
+            if self._take_hit_state is not None:
+                self._take_hit_state.stick_regions_during_hitlag.append(get_joystick_region(player_frame.pre.joystick))
+                self._take_hit_state.hitlag_frames += 1
 
         return player.stats.take_hits
 
@@ -525,10 +525,10 @@ class StatsComputer(ComputerBase):
             )
             player_in_hitstun = is_in_hitstun(player_frame.post.flags)
 
-            if self.recovery_state is None and player_just_offstage and player_in_hitstun:
-                self.recovery_state = RecoveryData(frame_index=i, last_hit_by=opponent_frame.post.position)
+            if self._recovery_state is None and player_just_offstage and player_in_hitstun:
+                self._recovery_state = RecoveryData(frame_index=i, last_hit_by=opponent_frame.post.position)
 
-            if self.recovery_state is None:
+            if self._recovery_state is None:
                 continue
 
             # record furthest position outward/hitstun end/knockback end/distance from ledge?

@@ -22,7 +22,6 @@ for frame in thing.frames:
         print(frame.ports[1].leader.post)
     else: break
 
-pass
 
 
 # if __name__ == "__main__":
