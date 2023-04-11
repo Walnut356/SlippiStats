@@ -1,3 +1,31 @@
+"""State-related Enums and helpers:
+
+Functions:
+    get_character_state
+
+IntEnums:
+    Direction
+
+    LCancel
+
+    ActionState
+
+    ActionRange
+
+    [Character Name]
+
+IntFlags:
+    Field1
+
+    Field2
+
+    Field3
+
+    Field4
+
+    Field5
+"""
+
 from enum import IntFlag
 from functools import lru_cache
 from .character import InGameCharacter
@@ -8,59 +36,47 @@ from ..util import IntEnum
 # To check if an action state is zero-indexed:https://github.com/altf4/libmelee/blob/master/melee/actiondata.csv
 # I might add some form of check in here, but for now i just handle it manually.
 
-CHARACTER_STATE_DICT = {
-    InGameCharacter.BOWSER: lambda x: Bowser(x),
-    InGameCharacter.CAPTAIN_FALCON: lambda x: CaptainFalcon(x),
-    InGameCharacter.DONKEY_KONG: lambda x: DonkeyKong(x),
-    InGameCharacter.DR_MARIO: lambda x: DrMario(x),
-    InGameCharacter.FALCO: lambda x: Falco(x),
-    InGameCharacter.FOX: lambda x: Fox(x),
-    InGameCharacter.GAME_AND_WATCH: lambda x: GameAndWatch(x),
-    InGameCharacter.GANONDORF: lambda x: Ganondorf(x),
-    InGameCharacter.JIGGLYPUFF: lambda x: Jigglypuff(x),
-    InGameCharacter.KIRBY: lambda x: Kirby(x),
-    InGameCharacter.LINK: lambda x: Link(x),
-    InGameCharacter.LUIGI: lambda x: Luigi(x),
-    InGameCharacter.MARIO: lambda x: Mario(x),
-    InGameCharacter.MARTH: lambda x: Marth(x),
-    InGameCharacter.MEWTWO: lambda x: Mewtwo(x),
-    InGameCharacter.NANA: lambda x: Nana(x),
-    InGameCharacter.NESS: lambda x: Ness(x),
-    InGameCharacter.PEACH: lambda x: Peach(x),
-    InGameCharacter.PICHU: lambda x: Pichu(x),
-    InGameCharacter.PIKACHU: lambda x: Pikachu(x),
-    InGameCharacter.POPO: lambda x: Popo(x),
-    InGameCharacter.ROY: lambda x: Roy(x),
-    InGameCharacter.SAMUS: lambda x: Samus(x),
-    InGameCharacter.SHEIK: lambda x: Sheik(x),
-    InGameCharacter.YOSHI: lambda x: Yoshi(x),
-    InGameCharacter.YOUNG_LINK: lambda x: YoungLink(x),
-    InGameCharacter.ZELDA: lambda x: Zelda(x),
-    None: lambda x: x,
-}
-
-@lru_cache
-def get_character_state(state: int, character: int | None = None):
-    if state < 0:
-        raise ValueError()
-    if state < 341:
-        return ActionState(state)
-    return CHARACTER_STATE_DICT[character](state)
-
 
 class Direction(IntEnum):
+    """Direction values used by the game engine.
+
     LEFT = -1
-    DOWN = 0  # technically not down, it's used for warp star item, but calling it "DOWN" is useful for stats enums
+
+    DOWN = 0
+        Down = 0 is useful for stats, but technically 0 is used as the direction during the Warp Star item animation
+    RIGHT = 1
+    """
+    LEFT = -1
+    DOWN = 0
     RIGHT = 1
 
 
 class LCancel(IntEnum):
+    """L-Cancel Status, active for 1 frame upon landing during an aerial
+
+    NOT_APPLICABLE = 0
+        Value at all other times
+    SUCCESS = 1
+
+    FAILURE = 2
+    """
     NOT_APPLICABLE = 0
     SUCCESS = 1
     FAILURE = 2
 
 
 class Field1(IntFlag):
+    """State Bitfield 1
+
+    Known Bits:
+        Bit 2 - ABSORBER_BUBBLE
+            Active when any absorber hitbox is active (ness down b)
+        Bit 4 - REFLECT_NO_OWNERSHIP_CHANGE
+            Active when REFLECT_BUBBLE is active, but the reflected projectile does not change ownership
+            (e.g. Mewtwo side b)
+        Bit 5 - REFLECT_BUBBLE
+            Active when any projectile reflect bubble is active
+    """
     BIT_1 = 1
     ABSORBER_BUBBLE = 2
     BIT_3 = 4
@@ -72,6 +88,19 @@ class Field1(IntFlag):
 
 
 class Field2(IntFlag):
+    """State Bitfield 2
+
+    Known Bits:
+        Bit 3 - SUBACTION_INVULN
+            Active when the character recieves intangibility or invulnerability due to an subaction that is removed upon
+            entering a different subaction
+        Bit 4 - FASTFALL
+            Active when the player is fastfalling
+        Bit 5 - DEFENDER_HITLAG
+            Active when HITLAG is active, if the character is being hit. Can be thought of as CAN_SDI
+        Bit 6 - HITLAG
+            Active when character is in hitlag
+    """
     BIT_1 = 1
     BIT_2 = 2
     SUBACTION_INVULN = 4
@@ -83,6 +112,14 @@ class Field2(IntFlag):
 
 
 class Field3(IntFlag):
+    """State Bitfield 3
+
+    Known Bits:
+        Bit 3 - HOLDING_OPPONENT
+            Active when holding a character after a successful grab
+        BIT 8 - SHIELDING
+            Active when character is shielding
+    """
     BIT_1 = 1
     BIT_2 = 2
     HOLDING_OPPONENT = 4
@@ -94,6 +131,16 @@ class Field3(IntFlag):
 
 
 class Field4(IntFlag):
+    """State Bitfield 4
+
+    Known Bits:
+        Bit 2 - HITSTUN
+            Active when character is in hitstun
+        BIT 3 - HITBOX_TOUCHING_SHIELD
+            Dubious meaning, likely related to subframe events
+        BIT 6 - POWERSHIELD_BUBBLE
+            Active when character's Powershield bubble is active (physical or projectile)
+    """
     BIT_1 = 1
     HITSTUN = 2
     HITBOX_TOUCHING_SHIELD = 4  # dubious meaning
@@ -105,6 +152,22 @@ class Field4(IntFlag):
 
 
 class Field5(IntFlag):
+    """State Bitfield 5
+
+    Known Bits:
+        Bit 2 - IS_CLOAKING_DEVICE
+            Active if player is invisible due to item/mode toggle
+        Bit 4 - IS_FOLLOWER
+            Active if character is follower-type (e.g. Nana)
+        Bit 5 - IS_INACTIVE
+            Character is not the current active character (Shiek when Zelda is active, teammates with 0 stocks). Should
+            never be active in a replay, as this bit is what determines whether a frame is recorded for the character
+            or not. Corresponds to action state Sleep (different from fura_sleep and damage_sleep)
+        Bit 7 - IS_DEAD
+            Active when character is dead
+        Bit 8 - IS_OFFSCREEN
+            Active when character is in the magnifying glass
+    """
     BIT_1 = 1
     IS_CLOAKING_DEVICE = 2
     BIT_3 = 4
@@ -116,13 +179,21 @@ class Field5(IntFlag):
 
 
 class Hurtbox(IntEnum):
+    """
+    VULNERABLE = 0
+
+    INVULNERABLE = 1
+        Attacks collide with hurtbox, incurring hitlag but dealing no damage
+    INTANGIBLE = 2
+        Attacks pass through hurtbox, incurring no hitlag and dealing no damage
+    """
     VULNERABLE = 0
     INVULNERABLE = 1
     INTANGIBLE = 2
 
 
 class ActionRange(IntEnum):
-    # ID Ranges - used to simplify checks for stat calculators
+    """Action State Ranges - used to simplify checks for clusters of action states"""
     DAMAGE_START = 75
     DAMAGE_END = 91
     CAPTURE_START = 223
@@ -588,6 +659,51 @@ class ActionState(IntEnum):
 
 
 # ------------------------- Character Specific State ------------------------- #
+
+CHARACTER_STATE_DICT = {
+    InGameCharacter.BOWSER: lambda x: Bowser(x),
+    InGameCharacter.CAPTAIN_FALCON: lambda x: CaptainFalcon(x),
+    InGameCharacter.DONKEY_KONG: lambda x: DonkeyKong(x),
+    InGameCharacter.DR_MARIO: lambda x: DrMario(x),
+    InGameCharacter.FALCO: lambda x: Falco(x),
+    InGameCharacter.FOX: lambda x: Fox(x),
+    InGameCharacter.GAME_AND_WATCH: lambda x: GameAndWatch(x),
+    InGameCharacter.GANONDORF: lambda x: Ganondorf(x),
+    InGameCharacter.JIGGLYPUFF: lambda x: Jigglypuff(x),
+    InGameCharacter.KIRBY: lambda x: Kirby(x),
+    InGameCharacter.LINK: lambda x: Link(x),
+    InGameCharacter.LUIGI: lambda x: Luigi(x),
+    InGameCharacter.MARIO: lambda x: Mario(x),
+    InGameCharacter.MARTH: lambda x: Marth(x),
+    InGameCharacter.MEWTWO: lambda x: Mewtwo(x),
+    InGameCharacter.NANA: lambda x: Nana(x),
+    InGameCharacter.NESS: lambda x: Ness(x),
+    InGameCharacter.PEACH: lambda x: Peach(x),
+    InGameCharacter.PICHU: lambda x: Pichu(x),
+    InGameCharacter.PIKACHU: lambda x: Pikachu(x),
+    InGameCharacter.POPO: lambda x: Popo(x),
+    InGameCharacter.ROY: lambda x: Roy(x),
+    InGameCharacter.SAMUS: lambda x: Samus(x),
+    InGameCharacter.SHEIK: lambda x: Sheik(x),
+    InGameCharacter.YOSHI: lambda x: Yoshi(x),
+    InGameCharacter.YOUNG_LINK: lambda x: YoungLink(x),
+    InGameCharacter.ZELDA: lambda x: Zelda(x),
+    None: lambda x: x,
+}
+
+@lru_cache
+def get_character_state(state: int, character: InGameCharacter | int | None = None) -> ActionState:
+    """Accepts state and optionally a character, returns a character-specific action state if possible, otherwise
+    returns a general action state.
+
+    Raises:
+        ValueError if state is less than 0
+        KeyError if supplied character does not match any valid in-game character values"""
+    if state < 0:
+        raise ValueError()
+    if state < 341:
+        return ActionState(state)
+    return CHARACTER_STATE_DICT[character](state)
 
 
 class Bowser(IntEnum):

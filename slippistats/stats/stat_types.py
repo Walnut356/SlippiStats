@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from collections import UserList
 from dataclasses import dataclass, field
+from datetime import tzinfo
 from math import degrees, dist
 from pathlib import Path
-from typing import NamedTuple
 
 import polars as pl
 from tzlocal import get_localzone_name
@@ -26,26 +26,34 @@ class Stat(ABC):
 
 @dataclass
 class WavedashData(Stat):
-    """
-    Contains all data for a single Wavedash Event
+    """Contains all data for a single Wavedash Event.
 
     Attributes:
-        * frame_index (int): The first frame of the event
-        * stocks_remaining (int): Stocks remaining at the start of the event
-        * r_frame (int): The number of frames between the last kneebend frame and the trigger press
-        * stick (Position): The coordinate position where the event occurred
-        * airdodge_frames (int): number of airdodge frames between the trigger press and landing
+        frame_index : int
+            First frame of the event
+        stocks_remaining : int
+            Stocks remaining at the start of the event
+        angle : float
+            Wavedash angle in degrees below horizontal
+        direction : str
+            String direction 'LEFT', 'RIGHT', or 'DOWN'
+        trigger_frame : int
+            Number of frames between the last kneebend frame and the trigger press. Upper bound of 5
+        stick : Position
+            X,Y coordinate position where the event occurred
+        airdodge_frames : int
+            Number of airdodge frames between the trigger press and landing. Upper bound of 5
 
     Methods:
-        * total_startup(): Returns the total number of frames between the last kneebend frame and
-        the first land_fall_special frame
+        total_startup() -> int
+            Returns the total number of frames between the last kneebend frame and the first land_fall_special frame
     """
 
     frame_index: int
     stocks_remaining: int | None
     angle: float | None  # in degrees
-    direction: str | None
-    r_frame: int  # which airborne frame was the airdodge input on?
+    direction: str | None  # TODO
+    trigger_frame: int  # which airborne frame was the airdodge input on?
     airdodge_frames: int
     waveland: bool
 
@@ -53,7 +61,7 @@ class WavedashData(Stat):
         self,
         frame_index: int,
         stocks_remaining: int = None,
-        r_frame: int = 0,
+        trigger_frame: int = 0,
         stick: Position | None = None,
         airdodge_frames: int = 0,
     ):
@@ -81,13 +89,13 @@ class WavedashData(Stat):
         else:
             self.angle = None
             self.direction = None
-        self.r_frame = r_frame
+        self.trigger_frame = trigger_frame
         self.airdodge_frames = airdodge_frames
         self.waveland = True
 
     def total_startup(self) -> int:
         """Returns the total number of frames between the last kneebend frame and the first land_fall_special frame"""
-        return self.r_frame + self.airdodge_frames
+        return self.trigger_frame + self.airdodge_frames
 
 
 # ----------------------------------- Dash ----------------------------------- #
@@ -95,23 +103,28 @@ class WavedashData(Stat):
 
 @dataclass
 class DashData(Stat):
-    """
-    Contains all data for a single Wavedash Event
+    """Contains all data for a single Dash Event.
 
     Attributes:
-        * frame_index (int): The first frame of the event
-        * stocks_remaining (int): Stocks remaining at the start of the event
-        * start_position (float): The x coordinate on the first frame of the event
-        * end_position (float): The x coordinate on the last frame of the event
-        * direction (Direction): number of airdodge frames between the trigger press and landing
-        * is_dashdancing (Bool): True if this was part of a dashdance
+        frame_index : int
+            First frame of the event
+        stocks_remaining : int
+            Stocks remaining at the start of the event
+        start_position : float
+            X coordinate on the first frame of the event
+        end_position : float
+            X coordinate on the last frame of the event
+        direction : str
+            Number of airdodge frames between the trigger press and landing
+        is_dashdancing : bool
+            True if this was part of a dashdance
     """
 
     frame_index: int = -1
     stocks_remaining: int | None = None
     start_pos: float = 0.0
     end_pos: float = 0.0
-    direction: str | None = None
+    direction: str | None = None  # TODO change this back to the direction enum
     is_dashdance: bool = False
 
     def distance(self) -> float:
@@ -123,11 +136,39 @@ class DashData(Stat):
 
 @dataclass
 class TechData(Stat):
+    """Contains all data for a single Tech Event.
+
+    Attributes:
+        frame_index : int
+            First frame of the event
+        stocks_remaining : int
+            Stocks remaining at the start of the event
+        tech_type : TechType
+            IntEnum of the tech/direction
+        was_punished : bool
+            True if the player was hit during the vulnerable frames of the tech
+        position : Position
+            X,Y coordinates on the first frame of the Tech Event
+        ground_id : IntEnum
+            Player's last_ground_id on the first frame of the Tech Event
+        is_on_platform : bool
+            True if player is on any ground other than the main stage (includes Randall)
+        is_missed_tech : bool
+            True if player enters any missed tech animation during the Tech Event
+        towards_center : bool
+            True if player tech rolled towards coordinate 0,0
+        towards_opponent : bool
+            True if player initiated a roll that travelled in the direction of the opponent at the time of the input
+        jab_reset : bool
+            True if the player entered either of the down_damage action states during the Tech Event
+        last_hit_by : Attack
+            IntEnum of the attack that the player was most recently hit by
+    """
+
     frame_index: int = -1
     stocks_remaining: int | None = None
     tech_type: TechType | None = None
     was_punished: bool = False
-    direction: str = None
     position: Position = field(default_factory=Position)
     ground_id: IntEnum | None = None
     is_on_platform: bool = False
@@ -135,7 +176,7 @@ class TechData(Stat):
     towards_center: bool | None = None
     towards_opponent: bool | None = None
     jab_reset: bool | None = None
-    last_hit_by: str = field(default_factory=str)
+    last_hit_by: Attack | None = None
 
 
 @dataclass
@@ -153,6 +194,7 @@ class TechState:
 
 @dataclass
 class TakeHitData(Stat):
+    # TODO docstring
     frame_index: int
     last_hit_by: Attack | None
     state_before_hit: IntEnum | None
@@ -192,7 +234,8 @@ class TakeHitData(Stat):
         self.kb_velocity = None
         self.final_kb_velocity = None
 
-    def find_valid_sdi(self):
+    def _find_valid_sdi(self):
+        """Populates self.sdi_inputs after all stick regions have been added. Automatically called by StatsComputer."""
         for i, stick_region in enumerate(self.stick_regions_during_hitlag):
             # Obviously the first stick position and any deadzone input cannot be SDI inputs so we skip those
             if i == 0 or stick_region == JoystickRegion.DEAD_ZONE:
@@ -228,7 +271,11 @@ class TakeHitData(Stat):
                     self.sdi_inputs.append(stick_region)
                 continue
 
-    def change_in_position(self) -> tuple:
+    def change_in_position(self) -> Position:
+        """Returns the difference in X pos and difference in Y pos of start_pos and end_pos.
+
+        For distance, see .distance()
+        """
         return self.start_pos - self.end_pos
 
     def distance(self) -> float:
@@ -241,21 +288,23 @@ class TakeHitData(Stat):
 @dataclass
 class LCancelData(Stat):
     """
-    Contains all data for a single L-Cancel Event
+    Contains all data for a single L-Cancel Event.
 
-    ### Attributes
-
-        `frame_index` : `int`
+    Attributes:
+        frame_index : int
             The first frame of the event
-        ```python
-        stocks_remaining: int
+        stocks_remaining : int
             Stocks remaining at the start of the event
-        * l_cancel (bool): True if successful l-cancel
-        * move (Attack): Which move was l-canceled
-        * position (GroundID): Which platform or ground the player landed on
-        * trigger_input_frame (int): Relative timing of the L/R/Z press. Negative values occur before landing,
-        * positive values occur after
-        * during_hitlag (bool): True if the l-cancel input occurred during hitlag (thus extending the timing window)
+        l_cancel : bool
+            True if successful l-cancel
+        move : Attack
+            IntEnum representing which move was l-canceled
+        position : GroundID
+            IntEnum representing which platform/ground the player landed on
+        trigger_input_frame : int
+            Relative timing of the L/R/Z press. Negative values occur before landing, positive values occur after landing
+        during_hitlag : bool
+            True if the l-cancel input occurred during hitlag (thus extending the timing window)
     """
 
     frame_index: int
@@ -320,40 +369,72 @@ class ShieldDropData(Stat):
 
 
 class StatList(ABC, UserList):
-    data_header: dict
     data: list[Stat]
-    schema: dict
+    _data_header: dict
+    _schema: dict
 
     @abstractmethod
     def append(self, item):
         pass
 
     def to_polars(self) -> pl.DataFrame:
-        if len(self.data) > 0:
-            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+        """Returns a Polars DataFrame representing the contents of the container.
+
+        DataFrame creation is semantically equivalent to:
+        ```
+        if len(self.data) == 0:
+            return pl.DataFrame([], schema=self._schema)
         else:
-            return pl.DataFrame([], schema=self.schema)
+            return pl.DataFrame(
+                [self._data_header | vars(stat) for stat in self.data if stat is not None], schema=self._schema
+            )
+        ```
+
+        Some minor alterations are made per container-type to cast elements to Polars data types correctly.
+        """
+        if len(self.data) == 0:
+            return pl.DataFrame([], schema=self._schema)
+        else:
+            return pl.DataFrame(
+                [self._data_header | vars(stat) for stat in self.data if stat is not None], schema=self._schema
+            )
 
     def write_excel(self, target: str | Path, utc_time: bool = False) -> None:
-        """Writes excel file with target path. Excel cannot accept timezone-aware dataframes. If utc_time is False,
-        the document will contain naive time local to the machine that parsed the replay. If utc_time is True,
-        the document will contain naive UTC time."""
+        """Writes excel file with target path.
+
+        Excel cannot accept timezone-aware dataframes.
+
+        If utc_time is False,
+        the document will contain naive time local to the machine that parsed the replay.
+
+        If utc_time is True,
+        the document will contain naive UTC time.
+        """
+
         df = self.to_polars()
         if utc_time:
             df = df.with_columns(pl.col("date_time").dt.convert_time_zone("UTC"))
         df.with_columns(pl.col("date_time").dt.replace_time_zone(None)).to_excel(target)
 
 
-class Wavedashes(UserList):
-    """Iterable wrapper for lists of Wavedash data"""
+class Wavedashes(StatList):
+    """Iterable wrapper, treat as list[WavedashData].
 
-    data_header: dict
+    Attributes:
+        data : list[WavedashData]
+            Contains the stats generated by StatsComputer.wavedash_compute()
+        data_header : dict
+            Contains metadat about the match, for use in constructing DataFrames
+        schema : dict
+            Complete schema dict, for use in constructing Polars DataFrames
+    """
+
     data: list[WavedashData]
 
-    def __init__(self, data_header):
-        self.data_header = data_header
+    def __init__(self, _data_header):
+        self._data_header = _data_header
         self.data = []
-        self.schema = {
+        self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
             "slippi_version": pl.Utf8,
             "match_id": pl.Utf8,
@@ -381,19 +462,27 @@ class Wavedashes(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected WavedashData")
 
     def to_polars(self) -> pl.DataFrame:
-        if len(self.data) > 0:
-            return pl.DataFrame(
-                [self.data_header | vars(stat) for stat in self.data if stat is not None],
-                schema=self.schema,
-            )
+        if len(self.data) == 0:
+            return pl.DataFrame([], schema=self._schema)
         else:
-            return pl.DataFrame([], schema=self.schema)
+            return pl.DataFrame(
+                [self._data_header | vars(stat) for stat in self.data if stat is not None],
+                schema=self._schema,
+            )
 
 
-class Dashes(UserList):
-    """Iterable wrapper for lists of Dash data"""
+class Dashes(StatList):
+    """Iterable wrapper, treat as list[DashData].
 
-    data_header: dict
+    Attributes:
+        data : list[DashData]
+            Contains the stats generated by StatsComputer.dash_compute()
+        data_header : dict
+            Contains metadat about the match, for use in constructing DataFrames
+        schema : dict
+            Complete schema dict, for use in constructing Polars DataFrames
+    """
+
     data: list[DashData]
 
     def __init__(self, data_header):
@@ -427,23 +516,33 @@ class Dashes(UserList):
             raise TypeError(f"Incorrect stat type: {type(item)}, expected DashData")
 
     def to_polars(self) -> pl.DataFrame:
-        # if len(self.data) > 0:
-        return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+        if len(self.data) == 0:
+            return pl.DataFrame([], schema=self._schema)
+        else:
+            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
 
     # else:
     #     return pl.DataFrame([], schema=self.schema)
 
 
-class Techs(UserList):
-    """Iterable wrapper for lists of Tech data"""
+class Techs(StatList):
+    """Iterable wrapper, treat as list[TechData].
 
-    data_header: dict
+    Attributes:
+        data : list[TechData]
+            Contains the stats generated by StatsComputer.tech_compute()
+        data_header : dict
+            Contains metadat about the match, for use in constructing DataFrames
+        schema : dict
+            Complete schema dict, for use in constructing Polars DataFrames
+    """
+
     data: list[TechData]
 
-    def __init__(self, data_header):
-        self.data_header = data_header
+    def __init__(self, _data_header):
+        self._data_header = _data_header
         self.data = []
-        self.schema = {
+        self._schema = {
             "frame_index": pl.Int64,
             "stocks_remaining": pl.Int64,
             "tech_type": pl.Utf8,
@@ -467,32 +566,37 @@ class Techs(UserList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) == 0:
-            pass
-            # df = pl.DataFrame([], self.schema)
+            df = pl.DataFrame([], self._schema)
         else:
             rows = []
 
-            # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
             for stat in self.data:
                 stat_dict = vars(stat).copy()
                 stat_dict["position"] = list(stat.position)
-                rows.append(stat_dict)
+                rows.append(self._data_header | stat_dict)
 
-            df = pl.DataFrame(rows)
+            df = pl.DataFrame(rows, schema=self._schema)
             return df
 
 
 class TakeHits(UserList):
-    """Iterable wrapper rapper for lists of Take Hit data"""
+    """Iterable wrapper, treat as list[TakeHitData].
 
-    data_header: dict
+    Attributes:
+        data : list[TechData]
+            Contains the stats generated by StatsComputer.tech_compute()
+        data_header : dict
+            Contains metadat about the match, for use in constructing DataFrames
+        schema : dict
+            Complete schema dict, for use in constructing Polars DataFrames
+    """
+
     data: list[TakeHitData]
-    schema: dict
 
     def __init__(self, data_header):
-        self.data_header = data_header
+        self._data_header = data_header
         self.data = []
-        self.schema = {
+        self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
             "slippi_version": pl.Utf8,
             "match_id": pl.Utf8,
@@ -533,7 +637,7 @@ class TakeHits(UserList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) == 0:
-            df = pl.DataFrame([], self.schema)
+            df = pl.DataFrame([], self._schema)
         else:
             rows = []
 
@@ -562,9 +666,9 @@ class TakeHits(UserList):
                     stat_dict["di_stick_pos"] = list(stat.di_stick_pos)
                 else:
                     stat_dict["di_stick_pos"] = None
-                rows.append(self.data_header | stat_dict)
+                rows.append(self._data_header | stat_dict)
 
-            df = pl.DataFrame(rows, schema=self.schema)
+            df = pl.DataFrame(rows, schema=self._schema)
         return df
 
 
