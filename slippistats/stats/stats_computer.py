@@ -1,5 +1,7 @@
 import concurrent.futures
 import os
+from pathlib import Path
+from typing import NamedTuple
 import warnings
 from collections import deque
 from itertools import permutations
@@ -15,7 +17,7 @@ from ..enums.state import (
 )
 from ..event import Attack, Buttons
 from ..game import Game
-from ..util import try_enum
+from ..util import Port, try_enum
 from .common import (
     JoystickRegion,
     TechType,
@@ -38,10 +40,11 @@ from .common import (
     just_input_l_cancel,
     just_took_damage,
 )
-from .computer import ComputerBase, IdentifierError, Player
+from .computer import ComputerBase, IdentifierError, Player, PlayerCountError
 from .stat_types import (
     DashData,
     Dashes,
+    Data,
     LCancelData,
     LCancels,
     RecoveryData,
@@ -57,6 +60,37 @@ from .stat_types import (
 
 
 class StatsComputer(ComputerBase):
+    """
+    Handles stats computation and stores the results
+
+    Attributes:
+        replay : Game
+            The current parsed replay object
+        replay_version : Start.SlippiVersion
+            The parsed replay's version number. Can be compared to tuples and strings - e.g. (0, 1, 0), "0.1.0"
+        replay_path : Pathlike | str
+            Filepath used to parse the current replay if one was provided. Required for dolphin queue export
+        players : list[Player]
+            Contains metadata and all frames for each player in the game. Generated stats and combos are stored here
+        queue : list[dict]
+            formatted list of events used to create Clippi/Dolphin compatible json queues for playback
+
+    Methods:
+        prime_replay -> None
+            Takes a Game object or a file path, parses the replay if necessary, and populates the correct information
+            in the Computer object.
+        get_player -> Player
+            Takes an identifier (string connect code or physical port number), returns a
+            Player object matching that identifier. Raises IdentifierError if the identifier is not found.
+        get_opponent -> Player
+            Takes an identifier (string connect code or physical port number), returns a Player object that does not
+            match that identifier, if that identifier matches one player in the game.
+        stats_compute -> list[Player]
+            Optionally takes an identifier, returns a list of 1 or more Player objects for which stats were calculated.
+            When an identifer is omitted, stats will be calculated for all Players in the game. Individual stats can be
+            toggled using keyword arguments.
+    """
+
     _wavedash_state: WavedashData | None
     _tech_state: TechData | None
     _dash_state: DashData | None
@@ -77,17 +111,39 @@ class StatsComputer(ComputerBase):
 
     def stats_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | int | Port | None = None,
         wavedash=True,
         dash=True,
         tech=True,
         take_hit=True,
         l_cancel=True,
     ) -> list[Player]:
-        if connect_code is None:
+        """
+        Convenience function to calculate all stats for one or more players
+
+        Args:
+            identifier : str | int | Ports | None
+                Defaults to None. str format "CODE#123". Ports/int correspond to physical ports p1-p4. If None,
+                calculates stats for all players present in the game
+            wavedash : bool
+                Defaults to True. If false, wavedash calculation is skipped
+            dash : bool
+                Defaults to True. If false, dash calculation is skipped
+            tech : bool
+                Defaults to True. If false, tech calculation is skipped
+            take_hit : bool
+                Defaults to True. If false, take_hit calculation is skipped
+            l_cancel : bool
+                Defaults to True. If false, l_cancel calculation is skipped
+
+        Returns:
+            list[Player]
+                length will always be 1 or 2.
+        """
+        if identifier is None:
             player_perms = permutations(self.players)
         else:
-            player_perms = [(self.get_player(connect_code), self.get_opponent(connect_code))]
+            player_perms = [(self.get_player(identifier), self.get_opponent(identifier))]
 
         for player, opponent in player_perms:
             if wavedash:
@@ -107,14 +163,16 @@ class StatsComputer(ComputerBase):
 
     def wavedash_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | int | Port | None = None,
+        *,
         player: Player | None = None,
     ) -> Wavedashes:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of WavedashData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
 
         for i, player_frame in enumerate(player.frames):
             player_state: ActionState | int = player_frame.post.state
@@ -156,14 +214,15 @@ class StatsComputer(ComputerBase):
 
     def dash_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
     ) -> Dashes:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of DashData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
 
         for i, player_frame in enumerate(player.frames):
             player_post = player_frame.post
@@ -201,16 +260,17 @@ class StatsComputer(ComputerBase):
 
     def tech_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
         opponent: Player | None = None,
     ) -> Techs:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of TechData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
-            opponent = self.get_opponent(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
+            opponent = self.get_opponent(identifier)
 
         ground_check = True
         if self.replay_version < (2, 0, 0):
@@ -302,16 +362,17 @@ class StatsComputer(ComputerBase):
 
     def take_hit_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
         opponent: Player | None = None,
     ) -> TakeHits:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of TakeHitData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
-            opponent = self.get_opponent(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
+            opponent = self.get_opponent(identifier)
 
         if self.replay_version < (2, 0, 0):
             warnings.warn(
@@ -427,14 +488,15 @@ class StatsComputer(ComputerBase):
 
     def l_cancel_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
     ) -> LCancels:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of LCancelData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
 
         if self.replay_version < (2, 0, 0):
             warnings.warn(
@@ -502,16 +564,17 @@ class StatsComputer(ComputerBase):
 
     def recovery_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
         opponent: Player | None = None,
     ) -> TakeHits:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of RecoveryData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
-            opponent = self.get_opponent(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
+            opponent = self.get_opponent(identifier)
 
         stage = self.replay.start.stage
 
@@ -554,16 +617,17 @@ class StatsComputer(ComputerBase):
 
     def shield_drop_compute(
         self,
-        connect_code: str | None = None,
+        identifier: str | None = None,
         player: Player | None = None,
         opponent: Player | None = None,
     ) -> TakeHits:
-        if connect_code is None and player is None:
+        """Accepts identifier connect code/port number, returns an interable container of ShieldDropData."""
+        if identifier is None and player is None:
             raise ValueError("Compute functions require either a connect_code or player argument")
 
-        if connect_code is not None:
-            player = self.get_player(connect_code)
-            opponent = self.get_opponent(connect_code)
+        if identifier is not None:
+            player = self.get_player(identifier)
+            opponent = self.get_opponent(identifier)
 
         stage = self.replay.start.stage
 
@@ -604,8 +668,8 @@ class StatsComputer(ComputerBase):
 
 def _eef(file, connect_code):
     try:
-        thing = StatsComputer(file).wavedash_compute(connect_code)
-    except IdentifierError:
+        thing = StatsComputer(file).stats_compute(connect_code)
+    except (IdentifierError, PlayerCountError):
         return (None, file)
     if len(thing) > 0:
         return (thing, file)
@@ -613,9 +677,37 @@ def _eef(file, connect_code):
         return (None, file)
 
 
-def get_stats(directory, connect_code, target_name):
+def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple[pl.DataFrame]:
+    """Multiprocessed stats computation for handling bulk replays. Invalid replays and replays with no players matching
+    the given identifier are automatically skipped.
+
+    Args:
+        directory : os.PathLike | str
+            Path of the directory the replays are stored in
+        connect_code : str
+            Connect code str, format "CODE#123"
+    Returns:
+        NamedTuple[pl.DataFrame]
+            Each element corresponds to a dataframe containing all stats for each processed replay.
+
+
+
+    """
+    thing = []
+    for item in Data():
+        thing.append(pl.DataFrame({}, item.schema))
+
+    Box = NamedTuple(
+        "Box",
+        wavedashes=pl.DataFrame,
+        dashes=pl.DataFrame,
+        techs=pl.DataFrame,
+        take_hits=pl.DataFrame,
+        l_cancels=pl.DataFrame,
+        shield_drops=pl.DataFrame,
+    )
     count = 0
-    dfs = None
+    dfs = Box(thing[0], thing[1], thing[2], thing[3], thing[4], thing[5], thing[6])
     with os.scandir(directory) as dir:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = {
@@ -631,20 +723,21 @@ def get_stats(directory, connect_code, target_name):
             for future in concurrent.futures.as_completed(futures):
                 if future.exception() is not None:
                     print(future.exception())
-                else:
-                    data, fpath = future.result()
-                    count += 1
-                    print(f"{count}: {fpath}")
+                    continue
 
-                    if data is not None:
-                        df = data.to_polars()
-                        if dfs is None:
-                            dfs = df
-                        else:
-                            dfs = pl.concat([dfs, df], how="vertical")
+                data, fpath = future.result()
+                count += 1
+                print(f"{count}: {fpath}")
+
+                if data is None:
+                    continue
+
+                for i, item in enumerate(data[0]):
+                    df = item.to_polars()
+                    dfs[i] = pl.concat([dfs, df], how="vertical")
 
                 data = None
-        dfs = dfs.sort(pl.col("date_time"))
-        dfs.write_parquet(target_name)
-        print("file written\n")
+    for item in dfs:
+        item = item.sort(pl.col("date_time"))
+
     return dfs

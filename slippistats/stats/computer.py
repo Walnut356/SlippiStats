@@ -9,21 +9,27 @@ from numpy import False_
 from ..enums.character import CSSCharacter
 from ..event import Frame, Start
 from ..game import Game
-from ..util import Base, Ports
+from ..util import Base, Port
 from .stat_types import Data
 
 ValueError
+
+
 class IdentifierError(Exception):
     """Connect code or port identifier does not match any players in the available Game object."""
+
     pass
 
 
 class PlayerCountError(Exception):
     """The Game object's player count is not 2"""
+
     pass
+
 
 class PlayerTypeError(Exception):
     """One or both players is not Player.Type.HUMAN"""
+
     pass
 
 
@@ -35,7 +41,7 @@ class Player(Base):
     """
 
     character: CSSCharacter
-    port: Ports
+    port: Port
     connect_code: str | None
     display_name: str | None
     costume: int
@@ -108,6 +114,7 @@ class ComputerBase:
             Takes an identifier (string connect code or physical port number), returns a Player object that does not
             match that identifier, if that identifier matches one player in the game.
     """
+
     replay: Game | None
     replay_version: Start.SlippiVersion | None
     queue: list[dict]
@@ -153,9 +160,8 @@ class ComputerBase:
         _game_end = False
         if self.replay.end:
             _game_end = True
-        for port in Ports:
+        for port in Port:
             if _game_end:
-
                 if self.replay.end.player_placements is not None:
                     did_win = True if self.replay.end.player_placements[port] == 0 else False
                 elif self.replay.end.lras_initiator is not None and self.replay.end.lras_initiator != -1:
@@ -195,8 +201,21 @@ class ComputerBase:
     def reset_data(self):
         return
 
-    def get_player(self, identifier: str | int | Ports) -> Player:
-        match identifier:
+    def get_player(self, identifier: str | int | Port) -> Player:
+        """
+        Takes an identifier, returns a player object matching the identifier. Raises an error if the identifier is not
+        present in the game.
+
+        Args:
+            identifier : str | int | Ports
+                str format "CODE#123". Port/int corresponds to physical ports p1-p4.
+        Returns:
+            Player
+        Raises:
+            IdentifierError
+                Raised when identifier does not match any players in the currently primed replay
+        """
+        match identifier.to_upper():
             case str():
                 for player in self.players:
                     if player.connect_code == identifier:
@@ -204,7 +223,7 @@ class ComputerBase:
                 else:
                     # TODO probably rip this out and just replace it with a log warning when done debugging
                     raise IdentifierError(f"No player matching given connect code {identifier}")
-            case int() | Ports():
+            case int() | Port():
                 for player in self.players:
                     if player.port == identifier:
                         return player
@@ -216,8 +235,20 @@ class ComputerBase:
                     Got: {type(identifier)} Expected: str | int | Ports"""
                 )
 
+    def get_opponent(self, identifier: str | int | Port) -> Player:
+        """
+        Takes an identifier, returns the player object that does not match the identifier. Raises an error if the
+        identifier is not present in the game.
 
-    def get_opponent(self, identifier: str | int | Ports) -> Player:
+        Args:
+            identifier : str | int | Ports
+                str format "CODE#123". Port/int corresponds to physical ports p1-p4.
+        Returns:
+            Player
+        Raises:
+            IdentifierError
+                Raised when identifier does not match any players in the currently primed replay
+        """
         opponent = None
         valid_id = False
 
@@ -228,7 +259,7 @@ class ComputerBase:
                         valid_id = True
                     else:
                         opponent = player
-            case int() | Ports():
+            case int() | Port():
                 for player in self.players:
                     if player.port == identifier:
                         valid_id = True
@@ -243,5 +274,7 @@ class ComputerBase:
         if valid_id:
             return opponent
         else:
-            raise IdentifierError(f"""Cannot find opponent for identifier {identifier}.
-                                  {identifier} is not present in game""")
+            raise IdentifierError(
+                f"""Cannot find opponent for identifier {identifier}.
+                                  {identifier} is not present in game"""
+            )

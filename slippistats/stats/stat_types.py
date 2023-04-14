@@ -748,12 +748,16 @@ class ShieldDrops(UserList):
 class Data:
     """Iterable container of Stat Type containers. Stat Type containers are effectively list[StatType]
 
-    Stat Containers:
-        * wavedashes
-        * dashes
-        * techs
-        * take_hits
-        * l_cancels
+    Containers:
+        wavedashes
+
+        dashes
+
+        techs
+
+        take_hits
+
+        l_cancels
     """
 
     wavedashes: Wavedashes
@@ -761,16 +765,14 @@ class Data:
     techs: Techs
     take_hits: TakeHits
     l_cancels: LCancels
-
     shield_drops: ShieldDrops
 
-    def __init__(self, data_header):
+    def __init__(self, data_header=None):
         self.wavedashes = Wavedashes(data_header)
         self.dashes = Dashes(data_header)
         self.techs = Techs(data_header)
         self.take_hits = TakeHits(data_header)
         self.l_cancels = LCancels(data_header)
-
         self.shield_drops = ShieldDrops(data_header)
 
     def __iter__(self):

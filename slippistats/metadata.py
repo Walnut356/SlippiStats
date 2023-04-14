@@ -11,15 +11,26 @@ from .util import Base, Enum
 
 
 class Metadata(Base):
-    """Miscellaneous data not directly provided by Melee."""
+    """
+    Miscellaneous data not directly provided by Melee.
 
-    date: datetime  #: Game start date & time
-    duration: int  #: Duration of game, in frames
-    platform: Metadata.Platform  #: Platform the game was played on (console/dolphin)
-    players: tuple[
-        Metadata.Player | None
-    ]  #: Player metadata by port (port 1 is at index 0; empty ports will contain None)
-    console_name: str | None  #: Name of the console the game was played on, if any
+    date : datetime
+        Game start date & time
+    duration : int
+        Total duration of game in frames. Counts pre-go frames, so it will not match the in-game timer.
+    platform : Metadata.Platform
+        Platform the game was played on (console/dolphin)
+    players : tuple[Metadata.Player | None]
+        Player metadata by port (port 1 is at index 0; empty ports will contain None)
+    console_name: str | None
+        Name of the console the game was played on, if any
+    """
+
+    date: datetime
+    duration: int
+    platform: Metadata.Platform
+    players: tuple[Metadata.Player | None]
+    console_name: str | None
 
     def __init__(
         self,
@@ -46,7 +57,8 @@ class Metadata(Base):
                 r"(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|\+(\d{2})(\d{2}))?$", raw_date
             ).groups()
         ]
-        # MatchID already contains UTC time, so timezone will be the timezone of the device that parsed the replay.
+        # File name and MatchID already contains UTC time
+        # so timezone will be the timezone of the device that parsed the replay.
         date = datetime(*raw_date[:7], timezone(timedelta(hours=raw_date[7], minutes=raw_date[8]))).astimezone(
             tzlocal.get_localzone()
         )
@@ -88,10 +100,19 @@ class Metadata(Base):
         )
 
     class Player(Base):
-        """Contains metadata from the perspective of slippi,
-        including character usage, netplay info, connect code, and display name"""
+        """Contains metadata from the perspective of slippi.
 
-        characters: dict[InGameCharacter, int]  #: Character(s) used, with usage duration in frames (for Zelda/Sheik)
+        Attributes:
+        characters : dict[InGameCharacter, int]
+            Character(s) used, with usage duration in frames. Contains multiple characters for Shiek/Zelda
+        connect_code : str | None
+            Connect code in the traditional slippi format "CODE#123"
+        display_name : str | None
+            Slippi.gg display name, max of 15 characters
+
+        """
+
+        characters: dict[InGameCharacter, int]
         connect_code: str | None
         display_name: str | None
 

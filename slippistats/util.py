@@ -1,12 +1,12 @@
 import enum
 import re
 import struct
-from functools import cache, lru_cache
+from functools import lru_cache
 
 from .log import log
 
 
-class Ports(enum.IntEnum):
+class Port(enum.IntEnum):
     P1 = 0
     P2 = 1
     P3 = 2
@@ -68,7 +68,7 @@ def try_enum(enum_type, val):
         return val
 
 
-# Depreciated for performance reasons. See unpack_type objects in util.py
+# Depreciated for performance reasons. See unpack_type objects above
 def unpack(fmt, stream):
     fmt = ">" + fmt
     size = struct.calcsize(fmt)

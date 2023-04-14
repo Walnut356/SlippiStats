@@ -11,7 +11,20 @@ from .util import Base
 
 
 class Game(Base):
-    """Replay data from a game of Super Smash Brothers Melee."""
+    """Replay data from a game of Super Smash Brothers Melee.
+
+    Attributes:
+        start : Start | None
+            Information about the start of the game
+        frames : tuple[Frame]
+            Every frame of the game, indexed by frame number
+        end : End | None
+            Information about the end of the game
+        metadata : Metadata | None
+            Miscellaneous data not directly provided by Melee
+        metadata_raw : dict | None
+            Raw JSON metadata, for debugging and forward-compatibility
+    """
 
     start: Start | None  #: Information about the start of the game
     frames: tuple[Frame]  #: Every frame of the game, indexed by frame number

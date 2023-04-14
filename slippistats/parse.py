@@ -127,14 +127,10 @@ def _parse_event(event_stream: io.BytesIO, payload_sizes: dict):
 # exceptional ugliness to implement a jump table instead of a bunch of conditionals or a match statement.
 # It's gross but it increases parse speed by ~15%
 def _pre_frame(
-    current_frame,
-    event,
-    handlers,
-    skip_frames,
-    total_size,
-    bytes_read,
-    payload_sizes,
-    stream,
+    current_frame: Frame,
+    event: Frame.Event,
+    handlers: dict,
+    *_,
 ):
     # Accumulate all events for a single frame into a single `Frame` object.
 
@@ -163,8 +159,8 @@ def _pre_frame(
 
 
 def _post_frame(
-    current_frame,
-    event,
+    current_frame: Frame,
+    event: Frame.Event,
     handlers,
     *_,
 ):

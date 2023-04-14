@@ -570,7 +570,14 @@ class Frame(Base):
         self.items = tuple(self.items)
 
     class Port(Base):
-        """Frame data for a given port. Can include two characters' frame data (ICs)."""
+        """Frame data for a given port.
+
+        Attributes:
+            leader:
+                Main active character
+            follower:
+                Secondary active character if applicable (ic's)
+        """
 
         __slots__ = "leader", "follower"
 
@@ -588,7 +595,8 @@ class Frame(Base):
                 pre : Data.Pre
                     Data about the given player, used by the engine to update the player's state for the frame
                 post : Data.Post
-                    Data about the given player, after the game engine has updated for the frame"""
+                    Data about the given player, after the game engine has updated for the frame
+            """
 
             __slots__ = "_pre", "_post"
 
@@ -1139,7 +1147,7 @@ class Frame(Base):
 
         __slots__ = "id", "type", "data"
 
-        def __init__(self, id: int, type: int, data: io.BytesIO):
+        def __init__(self, id: Id | PortId, type: Type, data: io.BytesIO):
             self.id = id
             self.type = type
             self.data = data
