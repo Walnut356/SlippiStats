@@ -146,9 +146,7 @@ class Luigi(IntEnum):
     WHITE = 1
     BLUE = 2
     RED = 3
-    """
-    Pink
-    """
+    """Pink"""
 
 
 class Mario(IntEnum):
@@ -169,9 +167,7 @@ class Marth(IntEnum):
 
 class Mewtwo(IntEnum):
     PURPLE = 0
-    """
-    White
-    """
+    """White"""
     RED = 1
     BLUE = 2
     GREEN = 3
@@ -181,18 +177,14 @@ class Ness(IntEnum):
     RED = 0
     YELLOW = 1
     BLUE = 2
-    """
-    Purple
-    """
+    """Purple"""
     GREEN = 3
 
 
 class Peach(IntEnum):
     RED = 0
     YELLOW = 1
-    """
-    Daisy
-    """
+    """Daisy"""
     WHITE = 2
     BLUE = 3
     GREEN = 4
@@ -201,17 +193,11 @@ class Peach(IntEnum):
 class Pikachu(IntEnum):
     YELLOW = 0
     RED = 1
-    """
-    Trucker hat
-    """
+    """Trucker hat"""
     BLUE = 2
-    """
-    Party hat
-    """
+    """Party hat"""
     GREEN = 3
-    """
-    Cowboy hat
-    """
+    """Cowboy hat"""
 
 
 class IceClimbers(IntEnum):
@@ -224,35 +210,23 @@ class IceClimbers(IntEnum):
 class Jigglypuff(IntEnum):
     PINK = 0
     RED = 1
-    """
-    Flower
-    """
+    """Flower"""
     BLUE = 2
-    """
-    Bow
-    """
+    """Bow"""
     GREEN = 3
-    """
-    Headband
-    """
+    """Headband"""
     YELLOW = 4
-    """
-    Crown
-    """
+    """Crown"""
 
 
 class Samus(IntEnum):
     RED = 0
-    """
-    Orange
-    """
+    """Orange"""
     PINK = 1
     BLACK = 2
     GREEN = 3
     BLUE = 4
-    """
-    Purple
-    """
+    """Purple"""
 
 
 class Yoshi(IntEnum):

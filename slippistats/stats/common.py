@@ -193,7 +193,7 @@ def is_ledge_action(action_state: int):
     return ActionRange.LEDGE_ACTION_START <= action_state <= ActionRange.LEDGE_ACTION_END
 
 
-def is_wavedashing(action_state: int, port: int, frame_index: int, player_frames: list[Frame]) -> bool:
+def is_wavedashing(action_state: int, frame_index: int, player_frames: list[Frame]) -> bool:
     if action_state != ActionState.ESCAPE_AIR:
         return False
     for i in range(1, 4):
@@ -258,7 +258,7 @@ def is_slideoff_action(state: int) -> bool:
     )
 
 
-# VERY untested, probably don't use
+# VERY untested, probably don't use:
 # def is_recovery_lag(character: InGameCharacter, state: ActionState) -> bool:
 #     return state.value in RECOVERY_LAG[character]
 
@@ -280,7 +280,9 @@ def get_death_direction(action_state: int) -> str:
 class TechType(Enum):
     TECH_IN_PLACE = 0
     TECH_LEFT = 1
+    """Relative to position at the start of the tech"""
     TECH_RIGHT = 2
+    """Relative to position at the start of the tech"""
     GET_UP_ATTACK = 3
     MISSED_TECH = 4
     WALL_TECH = 5
