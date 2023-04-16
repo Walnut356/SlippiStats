@@ -84,7 +84,7 @@ class Start(Base):
             v3.0.0 Slippi Ranked Pre-release
 
         players : tuple[Player | None]
-            Four elements corresponding to in-game ports with metadata for each port. Empty ports will contain None.
+            4-element container corresponding to in-game ports with metadata for each port. Empty ports contain None.
         random_seed : int
             Random seed upon initializing the game
         stage : Stage
@@ -108,17 +108,26 @@ class Start(Base):
             If `MatchType.RANKED` and a tiebreak is necessary, acts as `game_number` for tiebreaks.
     """
 
-    is_teams: bool  # True if this was a teams game
-    players: tuple[Start.Player | None]  # Players in game, 0 indexed, empty ports will contain None
-    random_seed: int  # Random seed before the game start
-    slippi_version: Start.SlippiVersion  # Information about the Slippi recorder that generated this replay
-    stage: Stage  # Stage on which this game was played
-    is_pal: bool | None  # True if this was a PAL version of Melee
-    is_frozen_ps: bool | None  # True if frozen Pokemon Stadium was enabled
-    match_id: str | None  #  Mode (ranked/unranked) and time the match started
+    is_teams: bool
+    players: tuple[Start.Player | None]
+    """4-element container corresponding to in-game ports with metadata for each port. Empty ports contain None."""
+    random_seed: int
+    """Random seed upon initializing the game"""
+    slippi_version: Start.SlippiVersion
+    stage: Stage
+    """Which stage the game was played on"""
+    is_pal: bool | None
+    is_frozen_ps: bool | None
+    match_id: str | None
+    """In format mode.[mode]-[ISO 8601 timestamp]. For slippi matchmaking, Match IDs correspond to one instance of
+    queuing into another player. Each game before disconnecting will have the same Match ID, but a different
+    `game_number`."""
     match_type: MatchType
-    game_number: int | None  # The game number for consecutive games
+    """Enum representing one of the slippi matchmaking modes: Direct, Unranked, Ranked, Offline, and Other"""
+    game_number: int | None
+    """Which game number this replay is for the current `match_id`"""
     tiebreak_number: int | None
+    """If `MatchType.RANKED` and a tiebreak is necessary, acts as `game_number` for tiebreaks."""
 
     def __init__(
         self,
@@ -378,7 +387,7 @@ class Start(Base):
                 Enumerated classification of the player. Can be Human, CPU, Demo, or Empty
             stocks : int
                 How many stocks the player starts the game with
-            costume : int
+            costume : IntEnum
                 Index of the selected costume
             team : Team
                 Enumerated team color if applicable
@@ -386,22 +395,23 @@ class Start(Base):
             ucf : UCF
                 Information on which UCF toggles were enabled, if any
             tag : str
-                The in-game tag that hovers over the player, if any"""
+                The in-game tag that hovers over the player, if any
+        """
 
-        character: CSSCharacter  # Character selected
-        type: Type  # Player type (human/cpu)
-        stocks: int  # Starting stock count
-        costume: int  # Costume ID
-        team: Team | None  # Team, if this was a teams game
-        ucf: UCF | None  # UCF feature toggles
-        tag: str | None  # Name tag
+        character: CSSCharacter
+        type: Type
+        stocks: int
+        costume: IntEnum
+        team: Team | None
+        ucf: UCF | None
+        tag: str | None
 
         def __init__(
             self,
             character: CSSCharacter,
             type: Start.Player.Type,
             stocks: int,
-            costume: int,
+            costume: IntEnum,
             team: Start.Player.Team | None,
             ucf: Start.Player.UCF | None = None,
             tag: str | None = None,
@@ -444,8 +454,8 @@ class Start(Base):
         class UCF(Base):
             """UCF Dashback and shield drop. Can be off, on, or arduino"""
 
-            dash_back: Start.Player.UCF.DashBack | None  # UCF dashback status
-            shield_drop: Start.Player.UCF.ShieldDrop | None  # UCF shield drop status
+            dash_back: Start.Player.UCF.DashBack | None
+            shield_drop: Start.Player.UCF.ShieldDrop | None
 
             def __init__(
                 self,
@@ -485,10 +495,9 @@ class End(Base):
             List of placements, lower is better. List is in port order, 0 indexed. Placement is -1 if port is Type.Empty
     """
 
-    method: Method  # How the game ended
-    lras_initiator: int | None  # Index of player that LRAS'd, if any
-    # Player placements stored as a list. The index represents the port, the value of that element is their placement.
-    player_placements: list[int] | None  # 0-indexed placement positions. -1 if player not in game
+    method: Method
+    lras_initiator: int | None
+    player_placements: list[int] | None
 
     def __init__(
         self,
@@ -554,10 +563,10 @@ class Frame(Base):
     __slots__ = "index", "ports", "items", "start", "end"
 
     index: int
-    ports: Sequence[Frame.Port | None]  # Frame data for each port (0 indexed, including empty ports)
-    items: Sequence[Frame.Item | None]  # Active items (includes projectiles)
-    start: Frame.Start | None  # Start-of-frame data
-    end: Frame.End | None  # End-of-frame data
+    ports: Sequence[Frame.Port | None]
+    items: Sequence[Frame.Item | None]
+    start: Frame.Start | None
+    end: Frame.End | None
 
     def __init__(self, index: int):
         self.index = index
@@ -582,8 +591,8 @@ class Frame(Base):
 
         __slots__ = "leader", "follower"
 
-        leader: Frame.Port.Data  # Frame data for the controlled character
-        follower: Frame.Port.Data | None  # Frame data for the follower (Nana), if any
+        leader: Frame.Port.Data
+        follower: Frame.Port.Data | None
 
         def __init__(self):
             self.leader = self.Data()
@@ -605,7 +614,8 @@ class Frame(Base):
                 self._pre = None
                 self._post = None
 
-            # Creates write-only, lazy access to
+            # Makes pre/post frame write-only, also allows for lazy access. Pre and post frame are not parsed until
+            # requested, which saves about half of the total parsing time
             @property
             def pre(self) -> Frame.Port.Data.Pre | None:
                 """Pre-frame update data used by the game engine to update the player's state"""
@@ -654,7 +664,7 @@ class Frame(Base):
                         Raw X axis analog controller input. Used by UCF dashback code
                 `Minimum Replay Version: 1.4.0`:
                     percent : float | None
-                        The player's current percent (Min 0.0, Max ~999)
+                        The character's current percent (Min 0.0, Max ~999)
                 """
 
                 __slots__ = (
@@ -671,15 +681,29 @@ class Frame(Base):
                 )
 
                 state: ActionState | int
+                """Enumeration representing the characters current Action State"""
                 position: Position
+                """X, Y coordinates of the player's in-engine position. Position does not necessarily corrispond to
+                the character model."""
                 facing_direction: Direction
+                """Enumeration with values LEFT and RIGHT. DOWN is used for stats, but also represents the facing
+                direction when using the Warp Star item"""
                 joystick: Position
+                """X, Y coordinates of the player's joystick position"""
                 cstick: Position
+                """X, Y coordinates of the player's cstick position"""
                 triggers: Triggers
+                """Contains the physical (controller perspective) and logical (game engine perspective) trigger
+                values"""
                 buttons: Buttons
+                """Contains the physical (controller perspective) and logical (game engine perspective)
+                button values. Also contains generalized stick/trigger values"""
                 random_seed: int
+                """Random seed value used for the upcoming physics calculation"""
                 raw_analog_x: int | None
+                """Raw X axis analog controller input. Used by UCF dashback code"""
                 percent: float | None
+                """The character's current percent (Min 0.0, Max ~999)"""
 
                 def __init__(
                     self,
@@ -778,17 +802,17 @@ class Frame(Base):
                     stocks_remaining : int
                         The number of stocks remaining. Will be 0 for 1 frame if player loses all stocks in 1v1
                     most_recent_hit : Attack | int
-                        The last attack that this character landed, directly corresponds to Stale Move Queue
+                        The last attack that this character landed, directly corresponds to stale move queue
                     last_hit_by : int | None
                         0-indexed port of the character that last hit this character
                     combo_count : int
                         Current combo count as defined by the game
                 `Minimum Replay Version: 0.2.0`:
                     state_age : float | None
-                        Number of frames the current action state has been active. Can be fractiona;
+                        Number of frames the current action state has been active. Can be fractional
                 `Minimum Replay Version: 2.0.0`:
                     flags : list[IntFlag]
-                        Set of 5 bitfields with values pertaining to the character's current state
+                        Sequence of 5 bitfields with values pertaining to the character's current state
                     misc_timer : float | None
                         Timer used by various states. If HITSTUN flag is active, this timer is the number of hitstun
                         frames remaining
@@ -807,11 +831,13 @@ class Frame(Base):
                         VULNERABLE, INVULNERABLE, or INTANGIBLE
                 `Minimum Replay Version: 3.5.0`:
                     self_ground_speed : Velocity | None
-                        X,Y ground speed. Used when `is_airborne` is False. Y ground speed is relevant on slopes
+                        Player-induced X,Y ground speed. Added to knockback speed to calculate next position. Used when
+                        `is_airborne` is False. Y ground speed is relevant on slopes
                     self_air_speed : Velocity | None
-                        X,Y air speed. Used when `is_airborne` is True
+                        Player-induced X,Y air speed. Added to knockback speed to calculate next position. Used when
+                        `is_airborne` is True
                     knockback_speed : Velocity | None
-                        X,Y knockback speed. Add to self speeds for a resultant total speed.
+                        X,Y knockback speed. Added to self speeds to calculate next position.
                     hitlag_remaining : float | None
                         Total number of hitlag frames remaining. Can have a fractional component. 0 = not in hitstun
                     animation_index : int | None
@@ -844,32 +870,60 @@ class Frame(Base):
                     "animation_index",
                 )
 
-                character: InGameCharacter  # In-game character (can only change for Zelda/Sheik).
-                state: ActionState | int  # Character's action state
-                position: Position  # Character's position
-                facing_direction: Direction  # Direction the character is facing
-                percent: float  # Current damage percent
-                shield_health: float  # Current size of shield
-                stocks_remaining: int  # Number of stocks remaining
-                most_recent_hit: Attack | int  # Last attack that this character landed
-                last_hit_by: int | None  # Port of character that last hit this character
-                combo_count: int  # Combo count as defined by the game
-                state_age: float | None  # Number of frames action state has been active. Can be fractional
-                flags: list[IntFlag] | None  # State flags
-                misc_timer: float | None  # hitstun frames remaining
-                is_airborne: bool | None  # True if character is airborne
-                last_ground_id: int | None  # ID of ground character is standing on, if any
-                jumps_remaining: int | None  # Jumps remaining
-                l_cancel: LCancel | None  # L-cancel status, if any
+                character: InGameCharacter
+                """Which character is active on the current frame (should only change for zelda/shiek)"""
+                state: ActionState | int
+                """Enumeration representing the characters current Action State. Includes character specific action
+                states"""
+                position: Position
+                """X, Y coordinates of the player's in-engine position. Position does not necessarily corrispond to
+                the character model."""
+                facing_direction: Direction
+                """Enumeration with values LEFT and RIGHT. DOWN is used for stats, but also represents the facing
+                direction when using the Warp Star item"""
+                percent: float
+                """The player's current percent (Min 0.0, Max ~999)"""
+                shield_health: float
+                """The remaining health of the player's shield (Max 60.0)"""
+                stocks_remaining: int
+                """The number of stocks remaining. Will be 0 for 1 frame if player loses all stocks in 1v1"""
+                most_recent_hit: Attack | int
+                """The last attack that this character landed, directly corresponds to stale move queue"""
+                last_hit_by: int | None
+                """0-indexed port of the character that last hit this character"""
+                combo_count: int
+                """Current combo count as defined by the game"""
+                state_age: float | None
+                """Number of frames the current action state has been active. Can be fractional"""
+                flags: list[IntFlag] | None
+                """Sequence of 5 bitfields with values pertaining to the character's current state"""
+                misc_timer: float | None
+                """Timer used by various states. If HITSTUN flag is active, this timer is the number of hitstun
+                frames remaining"""
+                is_airborne: bool | None
+                """True if the character is in the air"""
+                last_ground_id: int | None
+                """In-game ID of the last ground the character stood on"""
+                jumps_remaining: int | None
+                """The number of jumps remaining. Grounded jumps count (e.g. most characters: 2 when grounded,
+                1 when airborne, 0 after double jumping)"""
+                l_cancel: LCancel | None
+                """Enumeration representing current L cancel status. LCancel.SUCCESS or LCancel.FAILURE
+                for 1 frame upon landing during an aerial, otherwise LCancel.NOTAPPLICABLE"""
                 hurtbox_status: Hurtbox | None
-                # speeds are split into 5 values. A shared Y, a grounded and air X, and a knockback X and Y.
-                # Generic Y *DOES* matter, even when grounded.
-                # For example, watch velocity values when walking on the slanted edges of yoshi's
-                self_ground_speed: Velocity | None  # Self induced ground X speed and generic Y speed
-                self_air_speed: Velocity | None  # Self induced air X speed and generic Y speed
-                knockback_speed: Velocity | None  # Speed from knockback, adds with self-speeds for total velocity
-                hitlag_remaining: float | None  # 0 means "not in hitlag"
-                animation_index: int | None  # Indicates the animation the character is in, animation derived from state
+                """VULNERABLE, INVULNERABLE, or INTANGIBLE"""
+                self_ground_speed: Velocity | None
+                """Player-induced X,Y ground speed. Added to knockback speed to calculate next position. Used when
+                `is_airborne` is False. Y ground speed is relevant on slopes"""
+                self_air_speed: Velocity | None
+                """Player-induced X,Y air speed. Added to knockback speed to calculate next position. Used when
+                `is_airborne` is True"""
+                knockback_speed: Velocity | None
+                """X,Y knockback speed. Added to self speeds to calculate next position."""
+                hitlag_remaining: float | None
+                """Total number of hitlag frames remaining. Can have a fractional component. 0 = not in hitstun"""
+                animation_index: int | None
+                """Indicates the animation the character is in, animation derived from state"""
 
                 def __init__(
                     self,
@@ -1350,6 +1404,7 @@ class Position(Base):
         y : float
             vertical component
     """
+
     __slots__ = "x", "y"
 
     x: float
@@ -1391,6 +1446,7 @@ class Velocity(Base):
         y : float
             vertical component
     """
+
     __slots__ = "x", "y"
 
     x: float
