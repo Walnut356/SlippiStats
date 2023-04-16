@@ -1,4 +1,3 @@
-from abc import ABC
 from functools import lru_cache
 
 from ..util import IntEnum, try_enum

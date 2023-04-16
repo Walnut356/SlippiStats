@@ -1,31 +1,3 @@
-"""State-related Enums and helpers:
-
-Functions:
-    get_character_state
-
-IntEnums:
-    Direction
-
-    LCancel
-
-    ActionState
-
-    ActionRange
-
-    [Character Name]
-
-IntFlags:
-    Field1
-
-    Field2
-
-    Field3
-
-    Field4
-
-    Field5
-"""
-
 from enum import IntFlag
 from functools import lru_cache
 from .character import InGameCharacter
@@ -46,13 +18,17 @@ class Direction(IntEnum):
         Down = 0 is useful for stats, but technically 0 is used as the direction during the Warp Star item animation
     RIGHT = 1
     """
+
     LEFT = -1
     DOWN = 0
+    """
+    Technically used for Warp Star item animation, but useful as "DOWN" for stats purposes.
+    """
     RIGHT = 1
 
 
 class LCancel(IntEnum):
-    """L-Cancel Status, active for 1 frame upon landing during an aerial
+    """L-Cancel Status, active for 1 frame upon landing during an aerial attack
 
     NOT_APPLICABLE = 0
         Value at all other times
@@ -60,28 +36,63 @@ class LCancel(IntEnum):
 
     FAILURE = 2
     """
+
     NOT_APPLICABLE = 0
+    """
+    Any frame other than when l cancels are checked upon landing
+    """
     SUCCESS = 1
+    """
+    Active for 1 frame upon landing during an aerial attack
+    """
     FAILURE = 2
+    """
+    Active for 1 frame upon landing during an aerial attack
+    """
+
+
+class Hurtbox(IntEnum):
+    """
+    * VULNERABLE = 0
+    * INVULNERABLE = 1
+    * INTANGIBLE = 2
+    """
+
+    VULNERABLE = 0
+    INVULNERABLE = 1
+    """
+    Attacks collide with hurtbox, incurring hitlag but dealing no damage
+    """
+    INTANGIBLE = 2
+    """
+    Attacks pass through hurtbox, incurring no hitlag and dealing no damage
+    """
 
 
 class Field1(IntFlag):
     """State Bitfield 1
 
     Known Bits:
-        Bit 2 - ABSORBER_BUBBLE
-            Active when any absorber hitbox is active (ness down b)
-        Bit 4 - REFLECT_NO_OWNERSHIP_CHANGE
-            Active when REFLECT_BUBBLE is active, but the reflected projectile does not change ownership
-            (e.g. Mewtwo side b)
-        Bit 5 - REFLECT_BUBBLE
-            Active when any projectile reflect bubble is active
+        * Bit 2 - ABSORBER_BUBBLE
+        * Bit 4 - REFLECT_NO_OWNERSHIP_CHANGE
+        * Bit 5 - REFLECT_BUBBLE
     """
+
     BIT_1 = 1
     ABSORBER_BUBBLE = 2
+    """
+    Active when any absorber hitbox is active (ness down b)
+    """
     BIT_3 = 4
     REFLECT_NO_OWNERSHIP_CHANGE = 8
+    """
+    Active when REFLECT_BUBBLE is active, but the reflected projectile does not change ownership
+            (e.g. Mewtwo side b)
+    """
     REFLECT_BUBBLE = 16
+    """
+    Active when any projectile reflect bubble is active
+    """
     BIT_6 = 32
     BIT_7 = 64
     BIT_8 = 128
@@ -91,22 +102,31 @@ class Field2(IntFlag):
     """State Bitfield 2
 
     Known Bits:
-        Bit 3 - SUBACTION_INVULN
-            Active when the character recieves intangibility or invulnerability due to an subaction that is removed upon
-            entering a different subaction
-        Bit 4 - FASTFALL
-            Active when the player is fastfalling
-        Bit 5 - DEFENDER_HITLAG
-            Active when HITLAG is active, if the character is being hit. Can be thought of as CAN_SDI
-        Bit 6 - HITLAG
-            Active when character is in hitlag
+        * Bit 3 - SUBACTION_INVULN
+        * Bit 4 - FASTFALL
+        * Bit 5 - DEFENDER_HITLAG
+        * Bit 6 - HITLAG
+
     """
+
     BIT_1 = 1
     BIT_2 = 2
     SUBACTION_INVULN = 4
+    """
+    Active when the character recieves intangibility or invulnerability due to an subaction that is removed upon
+    """
     FASTFALL = 8
+    """
+    Active when the player is fastfalling
+    """
     DEFENDER_HITLAG = 16
+    """
+    Active when HITLAG is active, if the character is being hit. Can be thought of as CAN_SDI
+    """
     HITLAG = 32
+    """
+    Active when character is in hitlag
+    """
     BIT_7 = 64
     BIT_8 = 128
 
@@ -115,38 +135,51 @@ class Field3(IntFlag):
     """State Bitfield 3
 
     Known Bits:
-        Bit 3 - HOLDING_OPPONENT
-            Active when holding a character after a successful grab
-        BIT 8 - SHIELDING
-            Active when character is shielding
+        * Bit 3 - HOLDING_CHARACTER
+        * BIT 8 - SHIELDING
     """
+
     BIT_1 = 1
     BIT_2 = 2
-    HOLDING_OPPONENT = 4
+    HOLDING_CHARACTER = 4
+    """
+    Active when holding a character after a successful grab
+    """
     BIT_4 = 8
     BIT_5 = 16
     BIT_6 = 32
     BIT_7 = 64
     SHIELDING = 128
+    """
+    Active when character is shielding
+    """
 
 
 class Field4(IntFlag):
     """State Bitfield 4
 
     Known Bits:
-        Bit 2 - HITSTUN
-            Active when character is in hitstun
-        BIT 3 - HITBOX_TOUCHING_SHIELD
-            Dubious meaning, likely related to subframe events
-        BIT 6 - POWERSHIELD_BUBBLE
-            Active when character's Powershield bubble is active (physical or projectile)
+        * Bit 2 - HITSTUN
+        * BIT 3 - HITBOX_TOUCHING_SHIELD
+        * BIT 6 - POWERSHIELD_BUBBLE
+
     """
+
     BIT_1 = 1
     HITSTUN = 2
-    HITBOX_TOUCHING_SHIELD = 4  # dubious meaning
+    """
+    Active when character is in hitstun
+    """
+    HITBOX_TOUCHING_SHIELD = 4
+    """
+    Dubious meaning, likely related to subframe events
+    """
     BIT_4 = 8
     BIT_5 = 16
     POWERSHIELD_BUBBLE = 32
+    """
+    Active when character's Powershield bubble is active (physical or projectile)
+    """
     BIT_7 = 64
     BIT_8 = 128
 
@@ -155,45 +188,51 @@ class Field5(IntFlag):
     """State Bitfield 5
 
     Known Bits:
-        Bit 2 - IS_CLOAKING_DEVICE
-            Active if player is invisible due to item/mode toggle
-        Bit 4 - IS_FOLLOWER
-            Active if character is follower-type (e.g. Nana)
-        Bit 5 - IS_INACTIVE
-            Character is not the current active character (Shiek when Zelda is active, teammates with 0 stocks). Should
-            never be active in a replay, as this bit is what determines whether a frame is recorded for the character
-            or not. Corresponds to action state Sleep (different from fura_sleep and damage_sleep)
-        Bit 7 - IS_DEAD
-            Active when character is dead
-        Bit 8 - IS_OFFSCREEN
-            Active when character is in the magnifying glass
+        * Bit 2 - IS_CLOAKING_DEVICE
+        * Bit 4 - IS_FOLLOWER
+        * Bit 5 - IS_INACTIVE
+        * Bit 7 - IS_DEAD
+        * Bit 8 - IS_OFFSCREEN
+
     """
+
     BIT_1 = 1
     IS_CLOAKING_DEVICE = 2
+    """
+    Active if player is invisible due to item/special mode toggle
+    """
     BIT_3 = 4
     IS_FOLLOWER = 8
-    IS_INACTIVE = 16  # action state Sleep, used for zelda/shiek when the opposite is in play
+    """
+    Active if character is follower-type (e.g. Nana)
+    """
+    IS_INACTIVE = 16
+    """
+    Character is not the current active character (Shiek when Zelda is active, teammates with 0 stocks).
+
+    Should never be active in a replay, as this bit is what determines whether a frame is recorded for the character
+    or not. Corresponds to action state Sleep (different from fura_sleep and damage_sleep)
+    """
     BIT_6 = 32
     IS_DEAD = 64
+    """
+    Active when character is dead
+    """
     IS_OFFSCREEN = 128
-
-
-class Hurtbox(IntEnum):
     """
-    VULNERABLE = 0
-
-    INVULNERABLE = 1
-        Attacks collide with hurtbox, incurring hitlag but dealing no damage
-    INTANGIBLE = 2
-        Attacks pass through hurtbox, incurring no hitlag and dealing no damage
+    Active when character is in the magnifying glass
     """
-    VULNERABLE = 0
-    INVULNERABLE = 1
-    INTANGIBLE = 2
 
+
+
+
+# ---------------------------------------------------------------------------- #
+#                                 Action States                                #
+# ---------------------------------------------------------------------------- #
 
 class ActionRange(IntEnum):
     """Action State Ranges - used to simplify checks for clusters of action states"""
+
     DAMAGE_START = 75
     DAMAGE_END = 91
     CAPTURE_START = 223
@@ -228,6 +267,7 @@ class ActionRange(IntEnum):
     AERIAL_LAND_LAG_END = 74
     ACTIONABLE_AIR_START = 25
     ACTIONABLE_AIR_END = 34
+
     # Command Grabs
     COMMAND_GRAB_RANGE1_START = 266
     COMMAND_GRAB_RANGE1_END = 304
@@ -237,88 +277,285 @@ class ActionRange(IntEnum):
 
 
 class ActionState(IntEnum):
-    # Individual IDs
-    DEAD_DOWN = 0  # Bottom blast zone death
-    DEAD_LEFT = 1  # Left blast zone death
-    DEAD_RIGHT = 2  # Right blast zone death
-    DEAD_UP = 3  # Up blast zone death used in 1P "Team Kirby", etc.
-    DEAD_UP_STAR = 4  # Standard star KO
-    DEAD_UP_STAR_ICE = 5  # Star KO while encased in ice
-    DEAD_UP_FALL = 6  # 64-esque front fall, likely unused per OG Modders
+    """Individual Action State IDs. See ActionRange for state ranges."""
+
+    DEAD_DOWN = 0
+    """
+    Bottom blast zone death
+    """
+    DEAD_LEFT = 1
+    """
+    Left blast zone death
+    """
+    DEAD_RIGHT = 2
+    """
+    Right blast zone death
+    """
+    DEAD_UP = 3
+    """
+    Up blast zone death used in 1P "Team Kirby", etc.
+    """
+    DEAD_UP_STAR = 4
+    """
+    Standard star KO
+    """
+    DEAD_UP_STAR_ICE = 5
+    """
+    Star KO while encased in ice
+    """
+    DEAD_UP_FALL = 6
+    """
+    64-esque front fall, likely unused per OG Modders
+    """
     DEAD_UP_FALL_HIT_CAMERA = 7
     DEAD_UP_FALL_HIT_CAMERA_FLAT = 8
     DEAD_UP_FALL_ICE = 9
     DEAD_UP_FALL_HIT_CAMERA_ICE = 10
 
-    SLEEP = 11  # "Nothing" state, probably - used as sheik/zelda state when the other is active
+    SLEEP = 11
+    """
+    "Nothing" state - used as sheik/zelda state when the other is active
+    """
 
-    REBIRTH = 12  # Entering on halo
-    REBIRTH_WAIT = 13  # Waiting on halo
+    REBIRTH = 12
+    """
+    Entering on halo
+    """
+    REBIRTH_WAIT = 13
+    """
+    Waiting on halo
+    """
 
-    WAIT = 14  # Default standing state
+    WAIT = 14
+    """
+    Default standing state
+    """
+
+    # ------------------------------ Generic Movement ----------------------------- #
+
     WALK_SLOW = 15
     WALK_MIDDLE = 16
     WALK_FAST = 17
     TURN = 18
-    TURN_RUN = 19  # Slow sliding turnaround when in full run
+    TURN_RUN = 19
+    """
+    Slow sliding turnaround when in full run
+    """
     DASH = 20
     RUN = 21
     RUN_DIRECT = 22
     RUN_BRAKE = 23
-    KNEE_BEND = 24  # Jumpsquat
-    JUMP_F = 25  # First jump, forward
-    JUMP_B = 26  # First jump, backwards
-    JUMP_AERIAL_F = 27  # Aerial jump forward
-    JUMP_AERIAL_B = 28  # Aerial jump backward
-    FALL = 29  # Default fall
-    FALL_F = 30  # Fall forward DI
-    FALL_B = 31  # Fall backward DI
-    FALL_AERIAL = 32  # Fall after second jump
-    FALL_AERIAL_F = 33  # Fall after second jump, forward DI
-    FALL_AERIAL_B = 34  # Fall after second jump, backward DI
-    FALL_SPECIAL = 35  # Non-actionable fall used after Up B, air dodge, and some B moves
-    FALL_SPECIAL_F = 36  # Non-actionable fall, forward DI
-    FALL_SPECIAL_B = 37  # Non-actionable fall, backward DI
-    DAMAGE_FALL = 38  # Tumble
-    SQUAT = 39  # Stand -> Crouch
-    SQUAT_WAIT = 40  # Full crouch
-    SQUAT_RV = 41  # Crouch -> Stand
-    LAND = 42  # Universal no-action landing lag, fully interruptable
-    LAND_FALL_SPECIAL = 43  # Landing from FALL_SPECIAL[_F/B]
+    KNEE_BEND = 24
+    """
+    Jumpsquat
+    """
+    JUMP_F = 25
+    """
+    First jump, forward
+    """
+    JUMP_B = 26
+    """
+    First jump, backwards
+    """
+    JUMP_AERIAL_F = 27
+    """
+    Aerial jump forward
+    """
+    JUMP_AERIAL_B = 28
+    """
+    Aerial jump backward
+    """
+    FALL = 29
+    """
+    Default fall
+    """
+    FALL_F = 30
+    """
+    Fall forward DI
+    """
+    FALL_B = 31
+    """
+    Fall backward DI
+    """
+    FALL_AERIAL = 32
+    """
+    Fall after second jump
+    """
+    FALL_AERIAL_F = 33
+    """
+    Fall after second jump, forward DI
+    """
+    FALL_AERIAL_B = 34
+    """
+    Fall after second jump, backward DI
+    """
+    FALL_SPECIAL = 35
+    """
+    Non-actionable fall used after Up B, air dodge, and some B moves
+    """
+    FALL_SPECIAL_F = 36
+    """
+    Non-actionable fall, forward DI
+    """
+    FALL_SPECIAL_B = 37
+    """
+    Non-actionable fall, backward DI
+    """
+    DAMAGE_FALL = 38
+    """
+    Tumble
+    """
+    SQUAT = 39
+    """
+    Stand -> Crouch
+    """
+    SQUAT_WAIT = 40
+    """
+    Full crouch
+    """
+    SQUAT_RV = 41
+    """
+    Crouch -> Stand
+    """
+    LAND = 42
+    """
+    Universal no-action landing lag, fully interruptable
+    """
+    LAND_FALL_SPECIAL = 43
+    """
+    Landing from FALL_SPECIAL[_F/B]
+    """
 
-    ATTACK_11 = 44  # Jab 1
-    ATTACK_12 = 45  # Jab 2
-    ATTACK_13 = 46  # Jab 3
-    ATTACK_100_START = 47  # Rapid jab start
-    ATTACK_100_LOOP = 48  # Rapid jab loop
-    ATTACK_100_END = 49  # Rapid jab end
-    ATTACK_DASH = 50  # Dash attack
-    ATTACK_S_3_HI = 51  # Up-angled Ftilt
-    ATTACK_S_3_HI_S = 52  # Slight up-angled F-tilt
-    ATTACK_S_3_S = 53  # No angle Ftilt
-    ATTACK_S_3_LW_S = 54  # Slight down-angled Ftilt
-    ATTACK_S_3_LW = 55  # Down-angled Ftilt
-    ATTACK_HI_3 = 56  # Utilt
-    ATTACK_LW_3 = 57  # Dtilt
-    ATTACK_S_4_HI = 58  # Up-angled Fsmash
-    ATTACK_S_4_HI_S = 59  # Slight up-angled Fsmash
-    ATTACK_S_4_S = 60  # No angle Fsmash
-    ATTACK_S_4_LW_S = 61  # Slight down-angled Fsmash
-    ATTACK_S_4_LW = 62  # Down-angled Fsmash
-    ATTACK_HI_4 = 63  # Usmash
-    ATTACK_LW_4 = 64  # Dsmash
-    ATTACK_AIR_N = 65  # Nair
-    ATTACK_AIR_F = 66  # Fair
-    ATTACK_AIR_B = 67  # Bair
-    ATTACK_AIR_HI = 68  # Uair
-    ATTACK_AIR_LW = 69  # Dair
-    LANDING_AIR_N = 70  # Nair landing animation
-    LANDING_AIR_F = 71  # Fair landing animation
-    LANDING_AIR_B = 72  # Bair landing animation
-    LANDING_AIR_HI = 73  # Uair landing animation
-    LANDING_AIR_LW = 74  # Dair landing animation
+    # ------------------------------- Attacks ------------------------------ #
 
-    DAMAGE_HI_1 = 75  # Start of generic damage animations
+    ATTACK_11 = 44
+    """
+    Jab 1
+    """
+    ATTACK_12 = 45
+    """
+    Jab 2
+    """
+    ATTACK_13 = 46
+    """
+    Jab 3
+    """
+    ATTACK_100_START = 47
+    """
+    Rapid jab start
+    """
+    ATTACK_100_LOOP = 48
+    """
+    Rapid jab loop
+    """
+    ATTACK_100_END = 49
+    """
+    Rapid jab end
+    """
+    ATTACK_DASH = 50
+    """
+    Dash attack
+    """
+    ATTACK_S_3_HI = 51
+    """
+    Up-angled Ftilt
+    """
+    ATTACK_S_3_HI_S = 52
+    """
+    Slight up-angled F-tilt
+    """
+    ATTACK_S_3_S = 53
+    """
+    No angle Ftilt
+    """
+    ATTACK_S_3_LW_S = 54
+    """
+    Slight down-angled Ftilt
+    """
+    ATTACK_S_3_LW = 55
+    """
+    Down-angled Ftilt
+    """
+    ATTACK_HI_3 = 56
+    """
+    Utilt
+    """
+    ATTACK_LW_3 = 57
+    """
+    Dtilt
+    """
+    ATTACK_S_4_HI = 58
+    """
+    Up-angled Fsmash
+    """
+    ATTACK_S_4_HI_S = 59
+    """
+    Slight up-angled Fsmash
+    """
+    ATTACK_S_4_S = 60
+    """
+    No angle Fsmash
+    """
+    ATTACK_S_4_LW_S = 61
+    """
+    Slight down-angled Fsmash
+    """
+    ATTACK_S_4_LW = 62
+    """
+    Down-angled Fsmash
+    """
+    ATTACK_HI_4 = 63
+    """
+    Usmash
+    """
+    ATTACK_LW_4 = 64
+    """
+    Dsmash
+    """
+    ATTACK_AIR_N = 65
+    """
+    Nair
+    """
+    ATTACK_AIR_F = 66
+    """
+    Fair
+    """
+    ATTACK_AIR_B = 67
+    """
+    Bair
+    """
+    ATTACK_AIR_HI = 68
+    """
+    Uair
+    """
+    ATTACK_AIR_LW = 69
+    """
+    Dair
+    """
+    LANDING_AIR_N = 70
+    """
+    Nair landing animation
+    """
+    LANDING_AIR_F = 71
+    """
+    Fair landing animation
+    """
+    LANDING_AIR_B = 72
+    """
+    Bair landing animation
+    """
+    LANDING_AIR_HI = 73
+    """
+    Uair landing animation
+    """
+    LANDING_AIR_LW = 74
+    """
+    Dair landing animation
+    """
+    DAMAGE_HI_1 = 75
+
+    # -------------------- Generic Damage -------------------- #
+
     DAMAGE_HI_2 = 76
     DAMAGE_HI_3 = 77
     DAMAGE_N_1 = 78
@@ -334,11 +571,22 @@ class ActionState(IntEnum):
     DAMAGE_FLY_N = 88
     DAMAGE_FLY_LW = 89
     DAMAGE_FLY_TOP = 90
-    DAMAGE_FLY_ROLL = 91  # End of generic damage animations
+    DAMAGE_FLY_ROLL = 91
 
-    LIGHT_GET = 92  # Picking up most items
-    HEAVY_GET = 93  # Picking up heavy items (Barrel)
-    LIGHT_THROW_F = 94  # Start of item throw
+    # -------------------------- Generic Item ------------------------- #
+
+    LIGHT_GET = 92
+    """
+    Picking up most items
+    """
+    HEAVY_GET = 93
+    """
+    Picking up heavy items (Barrel)
+    """
+    LIGHT_THROW_F = 94
+    """
+    Start of item throw
+    """
     LIGHT_THROW_B = 95
     LIGHT_THROW_HI = 96
     LIGHT_THROW_LW = 97
@@ -352,7 +600,10 @@ class ActionState(IntEnum):
     HEAVY_THROW_B = 105
     HEAVY_THROW_HI = 106
     HEAVY_THROW_LW = 107
-    LIGHT_THROW_F_4 = 108  # Smash throw start
+    LIGHT_THROW_F_4 = 108
+
+    # Smash throw start
+
     LIGHT_THROW_B_4 = 109
     LIGHT_THROW_HI_4 = 110
     LIGHT_THROW_LW_4 = 111
@@ -363,8 +614,14 @@ class ActionState(IntEnum):
     HEAVY_THROW_F_4 = 116
     HEAVY_THROW_B_4 = 117
     HEAVY_THROW_HI_4 = 118
-    HEAVY_THROW_LW_4 = 119  # End of item throw
-    SWORD_SWING_1 = 120  # Start of item-specific animations
+    HEAVY_THROW_LW_4 = 119
+
+    # End of item throw
+
+    SWORD_SWING_1 = 120
+
+    # --------------------- Item-Specific -------------------- #
+
     SWORD_SWING_3 = 121
     SWORD_SWING_4 = 122
     SWORD_SWING_DASH = 123
@@ -417,127 +674,397 @@ class ActionState(IntEnum):
     ITEM_SCOPE_AIR_START_EMPTY = 170
     ITEM_SCOPE_AIR_RAPID_EMPTY = 171
     ITEM_SCOPE_AIR_FIRE_EMPTY = 172
-    ITEM_SCOPE_AIR_END_EMPTY = 173  # End of item-specific animations
+    ITEM_SCOPE_AIR_END_EMPTY = 173
 
-    LIFT_WAIT = 174  # Not sure what these 4 are
+    LIFT_WAIT = 174
     LIFT_WALK_1 = 175
     LIFT_WALK_2 = 176
     LIFT_TURN = 177
 
-    GUARD_ON = 178  # Raising shield
-    GUARD = 179  # Holding shield
-    GUARD_OFF = 180  # Releasing shield
-    GUARD_SET_OFF = 181  # Shield stun
-    GUARD_REFLECT = 182  # Powershield
+    # ------------------------------- Shield ------------------------------ #
 
-    DOWN_BOUND_U = 183  # Missed tech bounce, facing upwards
-    DOWN_WAIT_U = 184  # Downed, facing up
-    DOWN_DAMAGE_U = 185  # Jab reset while laying facing up
-    DOWN_STAND_U = 186  # Neutral getup, facing up
-    DOWN_ATTACK_U = 187  # Getup attack, facing up
-    DOWN_FOWARD_U = 188  # Missed tech roll forward
-    DOWN_BACK_U = 189  # Missed tech roll backward
-    DOWN_SPOT_U = 190  # Does not appear to be used
-    DOWN_BOUND_D = 191  # Missed tech bounce, facing down
-    DOWN_WAIT_D = 192  # Downed, facing down
-    DOWN_DAMAGE_D = 193  # Hit while laying on ground, facing down
-    DOWN_STAND_D = 194  # Neutral getup, facing down
-    DOWN_ATTACK_D = 195  # Getup attack, facing down
-    DOWN_FOWARD_D = 196  # Missed tech roll forward
-    DOWN_BACK_D = 197  # Missed tech roll backward
-    DOWN_SPOT_D = 198  # Does not appear to be used
-    PASSIVE = 199  # Neutral tech
-    PASSIVE_STAND_F = 200  # Forward tech
-    PASSIVE_STAND_B = 201  # Backward tech
-    PASSIVE_WALL = 202  # Wall tech
-    PASSIVE_WALL_JUMP = 203  # Walljump and Walljump tech
-    PASSIVE_CEIL = 204  # Ceiling tech
+    GUARD_ON = 178
+    """
+    Raising shield
+    """
+    GUARD = 179
+    """
+    Holding shield
+    """
+    GUARD_OFF = 180
+    """
+    Releasing shield
+    """
+    GUARD_SET_OFF = 181
+    """
+    Shield stun
+    """
+    GUARD_REFLECT = 182
+    """
+    Powershield
+    """
 
-    SHIELD_BREAK_FLY = 205  # Initial bounce when shield is broken
-    SHIELD_BREAK_FALL = 206  # Fall during shield break
+    # -------------------------------- Tech States ------------------------------- #
+
+    DOWN_BOUND_U = 183
+    """
+    Missed tech bounce, facing upwards
+    """
+    DOWN_WAIT_U = 184
+    """
+    Downed, facing up
+    """
+    DOWN_DAMAGE_U = 185
+    """
+    Jab reset while laying facing up
+    """
+    DOWN_STAND_U = 186
+    """
+    Neutral getup, facing up
+    """
+    DOWN_ATTACK_U = 187
+    """
+    Getup attack, facing up
+    """
+    DOWN_FOWARD_U = 188
+    """
+    Missed tech roll forward
+    """
+    DOWN_BACK_U = 189
+    """
+    Missed tech roll backward
+    """
+    DOWN_SPOT_U = 190
+    """
+    Does not appear to be used
+    """
+    DOWN_BOUND_D = 191
+    """
+    Missed tech bounce, facing down
+    """
+    DOWN_WAIT_D = 192
+    """
+    Downed, facing down
+    """
+    DOWN_DAMAGE_D = 193
+    """
+    Hit while laying on ground, facing down
+    """
+    DOWN_STAND_D = 194
+    """
+    Neutral getup, facing down
+    """
+    DOWN_ATTACK_D = 195
+    """
+    Getup attack, facing down
+    """
+    DOWN_FOWARD_D = 196
+    """
+    Missed tech roll forward
+    """
+    DOWN_BACK_D = 197
+    """
+    Missed tech roll backward
+    """
+    DOWN_SPOT_D = 198
+    """
+    Does not appear to be used
+    """
+    PASSIVE = 199
+    """
+    Neutral tech
+    """
+    PASSIVE_STAND_F = 200
+    """
+    Forward tech
+    """
+    PASSIVE_STAND_B = 201
+    """
+    Backward tech
+    """
+    PASSIVE_WALL = 202
+    """
+    Wall tech
+    """
+    PASSIVE_WALL_JUMP = 203
+    """
+    Walljump and Walljump tech
+    """
+    PASSIVE_CEIL = 204
+    """
+    Ceiling tech
+    """
+
+    # ---------------------------- Shield Break --------------------------- #
+
+    SHIELD_BREAK_FLY = 205
+    """
+    Initial bounce when shield is broken
+    """
+    SHIELD_BREAK_FALL = 206
+    """
+    Fall during shield break
+    """
     SHIELD_BREAK_DOWN_U = 207
     SHIELD_BREAK_DOWN_D = 208
     SHIELD_BREAK_STAND_U = 209
     SHIELD_BREAK_STAND_D = 210
-    FURA_FURA = 211  # Shield break totter
+    FURA_FURA = 211
+    """
+    Shield break totter
+    """
 
-    CATCH = 212  # Grab
-    CATCH_PULL = 213  # Successful grab, pulling opponent in
-    CATCH_DASH = 214  # Dash grab
-    CATCH_DASH_PULL = 215  # Successful dash grab, pulling opponent in
-    CATCH_WAIT = 216  # Grab hold
-    CATCH_ATTACK = 217  # Pummel
-    CATCH_CUT = 218  # Grab release
-    THROW_F = 219  # Fthrow
-    THROW_B = 220  # Bthrow
-    THROW_HI = 221  # Uthrow
-    THROW_LW = 222  # Dthrow
+    # ----------------------------------- Grab ----------------------------------- #
+
+    CATCH = 212
+    """
+    Grab
+    """
+    CATCH_PULL = 213
+    """
+    Successful grab, pulling opponent in
+    """
+    CATCH_DASH = 214
+    """
+    Dash grab
+    """
+    CATCH_DASH_PULL = 215
+    """
+    Successful dash grab, pulling opponent in
+    """
+    CATCH_WAIT = 216
+    """
+    Grab hold
+    """
+    CATCH_ATTACK = 217
+    """
+    Pummel
+    """
+    CATCH_CUT = 218
+    """
+    Grab release
+    """
+    THROW_F = 219
+    """
+    Fthrow
+    """
+    THROW_B = 220
+    """
+    Bthrow
+    """
+    THROW_HI = 221
+    """
+    Uthrow
+    """
+    THROW_LW = 222
+    """
+    Dthrow
+    """
     CAPTURE_PULLED_HI = 223
     CAPTURE_WAIT_HI = 224
     CAPTURE_DAMAGE_HI = 225
-    CAPTURE_PULLED_LW = 226  # Being grabbed and pulled
-    CAPTURE_WAIT_LW = 227  # Grabbed and held
-    CAPTURE_DAMAGE_LW = 228  # Pummeled
-    CAPTURE_CUT = 229  # Grab release
-    CAPTURE_JUMP = 230  # Jumping mash out
-    CAPTURE_NECK = 231  # Does not appear to be used
-    CAPTURE_FOOT = 232  # Does not appear to be used
+    CAPTURE_PULLED_LW = 226
+    """
+    Being grabbed and pulled
+    """
+    CAPTURE_WAIT_LW = 227
+    """
+    Grabbed and held
+    """
+    CAPTURE_DAMAGE_LW = 228
+    """
+    Pummeled
+    """
+    CAPTURE_CUT = 229
+    """
+    Grab release
+    """
+    CAPTURE_JUMP = 230
+    """
+    Jumping mash out
+    """
+    CAPTURE_NECK = 231
+    """
+    Does not appear to be used
+    """
+    CAPTURE_FOOT = 232
+    """
+    Does not appear to be used
+    """
 
-    ESCAPE_F = 233  # Shield roll forward
-    ESCAPE_B = 234  # Shield roll backward
-    ESCAPE = 235  # Spot dodge
-    ESCAPE_AIR = 236  # Airdodge
+    # -------------------------------- Dodge/Roll -------------------------------- #
+    ESCAPE_F = 233
+    """
+    Shield roll forward
+    """
+    ESCAPE_B = 234
+    """
+    Shield roll backward
+    """
+    ESCAPE = 235
+    """
+    Spot dodge
+    """
+    ESCAPE_AIR = 236
+    """
+    Airdodge
+    """
 
     REBOUND_STOP = 237
     REBOUND = 238
 
-    THROWN_F = 239  # Receiving Fthrow
-    THROWN_B = 240  # Receiving Bthrow
-    THROWN_HI = 241  # Receiving Uthrow
-    THROWN_LW = 242  # Receiving Dthrow
+    # ---------------------------------- Thrown ---------------------------------- #
+    THROWN_F = 239
+    """
+    Receiving Fthrow
+    """
+    THROWN_B = 240
+    """
+    Receiving Bthrow
+    """
+    THROWN_HI = 241
+    """
+    Receiving Uthrow
+    """
+    THROWN_LW = 242
+    """
+    Receiving Dthrow
+    """
     THROWN_LW_WOMEN = 243
 
-    PASS = 244  # Drop through platform
-    OTTOTTO = 245  # Ledge teeter
-    OTTOTTO_WAIT = 246  # Teeter loop?
-    FLY_REFLECT_WALL = 247  # Missed walltech
-    FLY_REFLECT_CEIL = 248  # Missed ceiling tech
-    STOP_WALL = 249  # Wall bonk
-    STOP_CEIL = 250  # Ceiling bonk
-    MISS_FOOT = 251  # Backward shield slideoff
+    # ----------------------------- Wall/Edge/Ceiling ---------------------------- #
 
-    # Ledge actions
-    CLIFF_CATCH = 252  # Ledge grab
-    CLIFF_WAIT = 253  # Ledge hang
-    CLIFF_CLIMB_SLOW = 254  # Regular getup >100%
-    CLIFF_CLIMB_QUICK = 255  # Regular getup <100%
-    CLIFF_ATTACK_SLOW = 256  # Ledge attack >100%
-    CLIFF_ATTACK_QUICK = 257  # Ledge attack <100%
-    CLIFF_ESCAPE_SLOW = 258  # Ledge roll >100%
-    CLIFF_ESCAPE_QUICK = 259  # Ledge roll <100%
-    CLIFF_JUMP_SLOW_1 = 260  # Ledge jump >100%
-    CLIFF_JUMP_SLOW_2 = 261  # Ledge jump >100%
-    CLIFF_JUMP_QUICK_1 = 262  # Ledge jump <100%
-    CLIFF_JUMP_QUICK_2 = 263  # Ledge jump <100%
+    PASS = 244
+    """
+    Drop through platform
+    """
+    OTTOTTO = 245
+    """
+    Ledge teeter
+    """
+    OTTOTTO_WAIT = 246
+    """
+    Teeter loop?
+    """
+    FLY_REFLECT_WALL = 247
+    """
+    Missed walltech
+    """
+    FLY_REFLECT_CEIL = 248
+    """
+    Missed ceiling tech
+    """
+    STOP_WALL = 249
+    """
+    Wall bonk
+    """
+    STOP_CEIL = 250
+    """
+    Ceiling bonk
+    """
+    MISS_FOOT = 251
+    """
+    Backward shield slideoff
+    """
 
-    APPEAL_R = 264  # Taunt facing right
-    APPEAL_L = 265  # Taunt facing left
+    # ----------------------------------- Ledge ---------------------------------- #
 
-    # Command grabs
-    SHOULDERED_WAIT = 266  # DK cargo carry
+    CLIFF_CATCH = 252
+    """
+    Ledge grab
+    """
+    CLIFF_WAIT = 253
+    """
+    Ledge hang
+    """
+    CLIFF_CLIMB_SLOW = 254
+    """
+    Regular getup >100%
+    """
+    CLIFF_CLIMB_QUICK = 255
+    """
+    Regular getup <100%
+    """
+    CLIFF_ATTACK_SLOW = 256
+    """
+    Ledge attack >100%
+    """
+    CLIFF_ATTACK_QUICK = 257
+    """
+    Ledge attack <100%
+    """
+    CLIFF_ESCAPE_SLOW = 258
+    """
+    Ledge roll >100%
+    """
+    CLIFF_ESCAPE_QUICK = 259
+    """
+    Ledge roll <100%
+    """
+    CLIFF_JUMP_SLOW_1 = 260
+    """
+    Ledge jump >100%
+    """
+    CLIFF_JUMP_SLOW_2 = 261
+    """
+    Ledge jump >100%
+    """
+    CLIFF_JUMP_QUICK_1 = 262
+    """
+    Ledge jump <100%
+    """
+    CLIFF_JUMP_QUICK_2 = 263
+    """
+    Ledge jump <100%
+    """
+
+    # ----------------------------------- Taunt ---------------------------------- #
+
+    APPEAL_R = 264
+    """
+    Taunt facing right
+    """
+    APPEAL_L = 265
+    """
+    Taunt facing left
+    """
+
+
+
+  # ------------------------------- Command Grabs and Misc ------------------------------ #
+
+    SHOULDERED_WAIT = 266
+    """
+    DK cargo carry
+    """
     SHOULDERED_WALK_SLOW = 267
     SHOULDERED_WALK_MIDDLE = 268
     SHOULDERED_WALK_FAST = 269
     SHOULDERED_TURN = 270
-    THROWN_F_F = 271  # DK cargo throws
+    THROWN_F_F = 271
+    """
+    DK cargo throw
+    """
     THROWN_F_B = 272
     THROWN_F_HI = 273
     THROWN_F_LW = 274
 
-    CAPTURE_CAPTAIN = 275  # Falcon up B grab
-    CAPTURE_YOSHI = 276  # TODO Yoshi Z grab?
-    YOSHI_EGG = 277  # Yoshi neutral b grab?
-    CAPTURE_KOOPA = 278  # Koopa claw
+    CAPTURE_CAPTAIN = 275
+    """
+    Falcon up B grab
+    """
+    CAPTURE_YOSHI = 276
+    """
+    TODO Yoshi Z grab?
+    """
+    YOSHI_EGG = 277
+    """
+    Yoshi neutral b grab?
+    """
+    CAPTURE_KOOPA = 278
+    """
+    Koopa claw
+    """
     CAPTURE_DAMAGE_KOOPA = 279
     CAPTURE_WAIT_KOOPA = 280
     THROWN_KOOPA_F = 281
@@ -547,28 +1074,64 @@ class ActionState(IntEnum):
     CAPTURE_WAIT_KOOPA_AIR = 285
     THROWN_KOOPA_AIR_F = 286
     THROWN_KOOPA_AIR_B = 287
-    CAPTURE_KIRBY = 288  # Kirby succ
+    CAPTURE_KIRBY = 288
+    """
+    Kirby succ
+    """
     CAPTURE_WAIT_KIRBY = 289
-    THROWN_KIRBY_STAR = 290  # Kirby spit
-    THROWN_COPY_STAR = 291  # Kirby swallow?
+    THROWN_KIRBY_STAR = 290
+    """
+    Kirby spit
+    """
+    THROWN_COPY_STAR = 291
+    """
+    Kirby swallow?
+    """
     THROWN_KIRBY = 292
-    BARREL_WAIT = 293  # I think this is used for the barrel on DK jungle 64?
+    BARREL_WAIT = 293
+    """
+    I think this is used for the barrel on DK jungle 64?
+    """
 
-    BURY = 294  # Stuck in ground by DK side b or similar
+    BURY = 294
+    """
+    Stuck in ground by DK side b or similar
+    """
     BURY_WAIT = 295
     BURY_JUMP = 296
 
-    DAMAGE_SONG = 297  # Put to sleep by Jiggs sing or similar
+    DAMAGE_SONG = 297
+    """
+    Put to sleep by Jiggs sing or similar
+    """
     DAMAGE_SONG_WAIT = 298
     DAMAGE_SONG_RV = 299
 
-    DAMAGE_BIND = 300  # Hit by Mewtwo disable
-    CAPTURE_MEWTWO = 301  # Does not appear to be used
-    CAPTURE_MEWTWO_AIR = 302  # Does not appear to be used
-    THROWN_MEWTWO = 303  # Hit by Mewtwo confusion
-    THROWN_MEWTWO_AIR = 304  # Hit by Mewtwo's confusion in the air
+    DAMAGE_BIND = 300
+    """
+    Hit by Mewtwo disable
+    """
+    CAPTURE_MEWTWO = 301
+    """
+    Does not appear to be used
+    """
+    CAPTURE_MEWTWO_AIR = 302
+    """
+    Does not appear to be used
+    """
+    THROWN_MEWTWO = 303
+    """
+    Hit by Mewtwo confusion
+    """
+    THROWN_MEWTWO_AIR = 304
+    """
+    Hit by Mewtwo's confusion in the air
+    """
 
-    # Item specific actions
+
+
+    # ---------------------------- More Item-Specific ---------------------------- #
+
     WARP_STAR_JUMP = 305
     WARP_STAR_FALL = 306
     HAMMER_WAIT = 307
@@ -578,7 +1141,8 @@ class ActionState(IntEnum):
     HAMMER_FALL = 311
     HAMMER_JUMP = 312
     HAMMER_LANDING = 313
-    KINOKO_GIANT_START = 314  # super/poison mushroom states
+    # super/poison mushroom states:
+    KINOKO_GIANT_START = 314
     KINOKO_GIANT_START_AIR = 315
     KINOKO_GIANT_END = 316
     KINOKO_GIANT_END_AIR = 317
@@ -587,9 +1151,18 @@ class ActionState(IntEnum):
     KINOKO_SMALL_END = 320
     KINOKO_SMALL_END_AIR = 321
 
-    ENTRY = 322  # Beginning of the match warp in
+    ENTRY = 322
+    """
+    Beginning of the match warp in
+    """
     ENTRY_START = 323
+    """
+    Beginning of the match warp in
+    """
     ENTRY_END = 324
+    """
+    Beginning of the match warp in
+    """
 
     DAMAGE_ICE = 325
     DAMAGE_ICE_JUMP = 326
@@ -602,10 +1175,12 @@ class ActionState(IntEnum):
     CAPTURE_REDEAD = 333
     CAPTURE_LIKE_LIKE = 334
 
-    # A very rare action state where the character transitions from a DownBoundU or DownBoundD (missed tech) state
-    # into a wall bounce. This state is not techable and neither is the probable next floor hit.
-    # Most commonly encountered on Pokémon Stadium
     DOWN_REFLECT = 335
+    """
+    A very rare action state where the character transitions from a DownBoundU or DownBoundD (missed tech) state
+    into a wall bounce. This state is not techable and neither is the probable next floor hit.
+    Most commonly encountered on Pokémon Stadium
+    """
 
     CAPTURE_CRAZY_HAND = 336
     CAPTURE_DAMAGE_CRAZY_HAND = 337
@@ -613,52 +1188,10 @@ class ActionState(IntEnum):
     THROWN_CRAZY_HAND = 339
     BARREL_CANNON_WAIT = 340
 
-    # No general action states past this point used, it's all character-specific action states
-    # WAIT_1 = 341
-    # WAIT_2 = 342
-    # WAIT_3 = 343
-    # WAIT_4 = 344
-    # WAIT_ITEM = 345
-    # SQUAT_WAIT_1 = 346
-    # SQUAT_WAIT_2 = 347
-    # SQUAT_WAIT_ITEM = 348
-    # GUARD_DAMAGE = 349
-    # ESCAPE_N = 350
-    # ATTACK_S_4_HOLD = 351
-    # HEAVY_WALK_1 = 352
-    # HEAVY_WALK_2 = 353
-    # ITEM_HAMMER_WAIT = 354
-    # ITEM_HAMMER_MOVE = 355
-    # ITEM_BLIND = 356
-    # DAMAGE_ELEC = 357
-    # FURA_SLEEP_START = 358
-    # FURA_SLEEP_LOOP = 359
-    # FURA_SLEEP_END = 360
-    # WALL_DAMAGE = 361
-    # CLIFF_WAIT_1 = 362
-    # CLIFF_WAIT_2 = 363
-    # SLIP_DOWN = 364
-    # SLIP = 365
-    # SLIP_TURN = 366
-    # SLIP_DASH = 367
-    # SLIP_WAIT = 368
-    # SLIP_STAND = 369
-    # SLIP_ATTACK = 370
-    # SLIP_ESCAPE_F = 371
-    # SLIP_ESCAPE_B = 372
-    # APPEAL_S = 373
-    # ZITABATA = 374
-    # CAPTURE_KOOPA_HIT = 375
-    # THROWN_KOOPA_END_F = 376
-    # THROWN_KOOPA_END_B = 377
-    # CAPTURE_KOOPA_AIR_HIT = 378
-    # THROWN_KOOPA_AIR_END_F = 379
-    # THROWN_KOOPA_AIR_END_B = 380
-    # THROWN_KIRBY_DRINK_S_SHOT = 381
-    # THROWN_KIRBY_SPIT_S_SHOT = 382
 
-
-# ------------------------- Character Specific State ------------------------- #
+# ---------------------------------------------------------------------------- #
+#                           Character Specific State                           #
+# ---------------------------------------------------------------------------- #
 
 CHARACTER_STATE_DICT = {
     InGameCharacter.BOWSER: lambda x: Bowser(x),
@@ -690,6 +1223,7 @@ CHARACTER_STATE_DICT = {
     InGameCharacter.ZELDA: lambda x: Zelda(x),
     None: lambda x: x,
 }
+
 
 @lru_cache
 def get_character_state(state: int, character: InGameCharacter | int | None = None) -> ActionState:
