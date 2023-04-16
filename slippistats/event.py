@@ -912,11 +912,32 @@ class Frame(Base):
                     (combo_count,) = unpack_uint8(read(1))
                     (last_hit_by,) = unpack_uint8(read(1))
                     (stocks,) = unpack_uint8(read(1))
+
+                    # There's a lot of return repetition, but this essentially prevents old replays from getting
+                    # progressively slower over time. Post-frames are a hot path, so we want to keep them as fast as
+                    # possible. Try is almost free, except is about 5x slower than an if (and ifs have a noticeable
+                    # impact on parsing speed). By returning, we prevent old replays from excepting more than once.
+
+                    # All struct errors should be due to stream.read running out of bytes, indicating an older replay
+                    # with a shorter post-frame payload
+
                     # v0.2.0
                     try:
                         (state_age,) = unpack_float(read(4))
                     except struct.error:
-                        state_age = None
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                    )
 
                     try:  # v2.0.0
                         flags = [
@@ -934,19 +955,44 @@ class Frame(Base):
                         l_cancel = LCancel(*unpack_uint8(read(1)))
 
                     except struct.error:
-                        (
-                            flags,
-                            misc_timer,
-                            airborne,
-                            last_ground_id,
-                            jumps,
-                            l_cancel,
-                        ) = [None] * 6
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                    )
+
 
                     try:  # v2.1.0
                         (hurtbox_status,) = unpack_uint8(read(1))
                     except struct.error:
-                        hurtbox_status = None
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                        flags=flags,
+                        misc_timer=misc_timer,
+                        airborne=airborne,
+                        last_ground_id=last_ground_id,
+                        jumps=jumps,
+                        l_cancel=l_cancel,
+                    )
+
 
                     try:  # v3.5.0
                         self_air_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
@@ -954,17 +1000,84 @@ class Frame(Base):
                         self_ground_speed = Velocity(*unpack_float(read(4)), self_air_speed.y)
 
                     except struct.error:
-                        (self_ground_speed, self_air_speed, knockback_speed) = [None] * 3
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                        flags=flags,
+                        misc_timer=misc_timer,
+                        airborne=airborne,
+                        last_ground_id=last_ground_id,
+                        jumps=jumps,
+                        l_cancel=l_cancel,
+                        hurtbox_status=hurtbox_status,
+                    )
+
 
                     try:  # v3.8.0
                         (hitlag_remaining,) = unpack_float(read(4))
                     except struct.error:
-                        hitlag_remaining = None
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                        flags=flags,
+                        misc_timer=misc_timer,
+                        airborne=airborne,
+                        last_ground_id=last_ground_id,
+                        jumps=jumps,
+                        l_cancel=l_cancel,
+                        hurtbox_status=hurtbox_status,
+                        self_ground_speed=self_ground_speed,
+                        self_air_speed=self_air_speed,
+                        knockback_speed=knockback_speed,
+                    )
+
 
                     try:  # v3.11.0
                         (animation_index,) = unpack_uint32(read(4))
                     except struct.error:
-                        animation_index = None
+                        return cls(
+                        character=character,
+                        state=state,
+                        state_age=state_age,
+                        position=position,
+                        direction=direction,
+                        damage=damage,
+                        shield_health=shield_health,
+                        stocks=stocks,
+                        most_recent_hit=last_attack_landed,
+                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                        combo_count=combo_count,
+                        flags=flags,
+                        misc_timer=misc_timer,
+                        airborne=airborne,
+                        last_ground_id=last_ground_id,
+                        jumps=jumps,
+                        l_cancel=l_cancel,
+                        hurtbox_status=hurtbox_status,
+                        self_ground_speed=self_ground_speed,
+                        self_air_speed=self_air_speed,
+                        knockback_speed=knockback_speed,
+                        hitlag_remaining=hitlag_remaining,
+                    )
+
 
                     return cls(
                         character=character,
