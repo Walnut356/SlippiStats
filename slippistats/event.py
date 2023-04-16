@@ -26,6 +26,7 @@ from .util import (
     Base,
     Enum,
     IntEnum,
+    Port,
     try_enum,
     unpack_bool,
     unpack_float,
@@ -926,18 +927,18 @@ class Frame(Base):
                         (state_age,) = unpack_float(read(4))
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                    )
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                        )
 
                     try:  # v2.0.0
                         flags = [
@@ -956,43 +957,41 @@ class Frame(Base):
 
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                    )
-
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                        )
 
                     try:  # v2.1.0
                         (hurtbox_status,) = unpack_uint8(read(1))
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                        flags=flags,
-                        misc_timer=misc_timer,
-                        airborne=airborne,
-                        last_ground_id=last_ground_id,
-                        jumps=jumps,
-                        l_cancel=l_cancel,
-                    )
-
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                            flags=flags,
+                            misc_timer=misc_timer,
+                            airborne=airborne,
+                            last_ground_id=last_ground_id,
+                            jumps=jumps,
+                            l_cancel=l_cancel,
+                        )
 
                     try:  # v3.5.0
                         self_air_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
@@ -1001,83 +1000,80 @@ class Frame(Base):
 
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                        flags=flags,
-                        misc_timer=misc_timer,
-                        airborne=airborne,
-                        last_ground_id=last_ground_id,
-                        jumps=jumps,
-                        l_cancel=l_cancel,
-                        hurtbox_status=hurtbox_status,
-                    )
-
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                            flags=flags,
+                            misc_timer=misc_timer,
+                            airborne=airborne,
+                            last_ground_id=last_ground_id,
+                            jumps=jumps,
+                            l_cancel=l_cancel,
+                            hurtbox_status=hurtbox_status,
+                        )
 
                     try:  # v3.8.0
                         (hitlag_remaining,) = unpack_float(read(4))
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                        flags=flags,
-                        misc_timer=misc_timer,
-                        airborne=airborne,
-                        last_ground_id=last_ground_id,
-                        jumps=jumps,
-                        l_cancel=l_cancel,
-                        hurtbox_status=hurtbox_status,
-                        self_ground_speed=self_ground_speed,
-                        self_air_speed=self_air_speed,
-                        knockback_speed=knockback_speed,
-                    )
-
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                            flags=flags,
+                            misc_timer=misc_timer,
+                            airborne=airborne,
+                            last_ground_id=last_ground_id,
+                            jumps=jumps,
+                            l_cancel=l_cancel,
+                            hurtbox_status=hurtbox_status,
+                            self_ground_speed=self_ground_speed,
+                            self_air_speed=self_air_speed,
+                            knockback_speed=knockback_speed,
+                        )
 
                     try:  # v3.11.0
                         (animation_index,) = unpack_uint32(read(4))
                     except struct.error:
                         return cls(
-                        character=character,
-                        state=state,
-                        state_age=state_age,
-                        position=position,
-                        direction=direction,
-                        damage=damage,
-                        shield_health=shield_health,
-                        stocks=stocks,
-                        most_recent_hit=last_attack_landed,
-                        last_hit_by=last_hit_by if last_hit_by < 4 else None,
-                        combo_count=combo_count,
-                        flags=flags,
-                        misc_timer=misc_timer,
-                        airborne=airborne,
-                        last_ground_id=last_ground_id,
-                        jumps=jumps,
-                        l_cancel=l_cancel,
-                        hurtbox_status=hurtbox_status,
-                        self_ground_speed=self_ground_speed,
-                        self_air_speed=self_air_speed,
-                        knockback_speed=knockback_speed,
-                        hitlag_remaining=hitlag_remaining,
-                    )
-
+                            character=character,
+                            state=state,
+                            state_age=state_age,
+                            position=position,
+                            direction=direction,
+                            damage=damage,
+                            shield_health=shield_health,
+                            stocks=stocks,
+                            most_recent_hit=last_attack_landed,
+                            last_hit_by=last_hit_by if last_hit_by < 4 else None,
+                            combo_count=combo_count,
+                            flags=flags,
+                            misc_timer=misc_timer,
+                            airborne=airborne,
+                            last_ground_id=last_ground_id,
+                            jumps=jumps,
+                            l_cancel=l_cancel,
+                            hurtbox_status=hurtbox_status,
+                            self_ground_speed=self_ground_speed,
+                            self_air_speed=self_air_speed,
+                            knockback_speed=knockback_speed,
+                            hitlag_remaining=hitlag_remaining,
+                        )
 
                     return cls(
                         character=character,
@@ -1106,25 +1102,55 @@ class Frame(Base):
                     )
 
     class Item(Base):
-        """An active item (includes projectiles)."""
+        """An active item (includes projectiles).
+
+        Attributes:
+            type : Item
+                What type of item this data is for (turnip, missile, pokeball, etc.)
+            state : int
+                Item's action state
+            facing_direction : Direction
+                    Enumeration with values LEFT and RIGHT. DOWN is used for stats, but also represents the facing
+                    direction when using the Warp Star item
+            velocity : Velocity
+                Item's X,Y velocity
+            position : Position
+                Item's X,Y position
+            damage_taken : int
+                Amount of damage item has taken
+            timer : int
+                Frames remaining until item expires
+            spawn_id : int
+                Unique ID per item spawned (0, 1, 2, ...)
+            missile_type : MissileType | None
+                Used for Samus side B missiles. See MissileType Enumeration
+            turnip_type: TurnipFace | None
+                Used for Peach's down B turnips. See TurnipFace Enumeration
+            is_shot_launched: bool | None
+                Differentiates between charge shots that are on-screen but held, and charge shots have been launched
+            charge_power: int | None
+                Integer value for total charge shot power.
+            owner: Port | int | None
+                Item owner by port
+        """
 
         __slots__ = (
             "type",
             "state",
-            "direction",
+            "facing_direction",
             "velocity",
             "position",
-            "damage",
+            "damage_taken",
             "timer",
             "spawn_id",
         )
 
         type: Item  # Item type
         state: int  # Item's action state
-        direction: Direction | None  # Direction item is facing
+        facing_direction: Direction | None  # Direction item is facing
         velocity: Velocity  # Item's velocity
         position: Position  # Item's position
-        damage: int  # Amount of damage item has taken
+        damage_taken: int  # Amount of damage item has taken
         timer: int  # Frames remaining until item expires
         spawn_id: int  # Unique ID per item spawned (0, 1, 2, ...)
         missile_type: MissileType | None
@@ -1137,10 +1163,10 @@ class Frame(Base):
             self,
             type: Item,
             state: int,
-            direction: Direction | None,
+            facing_direction: Direction | None,
             velocity: Velocity,
             position: Position,
-            damage: int,
+            damage_taken: int,
             timer: int,
             spawn_id: int,
             missile_type: int | None,
@@ -1151,10 +1177,10 @@ class Frame(Base):
         ):
             self.type = type
             self.state = state
-            self.direction = direction
+            self.facing_direction = facing_direction
             self.velocity = velocity
             self.position = position
-            self.damage = damage
+            self.damage_taken = damage_taken
             self.timer = timer
             self.spawn_id = spawn_id
             self.missile_type = missile_type
@@ -1167,10 +1193,10 @@ class Frame(Base):
         def _parse(cls, stream: io.BytesIO, unpack_float=unpack_float, unpack_uint8=unpack_uint8):
             type = try_enum(Item, *unpack_uint16(stream.read(2)))
             (state,) = unpack_uint8(stream.read(1))
-            direction = Direction(*unpack_float(stream.read(4)))
+            facing_direction = Direction(*unpack_float(stream.read(4)))
             velocity = Velocity(*unpack_float(stream.read(4)), *unpack_float(stream.read(4)))
             position = Position(*unpack_float(stream.read(4)), *unpack_float(stream.read(4)))
-            (damage,) = unpack_uint16(stream.read(2))
+            (damage_taken,) = unpack_uint16(stream.read(2))
             (timer,) = unpack_float(stream.read(4))
             (spawn_id,) = unpack_uint32(stream.read(4))
 
@@ -1179,7 +1205,7 @@ class Frame(Base):
                 (turnip_type,) = unpack_uint8(stream.read(1))
                 (is_shot_launched,) = unpack_uint8(stream.read(1))
                 (charge_power,) = unpack_uint8(stream.read(1))
-                (owner,) = unpack_int8(stream.read(1))
+                owner = Port(*unpack_int8(stream.read(1)))
                 missile_type = try_enum(MissileType, missile_type) if type == Item.SAMUS_MISSILE else missile_type
                 turnip_type = try_enum(TurnipFace, turnip_type) if type == Item.PEACH_TURNIP else turnip_type
             except struct.error:
@@ -1192,10 +1218,10 @@ class Frame(Base):
             return cls(
                 type=type,
                 state=state,
-                direction=direction,
+                facing_direction=facing_direction,
                 velocity=velocity,
                 position=position,
-                damage=damage,
+                damage_taken=damage_taken,
                 timer=timer,
                 spawn_id=spawn_id,
                 missile_type=missile_type,
@@ -1211,10 +1237,10 @@ class Frame(Base):
             return (
                 self.type == other.type
                 and self.state == other.state
-                and self.direction == other.direction
+                and self.facing_direction == other.facing_direction
                 and self.velocity == other.velocity
                 and self.position == other.position
-                and self.damage == other.damage
+                and self.damage_taken == other.damage_taken
                 and self.timer == other.timer
                 and self.spawn_id == other.spawn_id
             )

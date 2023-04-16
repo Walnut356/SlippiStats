@@ -351,8 +351,8 @@ class TestGame(unittest.TestCase):
             items, {
                 0:
                     Frame.Item(
-                        damage=0,
-                        direction=Direction.RIGHT,
+                        damage_taken=0,
+                        facing_direction=Direction.RIGHT,
                         position=Position(-62.7096061706543, -1.4932749271392822),
                         spawn_id=0,
                         state=0,
@@ -367,8 +367,8 @@ class TestGame(unittest.TestCase):
                         ),
                 1:
                     Frame.Item(
-                        damage=0,
-                        direction=Direction.LEFT,
+                        damage_taken=0,
+                        facing_direction=Direction.LEFT,
                         position=Position(20.395559310913086, -1.4932749271392822),
                         spawn_id=1,
                         state=0,
@@ -383,8 +383,8 @@ class TestGame(unittest.TestCase):
                         ),
                 2:
                     Frame.Item(
-                        damage=0,
-                        direction=Direction.RIGHT,
+                        damage_taken=0,
+                        facing_direction=Direction.RIGHT,
                         position=Position(-3.982539176940918, -1.4932749271392822),
                         spawn_id=2,
                         state=0,
