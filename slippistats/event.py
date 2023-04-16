@@ -7,7 +7,7 @@ from enum import IntFlag
 
 from .controller import Buttons, Triggers
 from .enums.attack import Attack
-from .enums.character import CSSCharacter, InGameCharacter
+from .enums.character import CSSCharacter, InGameCharacter, get_costume
 from .enums.item import Item, MissileType, TurnipFace
 from .enums.stage import Stage
 from .enums.state import (
@@ -89,13 +89,13 @@ class Start(Base):
             Random seed upon initializing the game
         stage : Stage
             Which stage the game was played on
-    `Minimum Replay Version: 1.5.0`
+    `Minimum Replay Version: 1.5.0`:
         is_pal : bool
             True if recorded on the PAL version of Melee
-    `Minimum Replay Version: 2.0.0`
+    `Minimum Replay Version: 2.0.0`:
         is_frozen_ps : bool
             True if Pokemon Stadium transformations were disabled
-    `Minimum Replay Version: 3.14.0`
+    `Minimum Replay Version: 3.14.0`:
         match_id : str
             In format mode.[mode]-[ISO 8601 timestamp]. For slippi matchmaking, Match IDs correspond to one instance of
             queuing into another player. Each game before disconnecting will have the same Match ID, but a different
@@ -169,13 +169,13 @@ class Start(Base):
         stream.read(80)  # skip game timer, item spawn bitfields, and damage ratio
         players: list[cls.Player | None] = []
         for i in range(4):
-            (character,) = unpack_uint8(stream.read(1))
+            character = CSSCharacter(*unpack_uint8(stream.read(1)))
             (type,) = unpack_uint8(stream.read(1))
             (stocks,) = unpack_uint8(stream.read(1))
-            (costume,) = unpack_uint8(stream.read(1))
+            costume = get_costume(character, *unpack_uint8(stream.read(1)))
 
             stream.read(5)  # skip team shade, handicap
-            (team,) = unpack_uint8(stream.read(1))
+            team = cls.Player.Team(*unpack_uint8(stream.read(1))) if is_teams else None
             stream.read(26)  # skip remainder of player-specific game info
 
             try:
@@ -184,8 +184,6 @@ class Start(Base):
                 type = None
 
             if type is not None and type != cls.Player.Type.EMPTY:
-                character = CSSCharacter(character)
-                team = cls.Player.Team(team) if is_teams else None
                 player = cls.Player(
                     character=character,
                     type=type,
@@ -384,7 +382,7 @@ class Start(Base):
                 Index of the selected costume
             team : Team
                 Enumerated team color if applicable
-        `Minimum Replay Version: 1.0.0`
+        `Minimum Replay Version: 1.0.0`:
             ucf : UCF
                 Information on which UCF toggles were enabled, if any
             tag : str
@@ -479,10 +477,10 @@ class End(Base):
     Attributes:
         method : Method
             Enumeration of game end methods: Inconclusive, Time, Game, Conclusive, No Contest
-    `Minimum Replay Version: 2.0.0`
+    `Minimum Replay Version: 2.0.0`:
         lras_initiatior : int
             Index of the player that LRAS'd. None if not applicable
-    `Minimum Replay Version: 3.13.0`
+    `Minimum Replay Version: 3.13.0`:
         player_placements : list[int]
             List of placements, lower is better. List is in port order, 0 indexed. Placement is -1 if port is Type.Empty
     """
@@ -544,10 +542,12 @@ class Frame(Base):
             -123 indexed Frame counter
         ports : Sequence[Frame.Port | None]
             Data for each port on a single frame
-        items : Sequence[Frame.Item | None]
-            Data for up to 15 items on a single frame
+    `Minimum Replay Version: 2.2.0`:
         start : Frame.Start
             Information given at the start of the frame to help keep netplay clients in sync
+    `Minimum Replay Version: 3.0.0`:
+        items : Sequence[Frame.Item | None]
+            Data for up to 15 items on a single frame
         end : Frame.End
             Information given at the end of a frame to mark that there is no further information for that frame."""
 
@@ -647,6 +647,14 @@ class Frame(Base):
                     buttons : Buttons
                         Contains the physical (controller perspective) and logical (game engine perspective)
                         button values. Also contains generalized stick/trigger values
+                    random_seed : int
+                        Random seed value used for the upcoming physics calculation
+                `Minimum Replay Version: 1.2.0`:
+                    raw_analog_x : float | None
+                        Raw X axis analog controller input. Used by UCF dashback code
+                `Minimum Replay Version: 1.4.0`:
+                    percent : float | None
+                        The player's current percent (Min 0.0, Max ~999)
                 """
 
                 __slots__ = (
@@ -771,27 +779,43 @@ class Frame(Base):
                         The number of stocks remaining. Will be 0 for 1 frame if player loses all stocks in 1v1
                     most_recent_hit : Attack | int
                         The last attack that this character landed, directly corresponds to Stale Move Queue
-                    last_hit_by : int
+                    last_hit_by : int | None
                         0-indexed port of the character that last hit this character
                     combo_count : int
                         Current combo count as defined by the game
-                    state_age : float
+                `Minimum Replay Version: 0.2.0`:
+                    state_age : float | None
                         Number of frames the current action state has been active. Can be fractiona;
+                `Minimum Replay Version: 2.0.0`:
                     flags : list[IntFlag]
                         Set of 5 bitfields with values pertaining to the character's current state
-                    misc_timer : float
+                    misc_timer : float | None
                         Timer used by various states. If HITSTUN flag is active, this timer is the number of hitstun
                         frames remaining
-                    is_airborne : bool
+                    is_airborne : bool | None
                         True if the character is in the air
-                    last_ground_id : int
+                    last_ground_id : int | None
                         In-game ID of the last ground the character stood on
-                    jumps_remaining : int
+                    jumps_remaining : int | None
                         The number of jumps remaining. Grounded jumps count (e.g. most characters: 2 when grounded,
                         1 when airborne, 0 after double jumping)
-                    l_cancel : LCancel
+                    l_cancel : LCancel | None
                         Enumeration representing current L cancel status. LCancel.SUCCESS or LCancel.FAILURE
                         for 1 frame upon landing during an aerial, otherwise LCancel.NOTAPPLICABLE
+                `Minimum Replay Version: 2.1.0`:
+                    hurtbox_status : Hurtbox | None
+                        VULNERABLE, INVULNERABLE, or INTANGIBLE
+                `Minimum Replay Version: 3.5.0`:
+                    self_ground_speed : Velocity | None
+                        X,Y ground speed. Used when `is_airborne` is False. Y ground speed is relevant on slopes
+                    self_air_speed : Velocity | None
+                        X,Y air speed. Used when `is_airborne` is True
+                    knockback_speed : Velocity | None
+                        X,Y knockback speed. Add to self speeds for a resultant total speed.
+                    hitlag_remaining : float | None
+                        Total number of hitlag frames remaining. Can have a fractional component. 0 = not in hitstun
+                    animation_index : int | None
+                        Indicates the animation the character is in, animation derived from state
                 """
 
                 __slots__ = (
@@ -1246,7 +1270,11 @@ class Frame(Base):
             )
 
     class Start(Base):
-        """Start-of-frame data."""
+        """Start-of-frame data.
+
+        Attributes:
+            random_seed : int
+                random seed value at the beginning of the frame"""
 
         __slots__ = ("random_seed",)
 
@@ -1314,6 +1342,14 @@ class Frame(Base):
 
 
 class Position(Base):
+    """Coordinate position for characters and analog stick values
+
+    Attributes:
+        x : float
+            horizontal component
+        y : float
+            vertical component
+    """
     __slots__ = "x", "y"
 
     x: float
@@ -1347,6 +1383,14 @@ class Position(Base):
 
 
 class Velocity(Base):
+    """Velocity in the form of X and Y
+
+    Attributes:
+        x : float
+            horizontal component
+        y : float
+            vertical component
+    """
     __slots__ = "x", "y"
 
     x: float

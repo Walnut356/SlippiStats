@@ -80,5 +80,238 @@ class InGameCharacter(IntEnum):
     GIGA_BOWSER = 31
     SANDBAG = 32
 
+# ---------------------------------------------------------------------------- #
+#                              Character Costumes                              #
+# ---------------------------------------------------------------------------- #
 
-# TODO add costume enums?
+class CaptainFalcon(IntEnum):
+	INDIGO = 0
+	BLACK = 1
+	RED = 2
+	WHITE = 3
+	GREEN = 4
+	BLUE = 5
+
+
+class DonkeyKong(IntEnum):
+	BROWN = 0
+	BLACK = 1
+	RED = 2
+	BLUE = 3
+	GREEN = 4
+
+
+class Fox(IntEnum):
+	WHITE = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+
+
+class GameAndWatch(IntEnum):
+	BLACK = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+
+
+class Kirby(IntEnum):
+	PINK = 0
+	YELLOW = 1
+	BLUE = 2
+	RED = 3
+	GREEN = 4
+	WHITE = 5
+
+
+class Bowser(IntEnum):
+	GREEN = 0
+	RED = 1
+	BLUE = 2
+	BLACK = 3
+
+
+class Link(IntEnum):
+	GREEN = 0
+	RED = 1
+	BLUE = 2
+	BLACK = 3
+	WHITE = 4
+
+
+class Luigi(IntEnum):
+	GREEN = 0
+	WHITE = 1
+	BLUE = 2
+	RED = 3  # Pink
+
+
+class Mario(IntEnum):
+	RED = 0
+	YELLOW = 1
+	BLACK = 2
+	BLUE = 3
+	GREEN = 4
+
+
+class Marth(IntEnum):
+	BLUE = 0
+	RED = 1
+	GREEN = 2
+	BLACK = 3
+	WHITE = 4
+
+
+class Mewtwo(IntEnum):
+	PURPLE = 0 # White
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+
+
+class Ness(IntEnum):
+	RED = 0
+	YELLOW = 1
+	BLUE = 2 # Purple
+	GREEN = 3
+
+
+class Peach(IntEnum):
+	RED = 0
+	YELLOW = 1 # Daisy
+	WHITE = 2
+	BLUE = 3
+	GREEN = 4
+
+
+class Pikachu(IntEnum):
+	YELLOW = 0
+	RED = 1 # Trucker hat
+	BLUE = 2 # Party hat
+	GREEN = 3 # Cowboy hat
+
+
+class IceClimbers(IntEnum):
+	BLUE = 0
+	GREEN = 1
+	ORANGE = 2
+	RED = 3
+
+
+class Jigglypuff(IntEnum):
+	PINK = 0
+	RED = 1 # Flower
+	BLUE= 2 # Bow
+	GREEN = 3 # Headband
+	YELLOW = 4 # Crown
+
+
+class Samus(IntEnum):
+	RED = 0 # Orange
+	PINK = 1
+	BLACK = 2
+	GREEN = 3
+	BLUE = 4 # Purple
+
+
+class Yoshi(IntEnum):
+	GREEN = 0
+	RED = 1
+	BLUE = 2
+	YELLOW = 3
+	PINK = 4
+	CYAN = 5
+
+
+class Zelda(IntEnum):
+	PINK = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+	WHITE = 4
+
+
+class Sheik(IntEnum):
+	NAVY = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+	WHITE = 4
+
+
+class Falco(IntEnum):
+	TAN = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+
+
+class YoungLink(IntEnum):
+	GREEN = 0
+	RED = 1
+	BLUE = 2
+	WHITE = 3
+	BLACK = 4
+
+
+class DrMario(IntEnum):
+	WHITE = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+	BLACK = 4
+
+
+class Roy(IntEnum):
+	PURPLE = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+	YELLOW = 4
+
+
+class Pichu(IntEnum):
+	YELLOW = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+
+
+class Ganondorf(IntEnum):
+	BROWN = 0
+	RED = 1
+	BLUE = 2
+	GREEN = 3
+	PURPLE = 4
+
+CHARACTER_COSTUME_MAP = {
+    CSSCharacter.CAPTAIN_FALCON : CaptainFalcon,
+	CSSCharacter.DONKEY_KONG : DonkeyKong,
+	CSSCharacter.FOX : Fox,
+	CSSCharacter.GAME_AND_WATCH : GameAndWatch,
+	CSSCharacter.KIRBY : Kirby,
+	CSSCharacter.BOWSER : Bowser,
+	CSSCharacter.LINK : Link,
+	CSSCharacter.LUIGI : Luigi,
+	CSSCharacter.MARIO : Mario,
+	CSSCharacter.MARTH : Marth,
+	CSSCharacter.MEWTWO : Mewtwo,
+	CSSCharacter.NESS : Ness,
+	CSSCharacter.PEACH : Peach,
+	CSSCharacter.PIKACHU : Pikachu,
+	CSSCharacter.ICE_CLIMBERS : IceClimbers,
+	CSSCharacter.JIGGLYPUFF : Jigglypuff,
+	CSSCharacter.SAMUS : Samus,
+	CSSCharacter.YOSHI : Yoshi,
+	CSSCharacter.ZELDA : Zelda,
+	CSSCharacter.SHEIK : Sheik,
+	CSSCharacter.FALCO : Falco,
+	CSSCharacter.YOUNG_LINK : YoungLink,
+	CSSCharacter.DR_MARIO : DrMario,
+	CSSCharacter.ROY : Roy,
+	CSSCharacter.PICHU : Pichu,
+	CSSCharacter.GANONDORF : Ganondorf,
+}
+
+def get_costume(character: CSSCharacter, costume: int) -> IntEnum:
+    return CHARACTER_COSTUME_MAP[character](costume)

@@ -3,17 +3,11 @@ from dataclasses import dataclass
 from itertools import permutations
 from os import PathLike
 
-from numpy import False_
-
-
 from ..enums.character import CSSCharacter
 from ..event import Frame, Start
 from ..game import Game
 from ..util import Base, Port
 from .stat_types import Data
-
-ValueError
-
 
 class IdentifierError(Exception):
     """Connect code or port identifier does not match any players in the available Game object."""
@@ -53,15 +47,16 @@ class Player(Base):
 
     def __init__(
         self,
-        characters,
-        port,
-        connect_code,
-        display_name,
-        costume,
-        did_win,
-        frames,
-        nana_frames,
-        stats_header,
+        characters : tuple[CSSCharacter],
+        port : Port,
+        costume : int,
+        frames : list[Frame.Port.Data],
+        stats_header : dict,
+        nana_frames : list[Frame.Port.Data] | None = None,
+        connect_code : str | None = None,
+        display_name : str | None = None,
+        did_win : bool | None = None,
+
     ):
         self.character = characters[0]
         self.port = port
@@ -77,6 +72,7 @@ class Player(Base):
             "port": self.port.name,
             "connect_code": self.connect_code,
             "character": self.character.name,
+            "costume": self.costume.name,
             "opnt_character": characters[1].name,
         }
         data_header = stats_header | data_header

@@ -677,7 +677,7 @@ def _eef(file, connect_code):
         return (None, file)
 
 
-def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple[pl.DataFrame]:
+def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
     """Multiprocessed stats computation for handling bulk replays. Invalid replays and replays with no players matching
     the given identifier are automatically skipped.
 
