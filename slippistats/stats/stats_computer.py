@@ -58,6 +58,9 @@ from .stat_types import (
     Wavedashes,
 )
 
+# TODO probably reorganize thing_compute functions to thing_compute entry point + _thing_compute to do the calculation
+# to allow for get_stats-like functionality that doesn't need an identifier.
+
 
 class StatsComputer(ComputerBase):
     """
@@ -402,6 +405,7 @@ class StatsComputer(ComputerBase):
                 prev_player_frame.post.state
             )
 
+            # this whole block basically calculates DI and KB trajectories and outputs the event
             if not in_hitlag:
                 if was_in_hitlag and self._take_hit_state is not None:
                     self._take_hit_state.end_pos = prev_player_frame.post.position
@@ -562,59 +566,7 @@ class StatsComputer(ComputerBase):
         player.stats.l_cancels._percentage()
         return player.stats.l_cancels
 
-    def recovery_compute(
-        self,
-        identifier: str | None = None,
-        player: Player | None = None,
-        opponent: Player | None = None,
-    ) -> TakeHits:
-        """Accepts identifier connect code/port number, returns an interable container of RecoveryData."""
-        if identifier is None and player is None:
-            raise ValueError("Compute functions require either a connect_code or player argument")
-
-        if identifier is not None:
-            player = self.get_player(identifier)
-            opponent = self.get_opponent(identifier)
-
-        stage = self.replay.start.stage
-
-        for i, player_frame in enumerate(player.frames):
-            opponent_frame = opponent.frames[i]
-
-            player_state = player_frame.post.state
-            player_position = player_frame.post.position
-            player_just_offstage = is_offstage(player_position, stage) and not is_offstage(
-                player.frames[i - 1].post.position, stage
-            )
-            player_in_hitstun = is_in_hitstun(player_frame.post.flags)
-
-            if self._recovery_state is None and player_just_offstage and player_in_hitstun:
-                self._recovery_state = RecoveryData(frame_index=i, last_hit_by=opponent_frame.post.position)
-
-            if self._recovery_state is None:
-                continue
-
-            # record furthest position outward/hitstun end/knockback end/distance from ledge?
-            # check resources - double jump, find a way to track marth/luigi side B juice, walljump
-            # record every move used (with character enum), special attention to resource useage
-            # look for end (death, land on stage/platform, grab ledge)
-            # attempt to discern SD's (never stops moving towards ledge,
-            # special move direction towards blast zone + dist to ledge, etc.)
-            # retroactively assign meaning to previous actions (i.e. most recent action was "recovery move")
-            # maybe record opponent position?
-            # outcome, "reason": Death, ledge, stage, hit offstage, hit onstage | ledge hog, SD, pineapple, too far,
-
-            player_is_dead = is_dying(player_state)
-            player_is_ledge = is_ledge_action(player_state)
-            player_did_land = (
-                not player_frame.post.is_airborne
-                and get_ground(stage, player_frame.post.last_ground_id) != Yoshis.RANDALL
-            )
-
-    # def track_
-
-    # def ledge_action_compute():
-
+    # TODO probably refactor into out of shield data
     def shield_drop_compute(
         self,
         identifier: str | None = None,
@@ -664,6 +616,59 @@ class StatsComputer(ComputerBase):
                 # TODO check for shieldstun and maybe followup option
 
         return player.stats.shield_drops
+
+    # def ledge_action_compute():
+
+    # def recovery_compute(
+    #     self,
+    #     identifier: str | None = None,
+    #     player: Player | None = None,
+    #     opponent: Player | None = None,
+    # ) -> TakeHits:
+    #     """Accepts identifier connect code/port number, returns an interable container of RecoveryData."""
+    #     if identifier is None and player is None:
+    #         raise ValueError("Compute functions require either a connect_code or player argument")
+
+    #     if identifier is not None:
+    #         player = self.get_player(identifier)
+    #         opponent = self.get_opponent(identifier)
+
+    #     stage = self.replay.start.stage
+
+    #     for i, player_frame in enumerate(player.frames):
+    #         opponent_frame = opponent.frames[i]
+
+    #         player_state = player_frame.post.state
+    #         player_position = player_frame.post.position
+    #         player_just_offstage = is_offstage(player_position, stage) and not is_offstage(
+    #             player.frames[i - 1].post.position, stage
+    #         )
+    #         player_in_hitstun = is_in_hitstun(player_frame.post.flags)
+
+    #         if self._recovery_state is None and player_just_offstage and player_in_hitstun:
+    #             self._recovery_state = RecoveryData(frame_index=i, last_hit_by=opponent_frame.post.position)
+
+    #         if self._recovery_state is None:
+    #             continue
+
+    #         # record furthest position outward/hitstun end/knockback end/distance from ledge?
+    #         # check resources - double jump, find a way to track marth/luigi side B juice, walljump
+    #         # record every move used (with character enum), special attention to resource useage
+    #         # look for end (death, land on stage/platform, grab ledge)
+    #         # attempt to discern SD's (never stops moving towards ledge,
+    #         # special move direction towards blast zone + dist to ledge, etc.)
+    #         # retroactively assign meaning to previous actions (i.e. most recent action was "recovery move")
+    #         # maybe record opponent position?
+    #         # outcome, "reason": Death, ledge, stage, hit offstage, hit onstage | ledge hog, SD, pineapple, too far,
+
+    #         player_is_dead = is_dying(player_state)
+    #         player_is_ledge = is_ledge_action(player_state)
+    #         player_did_land = (
+    #             not player_frame.post.is_airborne
+    #             and get_ground(stage, player_frame.post.last_ground_id) != Yoshis.RANDALL
+    #         )
+
+    # def track_
 
 
 def _eef(file, connect_code):

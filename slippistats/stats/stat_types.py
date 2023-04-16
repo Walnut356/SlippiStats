@@ -52,7 +52,7 @@ class WavedashData(Stat):
     frame_index: int
     stocks_remaining: int | None
     angle: float | None  # in degrees
-    direction: str | None  # TODO
+    direction: str | None
     trigger_frame: int  # which airborne frame was the airdodge input on?
     airdodge_frames: int
     waveland: bool
@@ -279,6 +279,7 @@ class TakeHitData(Stat):
         return self.start_pos - self.end_pos
 
     def distance(self) -> float:
+        """Returns the calculated distance between the start and end position"""
         return dist(self.end_pos, self.start_pos)
 
 
@@ -346,14 +347,6 @@ class LCancelData(Stat):
         self.position = position
 
 
-# ------------------------------- Recovery Data ------------------------------ #
-
-
-@dataclass
-class RecoveryData(Stat):
-    frame_index: int
-
-
 # ------------------------------- Shield Drop Data ------------------------------ #
 
 
@@ -361,6 +354,15 @@ class RecoveryData(Stat):
 class ShieldDropData(Stat):
     frame_index: int
     position: IntEnum | int
+    oo_shieldstun_frame: int
+
+
+# ------------------------------- Recovery Data ------------------------------ #
+
+
+# @dataclass
+# class RecoveryData(Stat):
+#     frame_index: int
 
 
 # --------------------------------- Wrappers --------------------------------- #
@@ -579,7 +581,7 @@ class Techs(StatList):
             return df
 
 
-class TakeHits(UserList):
+class TakeHits(StatList):
     """Iterable wrapper, treat as list[TakeHitData].
 
     Attributes:
@@ -672,7 +674,7 @@ class TakeHits(UserList):
         return df
 
 
-class LCancels(UserList):
+class LCancels(StatList):
     """Iterable wrapper for lists of l-cancel data"""
 
     data_header: dict
@@ -716,7 +718,7 @@ class LCancels(UserList):
         return pl.DataFrame(data)
 
 
-class ShieldDrops(UserList):
+class ShieldDrops(StatList):
     """Iterable wrapper for lists of Dash data"""
 
     data_header: dict
