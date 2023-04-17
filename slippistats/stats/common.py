@@ -412,7 +412,8 @@ def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Velocity | No
         return player_frame_post.self_ground_speed + player_frame_post.knockback_speed
 
 
-def get_angle(point: Velocity | Position):
+def get_angle(point: Velocity | Position) -> float:
+    """Takes a coordinate point, returns a 0-360 degree angle value"""
     # atan2 returns 0 to 180 and 0 to -180.
     # By adding tau (2 * pi) and wrapping around tau, we normalize to the familiar 0-360
     return (atan2(point.y, point.x) + tau) % tau

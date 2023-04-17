@@ -184,7 +184,7 @@ class Start(Base):
             costume = get_costume(character, *unpack_uint8(stream.read(1)))
 
             stream.read(5)  # skip team shade, handicap
-            team = cls.Player.Team(*unpack_uint8(stream.read(1))) if is_teams else None
+            team = cls.Player.Team(*unpack_uint8(stream.read(1)))
             stream.read(26)  # skip remainder of player-specific game info
 
             try:
@@ -198,7 +198,7 @@ class Start(Base):
                     type=type,
                     stocks=stocks,
                     costume=costume,
-                    team=team,
+                    team=team if is_teams else None,
                 )
             else:
                 player = None
@@ -390,7 +390,7 @@ class Start(Base):
             costume : IntEnum
                 Index of the selected costume
             team : Team
-                Enumerated team color if applicable
+                Enumerated team color. If not a Teams game, this field corresponds to the player's shield color.
         `Minimum Replay Version: 1.0.0`:
             ucf : UCF
                 Information on which UCF toggles were enabled, if any

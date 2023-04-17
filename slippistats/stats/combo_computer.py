@@ -52,6 +52,7 @@ class MoveLanded:
     hit_count: int = 0
     damage: float = 0
     opponent_position: Position | None = None
+    # TODO still in hitstun bool or frames since hitstun ended
 
 
 @dataclass
@@ -191,7 +192,7 @@ class ComboComputer(ComputerBase):
             if action_changed_since_hit or action_state_reset:
                 self.combo_state.last_hit_animation = None
 
-            # I throw in the extra hitstun check to make it extra robust in case we're forgetting some animation
+            # I throw in the extra hitstun check to make it extra robust in case we're forgetting some animation.
             # Don't include hitlag check unless you want shield hits to start combo events.
             # There might be false positives on self damage like fully charged roy neutral b
             if (
@@ -214,6 +215,7 @@ class ComboComputer(ComputerBase):
                     player.combos.append(self.combo_state.combo)
 
                 # if the opponent has been hit and we're sure it's not the same move, record the move's data
+                # BUG slippi-js has issues with this too, but magnifying glass damage will count as a move
                 if opnt_damage_taken:
                     if self.combo_state.last_hit_animation is None:
                         self.combo_state.move = MoveLanded(

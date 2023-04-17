@@ -16,13 +16,13 @@ code = R"NUT#356"
 thing = slp.Game(replay)
 # thing = slp.StatsComputer(replay).take_hit_compute("NUT#356").to_polars()
 i = 0
+eef = []
 for frame in thing.frames:
-    if i < 100:
-        i += 1
-        print(frame.ports[1].leader.post)
-    else: break
+    eef.append(frame.ports[1].leader.pre)
+    eef.append(frame.ports[1].leader.post)
 
 
+pass
 
 # if __name__ == "__main__":
 

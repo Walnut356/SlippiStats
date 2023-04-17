@@ -327,6 +327,7 @@ CHARACTER_COSTUME_MAP = {
     CSSCharacter.ROY: Roy,
     CSSCharacter.PICHU: Pichu,
     CSSCharacter.GANONDORF: Ganondorf,
+    26: lambda x: None
 }
 
 

@@ -47,7 +47,7 @@ from .stat_types import (
     Data,
     LCancelData,
     LCancels,
-    RecoveryData,
+    # RecoveryData,
     ShieldDropData,
     TakeHitData,
     TakeHits,
@@ -98,7 +98,7 @@ class StatsComputer(ComputerBase):
     _tech_state: TechData | None
     _dash_state: DashData | None
     _take_hit_state: TakeHitData | None
-    _recovery_state: RecoveryData | None
+    # _recovery_state: RecoveryData | None
 
     def __init__(self, replay: os.PathLike | Game | str | None = None):
         self.players = []
