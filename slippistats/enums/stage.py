@@ -35,8 +35,10 @@ class Stage(IntEnum):
     BATTLEFIELD = 31
     FINAL_DESTINATION = 32
 
+
 class GroundID(IntEnum):
     pass
+
 
 class Yoshis(GroundID):
     RANDALL = 0
@@ -94,7 +96,7 @@ class FinalDestination(GroundID):
 
 
 @lru_cache(maxsize=16)
-def get_ground(stage: Stage, ground_id: int) -> IntEnum:
+def get_ground(stage: Stage, ground_id: int) -> IntEnum | None:
     if stage is None or ground_id is None:
         return ground_id
 
@@ -129,7 +131,7 @@ def get_ground(stage: Stage, ground_id: int) -> IntEnum:
 
         case Stage.FOUNTAIN_OF_DREAMS:
             if ground_id in {3, 4, 6, 7}:
-                ground = FountainOfDreams(ground_id)
+                ground = FountainOfDreams.MAIN_STAGE
             else:
                 ground = try_enum(FountainOfDreams, ground_id)
             return ground

@@ -306,6 +306,8 @@ class LCancelData(Stat):
             Relative timing of the L/R/Z press. Negative values occur before landing, positive values occur after landing
         during_hitlag : bool
             True if the l-cancel input occurred during hitlag (thus extending the timing window)
+        fastfall : bool
+            True if character was fastfalling prior to landing
     """
 
     frame_index: int
@@ -315,36 +317,7 @@ class LCancelData(Stat):
     position: IntEnum
     trigger_input_frame: int
     during_hitlag: bool
-
-    def __init__(
-        self,
-        frame_index: int,
-        stocks_remaining: int,
-        l_cancel: bool,
-        move: Attack,
-        position: IntEnum,
-        trigger_input_frame: int,
-        during_hitlag: bool,
-    ):
-        self.frame_index = frame_index
-        self.stocks_remaining = stocks_remaining
-        self.l_cancel = l_cancel
-        self.trigger_input_frame = trigger_input_frame
-        self.during_hitlag = during_hitlag
-        match move:
-            case ActionState.ATTACK_AIR_N:
-                self.move = Attack.NAIR
-            case ActionState.ATTACK_AIR_F:
-                self.move = Attack.FAIR
-            case ActionState.ATTACK_AIR_B:
-                self.move = Attack.BAIR
-            case ActionState.ATTACK_AIR_HI:
-                self.move = Attack.UAIR
-            case ActionState.ATTACK_AIR_LW:
-                self.move = Attack.DAIR
-            case _:
-                self.move = "UNKNOWN"
-        self.position = position
+    fastfall: bool
 
 
 # ------------------------------- Shield Drop Data ------------------------------ #
@@ -448,8 +421,10 @@ class Wavedashes(StatList):
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
             "character": pl.Utf8,
+            "costume": pl.Utf8,
             "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
+            "stocks_remaining": pl.Int64,
             "angle": pl.Float64,
             "direction": pl.Utf8,
             "r_frame": pl.Int64,
@@ -490,18 +465,19 @@ class Dashes(StatList):
     def __init__(self, data_header):
         self.data_header = data_header
         self.data = []
-        self.schema = {
+        self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
             "slippi_version": pl.Utf8,
             "match_id": pl.Utf8,
             "match_type": pl.Utf8,
             "game_number": pl.Int64,
             "stage": pl.Utf8,
-            "duration": pl.Duration(time_unit="us"),
+            "duration": pl.Duration(time_unit="ms"),
             "result": pl.Utf8,
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
             "character": pl.Utf8,
+            "costume": pl.Utf8,
             "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
             "stocks_remaining": pl.Int64,
@@ -521,7 +497,9 @@ class Dashes(StatList):
         if len(self.data) == 0:
             return pl.DataFrame([], schema=self._schema)
         else:
-            return pl.DataFrame([self.data_header | vars(stat) for stat in self.data if stat is not None])
+            return pl.DataFrame(
+                [self.data_header | vars(stat) for stat in self.data if stat is not None], schema=self._schema
+            )
 
     # else:
     #     return pl.DataFrame([], schema=self.schema)
@@ -545,6 +523,19 @@ class Techs(StatList):
         self._data_header = _data_header
         self.data = []
         self._schema = {
+            "date_time": pl.Datetime(time_zone=get_localzone_name()),
+            "slippi_version": pl.Utf8,
+            "match_id": pl.Utf8,
+            "match_type": pl.Utf8,
+            "game_number": pl.Int64,
+            "stage": pl.Utf8,
+            "duration": pl.Duration(time_unit="ms"),
+            "result": pl.Utf8,
+            "port": pl.Utf8,
+            "connect_code": pl.Utf8,
+            "character": pl.Utf8,
+            "costume": pl.Utf8,
+            "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
             "stocks_remaining": pl.Int64,
             "tech_type": pl.Utf8,
@@ -568,17 +559,17 @@ class Techs(StatList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) == 0:
-            df = pl.DataFrame([], self._schema)
+            return pl.DataFrame([], self._schema)
         else:
             rows = []
 
             for stat in self.data:
                 stat_dict = vars(stat).copy()
                 stat_dict["position"] = list(stat.position)
+                stat_dict["tech_type"] = stat.tech_type.name
                 rows.append(self._data_header | stat_dict)
 
-            df = pl.DataFrame(rows, schema=self._schema)
-            return df
+            return pl.DataFrame(rows, schema=self._schema)
 
 
 class TakeHits(StatList):
@@ -610,8 +601,10 @@ class TakeHits(StatList):
             "port": pl.Utf8,
             "connect_code": pl.Utf8,
             "character": pl.Utf8,
+            "costume": pl.Utf8,
             "opnt_character": pl.Utf8,
             "frame_index": pl.Int64,
+            "stocks_remaining": pl.Int64,
             "grounded": pl.Boolean,
             "percent": pl.Float64,
             "last_hit_by": pl.Utf8,
@@ -639,7 +632,7 @@ class TakeHits(StatList):
 
     def to_polars(self) -> pl.DataFrame:
         if len(self.data) == 0:
-            df = pl.DataFrame([], self._schema)
+            return pl.DataFrame([], self._schema)
         else:
             rows = []
 
@@ -671,20 +664,43 @@ class TakeHits(StatList):
                 rows.append(self._data_header | stat_dict)
 
             df = pl.DataFrame(rows, schema=self._schema)
-        return df
+            return df
 
 
 class LCancels(StatList):
     """Iterable wrapper for lists of l-cancel data"""
 
     data_header: dict
-    percent: float | None
+    percentage: float | None
     data: list[LCancelData]
 
     def __init__(self, data_header):
-        self.percent = None
+        self.percentage = None
         self.data = []
         self.data_header = data_header
+        self._schema = {
+            "date_time": pl.Datetime(time_zone=get_localzone_name()),
+            "slippi_version": pl.Utf8,
+            "match_id": pl.Utf8,
+            "match_type": pl.Utf8,
+            "game_number": pl.Int64,
+            "stage": pl.Utf8,
+            "duration": pl.Duration(time_unit="ms"),
+            "result": pl.Utf8,
+            "port": pl.Utf8,
+            "connect_code": pl.Utf8,
+            "character": pl.Utf8,
+            "costume": pl.Utf8,
+            "opnt_character": pl.Utf8,
+            "frame_index": pl.Int64,
+            "stocks_remaining": pl.Int64,
+            "l_cancel": pl.Boolean,
+            "trigger_input_frame": pl.Int64,
+            "during_hitlag": pl.Boolean,
+            "move": pl.Utf8,
+            "position": pl.Utf8,
+            "fastfall": pl.Boolean,
+        }
 
     def append(self, item):
         if isinstance(item, LCancelData):
@@ -698,24 +714,26 @@ class LCancels(StatList):
             if item.l_cancel:
                 success += 1
         if len(self.data) > 0:
-            self.percent = (success / len(self.data)) * 100
+            self.percentage = (success / len(self.data)) * 100
 
     def to_polars(self):
-        data = []
+        if len(self.data) == 0:
+            return pl.DataFrame([], self._schema)
+        else:
+            rows = []
+            # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
+            for stat in self.data:
+                # we have to make a copy so we don't bork the data with our changes
+                stat_dict = vars(stat).copy()
+                try:
+                    stat_dict["position"] = stat.position.name
+                except AttributeError:
+                    stat_dict["position"] = "UNKNOWN"
+                stat_dict["move"] = stat.move.name
 
-        # polars doesn't like the formats of some of our numbers, so we have to manually conver them to lists
-        for stat in self.data:
-            # we have to make a copy so we don't bork the data with our changes
-            stat_dict = vars(stat).copy()
-            try:
-                stat_dict["position"] = stat.position.name
-            except AttributeError:
-                stat_dict["position"] = "UNKNOWN"
-            stat_dict["move"] = stat.move.name
+                rows.append(self.data_header | stat_dict)
 
-            data.append(self.data_header | stat_dict)
-
-        return pl.DataFrame(data)
+            return pl.DataFrame(rows, schema=self._schema)
 
 
 class ShieldDrops(StatList):
@@ -735,16 +753,16 @@ class ShieldDrops(StatList):
             raise ValueError(f"Incorrect stat type: {type(item)}, expected ShieldDropData")
 
     def to_polars(self):
-        data = []
+        rows = []
         for stat in self.data:
             stat_dict = stat.__dict__.copy()
             try:
                 stat_dict["position"] = stat.position.name
             except AttributeError:
                 stat_dict["position"] = "UNKNOWN"
-            data.append(self.data_header | stat_dict)
+            rows.append(self.data_header | stat_dict)
 
-        return pl.DataFrame(data)
+        return pl.DataFrame(rows)
 
 
 class Data:

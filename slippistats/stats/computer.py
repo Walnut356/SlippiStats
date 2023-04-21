@@ -9,6 +9,7 @@ from ..game import Game
 from ..util import Base, Port
 from .stat_types import Data
 
+
 class IdentifierError(Exception):
     """Connect code or port identifier does not match any players in the available Game object."""
 
@@ -47,16 +48,15 @@ class Player(Base):
 
     def __init__(
         self,
-        characters : tuple[CSSCharacter],
-        port : Port,
-        costume : int,
-        frames : list[Frame.Port.Data],
-        stats_header : dict,
-        nana_frames : list[Frame.Port.Data] | None = None,
-        connect_code : str | None = None,
-        display_name : str | None = None,
-        did_win : bool | None = None,
-
+        characters: tuple[CSSCharacter],
+        port: Port,
+        costume: int,
+        frames: list[Frame.Port.Data],
+        stats_header: dict,
+        nana_frames: list[Frame.Port.Data] | None = None,
+        connect_code: str | None = None,
+        display_name: str | None = None,
+        did_win: bool | None = None,
     ):
         self.character = characters[0]
         self.port = port
@@ -211,7 +211,7 @@ class ComputerBase:
             IdentifierError
                 Raised when identifier does not match any players in the currently primed replay
         """
-        match identifier.to_upper():
+        match identifier.upper():
             case str():
                 for player in self.players:
                     if player.connect_code == identifier:

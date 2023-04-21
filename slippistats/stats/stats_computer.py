@@ -120,9 +120,13 @@ class StatsComputer(ComputerBase):
         tech=True,
         take_hit=True,
         l_cancel=True,
-    ) -> list[Player]:
+    ) -> Player | tuple[Player]:
         """
-        Convenience function to calculate all stats for one or more players
+        Convenience function to calculate all stats for one or more players.
+
+        If an identifier is provided, returns a single player object matching the identifier.
+
+        If identifier is NOT provided, returns a tuple of both player objects.
 
         Args:
             identifier : str | int | Ports | None
@@ -160,7 +164,10 @@ class StatsComputer(ComputerBase):
             if l_cancel:
                 self.l_cancel_compute(player=player)
 
-        return self.players
+        if identifier is not None:
+            return self.get_player(identifier)
+        else:
+            return self.players
 
     # def stats_entry():
 
@@ -179,8 +186,9 @@ class StatsComputer(ComputerBase):
 
         for i, player_frame in enumerate(player.frames):
             player_state: ActionState | int = player_frame.post.state
-            prev_player_frame = player.frames[i - 1]
-            prev_player_state: ActionState | int = prev_player_frame.post.state
+            if i > 0:
+                prev_player_frame = player.frames[i - 1]
+                prev_player_state: ActionState | int = prev_player_frame.post.state
 
             # TODO add wavesurf logic?
             if player_state != ActionState.LAND_FALL_SPECIAL:
@@ -228,6 +236,8 @@ class StatsComputer(ComputerBase):
             player = self.get_player(identifier)
 
         for i, player_frame in enumerate(player.frames):
+            if i < 2:
+                continue
             player_post = player_frame.post
             player_state = player_post.state
             prev_player_frame = player.frames[i - 1]
@@ -286,6 +296,8 @@ class StatsComputer(ComputerBase):
 
         self._tech_state = None
         for i, player_frame in enumerate(player.frames):
+            if i == 0:
+                continue
             player_state = player_frame.post.state
             prev_player_frame = player.frames[i - 1]
             prev_player_state = prev_player_frame.post.state
@@ -360,7 +372,7 @@ class StatsComputer(ComputerBase):
                 case _:  # Tech in place, getup attack
                     pass
 
-            self._tech_state.tech_type = tech_type.name
+            self._tech_state.tech_type = tech_type
         return player.stats.techs
 
     def take_hit_compute(
@@ -395,6 +407,8 @@ class StatsComputer(ComputerBase):
             )
 
         for i, player_frame in enumerate(player.frames):
+            if i == 0:
+                continue
             prev_player_frame = player.frames[i - 1]
             opponent_frame = opponent.frames[i]
 
@@ -513,9 +527,9 @@ class StatsComputer(ComputerBase):
         # l_cancel_window: int | None = None
         # input_frame: int | None = None
         during_hitlag: bool = False
+        trigger_input_frame = None
         for i, player_frame in enumerate(player.frames):
             l_cancel = player_frame.post.l_cancel
-
             if just_input_l_cancel(player_frame, player.frames[i - 1]):
                 trigger_input_frame = i
                 during_hitlag = is_in_hitlag(player_frame.post.flags)
@@ -539,7 +553,7 @@ class StatsComputer(ComputerBase):
                 continue
 
             # If you're more than a few frames early, it probably wasn't an l cancel input
-            if (trigger_input_frame := trigger_input_frame - i) > 15:
+            if trigger_input_frame is not None and (trigger_input_frame := trigger_input_frame - i) > 15:
                 # unless you input during hitlag
                 if (not during_hitlag) and trigger_input_frame < 25:
                     trigger_input_frame = None
@@ -550,15 +564,57 @@ class StatsComputer(ComputerBase):
                     if just_input_l_cancel(player.frames[i + j], player.frames[i + j - 1]):
                         trigger_input_frame = j
 
+            match player_frame.post.state:
+                case ActionState.LANDING_AIR_N:
+                    move = Attack.NAIR
+                case ActionState.LANDING_AIR_F:
+                    move = Attack.FAIR
+                case ActionState.LANDING_AIR_B:
+                    move = Attack.BAIR
+                case ActionState.LANDING_AIR_HI:
+                    move = Attack.UAIR
+                case ActionState.LANDING_AIR_LW:
+                    move = Attack.DAIR
+                case _:
+                    move = None
+            if move is None:
+                match player_frame.post.state:
+                    case ActionState.ATTACK_AIR_N:
+                        move = Attack.NAIR
+                    case ActionState.ATTACK_AIR_F:
+                        move = Attack.FAIR
+                    case ActionState.ATTACK_AIR_B:
+                        move = Attack.BAIR
+                    case ActionState.ATTACK_AIR_HI:
+                        move = Attack.UAIR
+                    case ActionState.ATTACK_AIR_LW:
+                        move = Attack.DAIR
+                    case _:
+                        move = None
+
+            # Basically we're trying to match some form of aerial state. In situations where a player inputs an attack
+            # on the same frame that they land, they won't be in an aerial attack state on their pre or post frame, so
+            # we have to use the landing lag. Except if you get hit on the same frame that you land, the l cancel counts
+            # even though you never enter the landlag state. If both happen, I could just use inputs on that frame to
+            # grab the attempted attack but...
+            # If you never enter the aerial animation AND you never enter the landlag animation, should that even count
+            # towards l cancels?
+            # In my eyes probably not? In the same way that slideoffs shouldn't count against you. Not l-cancelling has
+            # no net impact in this scenario, and there's many cases where it could be another intended input entirely.
+            # It happens infrequently enough that i don't think it'll matter that much, but if my numbers don't match
+            # slippi-js, this is why.
+            if move is None:
+                continue
+
             player.stats.l_cancels.append(
                 LCancelData(
                     frame_index=i,
                     stocks_remaining=player_frame.post.stocks_remaining,
-                    move=player.frames[i - 1].post.state,
+                    move=move,
                     l_cancel=did_l_cancel,
                     trigger_input_frame=trigger_input_frame,
                     position=get_ground(self.replay.start.stage, player_frame.post.last_ground_id),
-                    fast_fall=is_fastfalling(player.frames[i - 1].post.flags),
+                    fastfall=is_fastfalling(player.frames[i - 1].post.flags),
                     during_hitlag=during_hitlag,
                 )
             )
@@ -584,6 +640,8 @@ class StatsComputer(ComputerBase):
         stage = self.replay.start.stage
 
         for i, player_frame in enumerate(player.frames):
+            if i == 0:
+                continue
             player_state = player_frame.post.state
             prev_player_frame = player.frames[i - 1]
             prev_player_state = prev_player_frame.post.state
@@ -673,13 +731,10 @@ class StatsComputer(ComputerBase):
 
 def _eef(file, connect_code):
     try:
-        thing = StatsComputer(file).stats_compute(connect_code)
+        thing = StatsComputer(file).stats_compute(connect_code).stats
     except (IdentifierError, PlayerCountError):
         return (None, file)
-    if len(thing) > 0:
-        return (thing, file)
-    else:
-        return (None, file)
+    return (thing, file)
 
 
 def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
@@ -700,7 +755,7 @@ def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
     """
     thing = []
     for item in Data():
-        thing.append(pl.DataFrame({}, item.schema))
+        thing.append(item.to_polars())
 
     Box = NamedTuple(
         "Box",
@@ -709,10 +764,9 @@ def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
         techs=pl.DataFrame,
         take_hits=pl.DataFrame,
         l_cancels=pl.DataFrame,
-        shield_drops=pl.DataFrame,
     )
     count = 0
-    dfs = Box(thing[0], thing[1], thing[2], thing[3], thing[4], thing[5], thing[6])
+
     with os.scandir(directory) as dir:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = {
@@ -737,12 +791,22 @@ def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
                 if data is None:
                     continue
 
-                for i, item in enumerate(data[0]):
+                for i, item in enumerate(data):
                     df = item.to_polars()
-                    dfs[i] = pl.concat([dfs, df], how="vertical")
-
+                    try:
+                        thing[i] = pl.concat([thing[i], df], how="vertical")
+                    except Exception as e:
+                        pass
+                pass
                 data = None
-    for item in dfs:
-        item = item.sort(pl.col("date_time"))
 
+    for item in thing:
+        item = item.sort(pl.col("date_time"))
+    dfs = Box(
+        thing[0],
+        thing[1],
+        thing[2],
+        thing[3],
+        thing[4],
+    )
     return dfs

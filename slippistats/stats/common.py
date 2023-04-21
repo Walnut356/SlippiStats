@@ -293,10 +293,11 @@ class TechType(Enum):
     JAB_RESET = 10
     MISSED_TECH_GET_UP = 11
     MISSED_TECH_ROLL_RIGHT = 12
+    """Relative to position at the start of the tech"""
     MISSED_TECH_ROLL_LEFT = 13
+    """Relative to position at the start of the tech"""
 
 
-# yapf: disable
 def get_tech_type(action_state: int, direction) -> TechType | None:
     match action_state:
         case ActionState.PASSIVE:
@@ -320,7 +321,8 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
                 return TechType.TECH_LEFT
             else:
                 return TechType.TECH_RIGHT
-        case   ActionState.DOWN_BACK_U | ActionState.DOWN_BACK_D:
+
+        case ActionState.DOWN_BACK_U | ActionState.DOWN_BACK_D:
             if direction > 0:
                 return TechType.MISSED_TECH_ROLL_LEFT
             else:
@@ -329,7 +331,13 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
         case ActionState.DOWN_ATTACK_U | ActionState.DOWN_ATTACK_D:
             return TechType.GET_UP_ATTACK
 
-        case ActionState.DOWN_BOUND_U | ActionState.DOWN_BOUND_D | ActionState.DOWN_WAIT_D | ActionState.DOWN_WAIT_U:
+        case (
+            ActionState.DOWN_BOUND_U
+            | ActionState.DOWN_BOUND_D
+            | ActionState.DOWN_WAIT_D
+            | ActionState.DOWN_WAIT_U
+            | ActionState.DOWN_REFLECT
+        ):
             return TechType.MISSED_TECH
 
         case ActionState.DOWN_DAMAGE_U | ActionState.DOWN_DAMAGE_D:
@@ -344,13 +352,14 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
         case ActionState.PASSIVE_CEIL:
             return TechType.CEILING_TECH
 
+        case ActionState.FLY_REFLECT_CEIL:
+            return TechType.MISSED_CEILING_TECH
+
+        case ActionState.FLY_REFLECT_WALL:
+            return TechType.MISSED_WALL_TECH
+
         case _:
             return None
-# yapf: enable
-
-# ---------------------------------------------------------------------------- #
-#                                 Calc Helpers                                 #
-# ---------------------------------------------------------------------------- #
 
 
 class JoystickRegion(IntEnum):

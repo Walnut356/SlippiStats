@@ -2,11 +2,13 @@ import enum
 import re
 import struct
 from functools import lru_cache
+from typing import Any
 
 from .log import log
 
 
 class Port(enum.IntEnum):
+    NONE = -1
     P1 = 0
     P2 = 1
     P3 = 2
@@ -59,15 +61,6 @@ def _format(obj):
         return str(obj)
 
 
-@lru_cache(maxsize=512)
-def try_enum(enum_type, val):
-    try:
-        return enum_type(val)
-    except ValueError:
-        log.info("unknown %s: %s" % (enum_type.__name__, val))
-        return val
-
-
 # Depreciated for performance reasons. See unpack_type objects above
 def unpack(fmt, stream):
     fmt = ">" + fmt
@@ -117,13 +110,16 @@ class IntEnum(enum.IntEnum):
         raise ValueError(f"{val_desc} is not a valid {cls.__name__}") from None
 
 
-# class IntFlag(enum.IntFlag):
-#     pass
-#     # def __repr__(self):
-#     #     members, _ = enum._decompose(self.__class__, self._value_)
-#     #     return '%s:%s' % (bin(self._value_), '|'.join([str(m._name_ or m._value_) for m in members]))
-
-
 class EOFError(IOError):
     def __init__(self):
         super().__init__("unexpected end of file")
+
+
+@lru_cache(maxsize=512)
+def try_enum(enum_type, val) -> Enum | Any:
+    """Attempts Enum(val). If the value is invalid, returns the given value."""
+    try:
+        return enum_type(val)
+    except ValueError:
+        log.info("unknown %s: %s" % (enum_type.__name__, val))
+        return val

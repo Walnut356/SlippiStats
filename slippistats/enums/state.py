@@ -381,10 +381,10 @@ class ActionState(IntEnum):
     """Uair landing animation"""
     LANDING_AIR_LW = 74
     """Dair landing animation"""
-    DAMAGE_HI_1 = 75
 
     # -------------------- Generic Damage -------------------- #
 
+    DAMAGE_HI_1 = 75
     DAMAGE_HI_2 = 76
     DAMAGE_HI_3 = 77
     DAMAGE_N_1 = 78
