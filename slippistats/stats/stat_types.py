@@ -179,16 +179,6 @@ class TechData(Stat):
     last_hit_by: Attack | None = None
 
 
-@dataclass
-class TechState:
-    tech: TechData
-    last_state: ActionState | int | None
-
-    def __init__(self):
-        self.tech = TechData()
-        self.last_state = -1
-
-
 # --------------------------------- Take hit --------------------------------- #
 
 

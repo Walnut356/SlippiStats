@@ -53,7 +53,6 @@ from .stat_types import (
     TakeHits,
     TechData,
     Techs,
-    TechState,
     WavedashData,
     Wavedashes,
 )
