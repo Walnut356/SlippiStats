@@ -25,7 +25,7 @@ class Stat(ABC):
 # --------------------------------- Wavedash --------------------------------- #
 
 
-@dataclass
+@dataclass(slots=True)
 class WavedashData(Stat):
     """Contains all data for a single Wavedash Event.
 
@@ -108,7 +108,7 @@ class WavedashData(Stat):
 # ----------------------------------- Dash ----------------------------------- #
 
 
-@dataclass
+@dataclass(slots=True)
 class DashData(Stat):
     """Contains all data for a single Dash Event.
 
@@ -143,7 +143,7 @@ class DashData(Stat):
 # ----------------------------------- Tech ----------------------------------- #
 
 
-@dataclass
+@dataclass(slots=True)
 class TechData(Stat):
     """Contains all data for a single Tech Event.
 
@@ -197,7 +197,7 @@ class TechData(Stat):
 # --------------------------------- Take hit --------------------------------- #
 
 
-@dataclass
+@dataclass(slots=True)
 class TakeHitData(Stat):
     """
     Contains all data for a single Take Hit Event.
@@ -340,7 +340,7 @@ class TakeHitData(Stat):
 # --------------------------------- L cancel --------------------------------- #
 
 
-@dataclass
+@dataclass(slots=True)
 class LCancelData(Stat):
     """
     Contains all data for a single L-Cancel Event.
@@ -377,7 +377,7 @@ class LCancelData(Stat):
 # ------------------------------- Shield Drop Data ------------------------------ #
 
 
-@dataclass
+@dataclass(slots=True)
 class ShieldDropData(Stat):
     frame_index: int
     position: IntEnum | int

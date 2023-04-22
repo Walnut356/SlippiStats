@@ -156,7 +156,11 @@ class ComputerBase:
         _game_end = False
         if self.replay.end:
             _game_end = True
+
+        temp = []
         for port in Port:
+            if self.replay.start.players[port] is None:
+                continue
             if _game_end:
                 if self.replay.end.player_placements is not None:
                     did_win = True if self.replay.end.player_placements[port] == 0 else False
@@ -171,25 +175,24 @@ class ComputerBase:
             else:
                 did_win = False
 
-            temp = []
-            if self.replay.start.players[port] is not None:
-                temp.append(
-                    Player(
-                        characters=characters.pop(0),
-                        port=port,
-                        connect_code=self.replay.metadata.players[port].connect_code,
-                        display_name=self.replay.metadata.players[port].display_name,
-                        costume=self.replay.start.players[port].costume,
-                        did_win=did_win,
-                        frames=tuple([frame.ports[port].leader for frame in self.replay.frames]),
-                        nana_frames=(
-                            tuple([frame.ports[port].follower for frame in self.replay.frames])
-                            if self.replay.start.players[port].character == CSSCharacter.ICE_CLIMBERS
-                            else None
-                        ),
-                        stats_header=stats_header,
-                    )
+
+            temp.append(
+                Player(
+                    characters=characters.pop(0),
+                    port=port,
+                    connect_code=self.replay.metadata.players[port].connect_code,
+                    display_name=self.replay.metadata.players[port].display_name,
+                    costume=self.replay.start.players[port].costume,
+                    did_win=did_win,
+                    frames=tuple([frame.ports[port].leader for frame in self.replay.frames]),
+                    nana_frames=(
+                        tuple([frame.ports[port].follower for frame in self.replay.frames])
+                        if self.replay.start.players[port].character == CSSCharacter.ICE_CLIMBERS
+                        else None
+                    ),
+                    stats_header=stats_header,
                 )
+            )
             self.players = tuple(temp)
         if len(self.players) != 2:
             raise ValueError("Game must have exactly 2 players for stats generation")
