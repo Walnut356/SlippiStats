@@ -29,14 +29,14 @@ class ParseEvent(Enum):
     """Parser events, used as keys for event handlers.
     Docstrings indicate the type of object that will be passed to each handler."""
 
-    METADATA = "metadata"
-    METADATA_RAW = "metadata_raw"
-    START = "start"
-    FRAME = "frame"
-    END = "end"
-    FRAME_START = "frame_start"
-    ITEM = "item"
-    FRAME_END = "frame_end"
+    METADATA = 0
+    METADATA_RAW = 1
+    START = 2
+    FRAME = 3
+    END = 4
+    FRAME_START = 5
+    ITEM = 6
+    FRAME_END = 7
 
 
 class ParseError(IOError):

@@ -1387,12 +1387,12 @@ class Frame(Base):
                 (self.port,) = unpack_uint8(stream.read(1))
                 (self.is_follower,) = unpack_bool(stream.read(1))
 
-        class Type(Enum):
-            START = "start"
-            END = "end"
-            PRE = "pre"
-            POST = "post"
-            ITEM = "item"
+        class Type(IntEnum):
+            START = 0
+            END = 1
+            PRE = 2
+            POST = 3
+            ITEM = 4
 
 
 class Position(Base):
