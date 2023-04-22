@@ -111,6 +111,7 @@ class StatsComputer(ComputerBase):
         else:
             self.replay = None
 
+    # TODO rename to all_stats_compute(), maybe make it just pull all _compute functions from dir(self)
     def stats_compute(
         self,
         identifier: str | int | Port | None = None,
@@ -131,20 +132,12 @@ class StatsComputer(ComputerBase):
             identifier : str | int | Ports | None
                 Defaults to None. str format "CODE#123". Ports/int correspond to physical ports p1-p4. If None,
                 calculates stats for all players present in the game
-            wavedash : bool
-                Defaults to True. If false, wavedash calculation is skipped
-            dash : bool
-                Defaults to True. If false, dash calculation is skipped
-            tech : bool
-                Defaults to True. If false, tech calculation is skipped
-            take_hit : bool
-                Defaults to True. If false, take_hit calculation is skipped
-            l_cancel : bool
-                Defaults to True. If false, l_cancel calculation is skipped
 
         Returns:
-            list[Player]
-                length will always be 1 or 2.
+            Player | tuple[Player]
+                Returns the Player object matching the identifier argument. If no identifier is given, returns a tuple containing both player objects.
+
+                Stats can be accessed through Player.stats
         """
         if identifier is None:
             player_perms = permutations(self.players)

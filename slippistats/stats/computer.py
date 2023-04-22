@@ -40,20 +40,20 @@ class Player(Base):
     connect_code: str | None
     display_name: str | None
     costume: int
-    did_win: bool
-    frames: list[Frame.Port.Data]
+    did_win: bool | None
+    frames: tuple[Frame.Port.Data]
     stats: Data
     combos: list
-    nana_frames: list[Frame.Port.Data] | None = None
+    nana_frames: tuple[Frame.Port.Data] | None = None
 
     def __init__(
         self,
         characters: tuple[CSSCharacter],
         port: Port,
         costume: int,
-        frames: list[Frame.Port.Data],
+        frames: tuple[Frame.Port.Data],
         stats_header: dict,
-        nana_frames: list[Frame.Port.Data] | None = None,
+        nana_frames: tuple[Frame.Port.Data] | None = None,
         connect_code: str | None = None,
         display_name: str | None = None,
         did_win: bool | None = None,
@@ -115,7 +115,7 @@ class ComputerBase:
     replay_version: Start.SlippiVersion | None
     queue: list[dict]
     replay_path: PathLike | str
-    players: list[Player]
+    players: tuple[Player]
 
     def prime_replay(self, replay: PathLike | Game | str):
         """Parses a replay and loads the relevant data into the Computer. Also accepts pre-parsed Game objects."""
@@ -170,8 +170,10 @@ class ComputerBase:
                         did_win = False
             else:
                 did_win = False
+
+            temp = []
             if self.replay.start.players[port] is not None:
-                self.players.append(
+                temp.append(
                     Player(
                         characters=characters.pop(0),
                         port=port,
@@ -188,7 +190,7 @@ class ComputerBase:
                         stats_header=stats_header,
                     )
                 )
-
+            self.players = tuple(temp)
         if len(self.players) != 2:
             raise ValueError("Game must have exactly 2 players for stats generation")
 
@@ -211,9 +213,10 @@ class ComputerBase:
             IdentifierError
                 Raised when identifier does not match any players in the currently primed replay
         """
-        match identifier.upper():
+        match identifier:
             case str():
                 for player in self.players:
+                    identifier = identifier.upper()
                     if player.connect_code == identifier:
                         return player
                 else:

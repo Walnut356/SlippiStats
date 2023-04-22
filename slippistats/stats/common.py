@@ -429,13 +429,13 @@ def get_joystick_region(stick_position: Position) -> JoystickRegion:
 
 def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Velocity | None:
     # If we don't have one velocity value, we don't have any so we can just return
-    if player_frame_post.self_air_speed is None:
+    if player_frame_post.self_air_velocity is None:
         return None
 
     if player_frame_post.is_airborne:
-        return player_frame_post.self_air_speed + player_frame_post.knockback_speed
+        return player_frame_post.self_air_velocity + player_frame_post.knockback_velocity
     else:
-        return player_frame_post.self_ground_speed + player_frame_post.knockback_speed
+        return player_frame_post.self_ground_velocity + player_frame_post.knockback_velocity
 
 
 def get_angle(point: Velocity | Position) -> float:
