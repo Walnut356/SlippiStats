@@ -863,9 +863,9 @@ class Frame(Base):
                     "jumps_remaining",
                     "l_cancel",
                     "hurtbox_status",
-                    "self_ground_speed",
-                    "self_air_speed",
-                    "knockback_speed",
+                    "self_ground_velocity",
+                    "self_air_velocity",
+                    "knockback_velocity",
                     "hitlag_remaining",
                     "animation_index",
                 )
@@ -912,14 +912,14 @@ class Frame(Base):
                 for 1 frame upon landing during an aerial, otherwise LCancel.NOTAPPLICABLE"""
                 hurtbox_status: Hurtbox | None
                 """VULNERABLE, INVULNERABLE, or INTANGIBLE"""
-                self_ground_speed: Velocity | None
-                """Player-induced X,Y ground speed. Added to knockback speed to calculate next position. Used when
+                self_ground_velocity: Velocity | None
+                """Player-induced X,Y ground velocity. Added to knockback speed to calculate next position. Used when
                 `is_airborne` is False. Y ground speed is relevant on slopes"""
-                self_air_speed: Velocity | None
-                """Player-induced X,Y air speed. Added to knockback speed to calculate next position. Used when
+                self_air_velocity: Velocity | None
+                """Player-induced X,Y air velocity. Added to knockback speed to calculate next position. Used when
                 `is_airborne` is True"""
-                knockback_speed: Velocity | None
-                """X,Y knockback speed. Added to self speeds to calculate next position."""
+                knockback_velocity: Velocity | None
+                """X,Y knockback velocity. Added to self speeds to calculate next position."""
                 hitlag_remaining: float | None
                 """Total number of hitlag frames remaining. Can have a fractional component. 0 = not in hitstun"""
                 animation_index: int | None
@@ -945,9 +945,9 @@ class Frame(Base):
                     jumps: int | None = None,
                     l_cancel: LCancel | None = None,
                     hurtbox_status: Hurtbox | None = None,
-                    self_ground_speed: Velocity | None = None,
-                    self_air_speed: Velocity | None = None,
-                    knockback_speed: Velocity | None = None,
+                    self_ground_velocity: Velocity | None = None,
+                    self_air_velocity: Velocity | None = None,
+                    knockback_velocity: Velocity | None = None,
                     hitlag_remaining: float | None = None,
                     animation_index: int | None = None,
                 ):
@@ -969,9 +969,9 @@ class Frame(Base):
                     self.jumps_remaining = jumps
                     self.l_cancel = l_cancel
                     self.hurtbox_status = hurtbox_status
-                    self.self_ground_speed = self_ground_speed
-                    self.self_air_speed = self_air_speed
-                    self.knockback_speed = knockback_speed
+                    self.self_ground_velocity = self_ground_velocity
+                    self.self_air_velocity = self_air_velocity
+                    self.knockback_velocity = knockback_velocity
                     self.hitlag_remaining = hitlag_remaining
                     self.animation_index = animation_index
 
@@ -1072,9 +1072,9 @@ class Frame(Base):
                         )
 
                     try:  # v3.5.0
-                        self_air_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
-                        knockback_speed = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
-                        self_ground_speed = Velocity(*unpack_float(read(4)), self_air_speed.y)
+                        self_air_velocity = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
+                        knockback_velocity = Velocity(*unpack_float(read(4)), *unpack_float(read(4)))
+                        self_ground_velocity = Velocity(*unpack_float(read(4)), self_air_velocity.y)
 
                     except struct.error:
                         return cls(
@@ -1120,9 +1120,9 @@ class Frame(Base):
                             jumps=jumps,
                             l_cancel=l_cancel,
                             hurtbox_status=hurtbox_status,
-                            self_ground_speed=self_ground_speed,
-                            self_air_speed=self_air_speed,
-                            knockback_speed=knockback_speed,
+                            self_ground_velocity=self_ground_velocity,
+                            self_air_velocity=self_air_velocity,
+                            knockback_velocity=knockback_velocity,
                         )
 
                     try:  # v3.11.0
@@ -1147,9 +1147,9 @@ class Frame(Base):
                             jumps=jumps,
                             l_cancel=l_cancel,
                             hurtbox_status=hurtbox_status,
-                            self_ground_speed=self_ground_speed,
-                            self_air_speed=self_air_speed,
-                            knockback_speed=knockback_speed,
+                            self_ground_velocity=self_ground_velocity,
+                            self_air_velocity=self_air_velocity,
+                            knockback_velocity=knockback_velocity,
                             hitlag_remaining=hitlag_remaining,
                         )
 
@@ -1172,9 +1172,9 @@ class Frame(Base):
                         jumps=jumps,
                         l_cancel=l_cancel,
                         hurtbox_status=hurtbox_status,
-                        self_ground_speed=self_ground_speed,
-                        self_air_speed=self_air_speed,
-                        knockback_speed=knockback_speed,
+                        self_ground_velocity=self_ground_velocity,
+                        self_air_velocity=self_air_velocity,
+                        knockback_velocity=knockback_velocity,
                         hitlag_remaining=hitlag_remaining,
                         animation_index=animation_index,
                     )

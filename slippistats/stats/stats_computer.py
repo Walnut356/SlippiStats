@@ -485,8 +485,8 @@ class StatsComputer(ComputerBase):
                     grounded=not player_frame.post.is_airborne
                 )
                 if knockback_check:
-                    self._take_hit_state.kb_velocity = player_frame.post.knockback_speed
-                    self._take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
+                    self._take_hit_state.kb_velocity = player_frame.post.knockback_velocity
+                    self._take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_velocity))
                 else:
                     self._take_hit_state.kb_velocity = None
                     self._take_hit_state.kb_angle = None
