@@ -252,7 +252,7 @@ class StatsComputer(ComputerBase):
                 self._dash_state = DashData(
                     frame_index=i,
                     stocks_remaining=player_post.stocks_remaining,
-                    direction=player_post.facing_direction.name,
+                    direction=player_post.facing_direction,
                     start_pos=player_post.position.x,
                     is_dashdance=False,
                 )
@@ -475,13 +475,15 @@ class StatsComputer(ComputerBase):
                 continue
 
             if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
-                self._take_hit_state = TakeHitData()
-                self._take_hit_state.frame_index = i
-                self._take_hit_state.last_hit_by = try_enum(Attack, opponent_frame.post.most_recent_hit)
-                self._take_hit_state.state_before_hit = player.frames[i - 1].post.state
-                self._take_hit_state.start_pos = player_frame.post.position
-                self._take_hit_state.percent = player_frame.post.percent
-                self._take_hit_state.grounded = not player_frame.post.is_airborne
+                self._take_hit_state = TakeHitData(
+                    frame_index=i,
+                    stocks_remaining=player_frame.post.stocks_remaining,
+                    last_hit_by=try_enum(Attack, opponent_frame.post.most_recent_hit),
+                    state_before_hit=player.frames[i - 1].post.state,
+                    start_pos=player_frame.post.position,
+                    percent=player_frame.post.percent,
+                    grounded=not player_frame.post.is_airborne
+                )
                 if knockback_check:
                     self._take_hit_state.kb_velocity = player_frame.post.knockback_speed
                     self._take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_speed))
@@ -489,11 +491,12 @@ class StatsComputer(ComputerBase):
                     self._take_hit_state.kb_velocity = None
                     self._take_hit_state.kb_angle = None
 
+                # TODO check pre-frame state instead and maybe if they're in wait and hit down? Need to confirm latter
                 if ActionRange.SQUAT_START <= prev_player_frame.post.state < ActionRange.SQUAT_END:
                     self._take_hit_state.crouch_cancel = True
                 else:
                     self._take_hit_state.crouch_cancel = False
-            # TODO this failed during all_stats(), DF had 1872 entries.
+            # TODO the above failed during all_stats(), DF had 1872 entries.
             # file:'Modern Replays\\FATK#202 (Yoshi) vs NUT#356 (Falco) on YS - 12-21-22 11.43pm .slp'
             # possibly fixed by changing <= ActionRange.AERIAL_ATTACK_END to <= ActionRange.SQUAT_END
 

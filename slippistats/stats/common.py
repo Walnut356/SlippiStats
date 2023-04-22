@@ -363,20 +363,38 @@ def get_tech_type(action_state: int, direction) -> TechType | None:
 
 
 class JoystickRegion(IntEnum):
-    """Deadzone is -1, directions start at 1. Cardinals are even, diagonals are odd"""
+    """Generalized control stick positions. Enumerated sequentially in clock-wise order starting at DEAD_ZONE = -1
+
+    * DEAD_ZONE
+    * UP
+    * UP_RIGHT
+    * RIGHT
+    * DOWN_RIGHT
+    * DOWN
+    * DOWN_LEFT
+    * LEFT
+    * UP_LEFT
+    """
 
     DEAD_ZONE = -1
     UP = 0
+    """(-0.2875 < stick_x < 0.2875) and stick_y >= 0.2875"""
     UP_RIGHT = 1
+    """stick_x >= 0.2875 and stick_y >= 0.2875"""
     RIGHT = 2
+    """stick_x >= 0.2875 and (-0.2875 < stick_y < 0.2875)"""
     DOWN_RIGHT = 3
+    """stick_x >= 0.2875 and stick_y <= -0.2875"""
     DOWN = 4
+    """(-0.2875 < stick_x < 0.2875) and stick_y <= -0.2875"""
     DOWN_LEFT = 5
+    """stick_x <= -0.2875 and stick_y <= -0.2875"""
     LEFT = 6
+    """stick_x <= -0.2875 and (-0.2875 < stick_y < 0.2875)"""
     UP_LEFT = 7
+    """stick_x <= -0.2875 and stick_y >= 0.2875"""
 
 
-# yapf: disable
 def get_joystick_region(stick_position: Position) -> JoystickRegion:
     region = JoystickRegion.DEAD_ZONE
 
@@ -407,7 +425,6 @@ def get_joystick_region(stick_position: Position) -> JoystickRegion:
         region = JoystickRegion.LEFT
 
     return region
-# yapf: enable
 
 
 def get_total_velocity(player_frame_post: Frame.Port.Data.Post) -> Velocity | None:

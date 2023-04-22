@@ -7,11 +7,12 @@ from pathlib import Path
 
 import polars as pl
 from tzlocal import get_localzone_name
+from ..enums.stage import GroundID
 
 from slippistats.util import IntEnum, try_enum
 
 from ..enums.attack import Attack
-from ..enums.state import ActionState
+from ..enums.state import ActionState, Direction
 from ..event import Position, Velocity
 from .common import JoystickRegion, TechType, get_angle
 
@@ -30,13 +31,13 @@ class WavedashData(Stat):
 
     Attributes:
         frame_index : int
-            First frame of the event
+            The frame the event began on (0-indexed)
         stocks_remaining : int
             Stocks remaining at the start of the event
         angle : float
             Wavedash angle in degrees below horizontal
-        direction : str
-            String direction 'LEFT', 'RIGHT', or 'DOWN'
+        direction : Direction
+            Direction of the wavedash, can be 'LEFT', 'RIGHT', or 'DOWN'
         trigger_frame : int
             Number of frames between the last kneebend frame and the trigger press. Upper bound of 5
         stick : Position
@@ -50,12 +51,18 @@ class WavedashData(Stat):
     """
 
     frame_index: int
+    """The frame the event began on (0-indexed)"""
     stocks_remaining: int | None
-    angle: float | None  # in degrees
-    direction: str | None
-    trigger_frame: int  # which airborne frame was the airdodge input on?
+    angle: float | None
+    """Wavedash angle in degrees below horizontal"""
+    direction:  Direction | None
+    """Direction of the wavedash, can be LEFT, RIGHT, or DOWN"""
+    trigger_frame: int
+    """If the event is not a waveland, the number of frames between the last jumpsquat frame and the trigger press""" # TODO
     airdodge_frames: int
+    """The number of frames the character was in airdodge between the trigger press and landing"""
     waveland: bool
+    """True if there were no jumpsquat frames within a few frames of the trigger input"""
 
     def __init__(
         self,
@@ -73,18 +80,18 @@ class WavedashData(Stat):
             # then we need to normalize the values to degrees-below-horizontal and assign a direction
             if self.angle < 270 and self.angle > 180:
                 self.angle -= 180
-                self.direction = "LEFT"
+                self.direction = Direction.LEFT
             if self.angle > 270 and self.angle < 360:
                 self.angle -= 270
-                self.direction = "RIGHT"
+                self.direction = Direction.RIGHT
             if self.angle == 180:
                 self.angle = 0
-                self.direction = "LEFT"
+                self.direction = Direction.LEFT
             if self.angle == 0:
-                self.direction = "RIGHT"
+                self.direction = Direction.RIGHT
             if self.angle == 270:
                 self.angle = 90
-                self.direction = "DOWN"
+                self.direction = Direction.DOWN
 
         else:
             self.angle = None
@@ -107,25 +114,27 @@ class DashData(Stat):
 
     Attributes:
         frame_index : int
-            First frame of the event
+            The frame the event began on (0-indexed)
         stocks_remaining : int
             Stocks remaining at the start of the event
         start_position : float
             X coordinate on the first frame of the event
         end_position : float
             X coordinate on the last frame of the event
-        direction : str
-            Number of airdodge frames between the trigger press and landing
+        direction : Direction
+            Direction of the dash, can be LEFT or RIGHT
         is_dashdancing : bool
-            True if this was part of a dashdance
+            True if this was part of a dashdance (includes the first dash)
     """
 
     frame_index: int = -1
+    """The frame the event began on (0-indexed)"""
     stocks_remaining: int | None = None
     start_pos: float = 0.0
     end_pos: float = 0.0
-    direction: str | None = None  # TODO change this back to the direction enum
+    direction: Direction | None = None
     is_dashdance: bool = False
+    """Tue if this dash was part of a dashdance (includes the first dash)"""
 
     def distance(self) -> float:
         return abs(self.end_pos - self.start_pos)
@@ -140,23 +149,23 @@ class TechData(Stat):
 
     Attributes:
         frame_index : int
-            First frame of the event
+            The frame the event began on (0-indexed)
         stocks_remaining : int
             Stocks remaining at the start of the event
         tech_type : TechType
-            IntEnum of the tech/direction
+            IntEnum of the tech type and tech direction
         was_punished : bool
-            True if the player was hit during the vulnerable frames of the tech
+            True if player was hit at any point during the Tech animation
         position : Position
             X,Y coordinates on the first frame of the Tech Event
-        ground_id : IntEnum
+        ground_id : GroundID
             Player's last_ground_id on the first frame of the Tech Event
         is_on_platform : bool
             True if player is on any ground other than the main stage (includes Randall)
         is_missed_tech : bool
             True if player enters any missed tech animation during the Tech Event
         towards_center : bool
-            True if player tech rolled towards coordinate 0,0
+            True if player tech rolled towards Position(0,0)
         towards_opponent : bool
             True if player initiated a roll that travelled in the direction of the opponent at the time of the input
         jab_reset : bool
@@ -166,63 +175,116 @@ class TechData(Stat):
     """
 
     frame_index: int = -1
+    """The frame the event began on (0-indexed)"""
     stocks_remaining: int | None = None
     tech_type: TechType | None = None
     was_punished: bool = False
+    """True if player was hit at any point during the Tech animation"""
     position: Position = field(default_factory=Position)
-    ground_id: IntEnum | None = None
+    """X,Y coordinates on the first frame of the Tech Event"""
+    ground_id: GroundID | None = None
     is_on_platform: bool = False
     is_missed_tech: bool = False
     towards_center: bool | None = None
+    """True if player tech rolled towards Position(0,0)"""
     towards_opponent: bool | None = None
+    """True if player initiated a roll that travelled in the direction of the opponent at the time of the input"""
     jab_reset: bool | None = None
+    """True if the player entered either of the down_damage action states during the Tech Event"""
     last_hit_by: Attack | None = None
-
+    """IntEnum of the attack that the player was most recently hit by"""
 
 # --------------------------------- Take hit --------------------------------- #
 
 
 @dataclass
 class TakeHitData(Stat):
-    # TODO docstring
-    frame_index: int
-    last_hit_by: Attack | None
-    state_before_hit: IntEnum | None
-    grounded: bool | None
-    crouch_cancel: bool | None
-    hitlag_frames: int | None
-    stick_regions_during_hitlag: list[JoystickRegion]
-    sdi_inputs: list[JoystickRegion]
-    asdi: JoystickRegion | None
-    di_stick_pos: Position | None
-    percent: float | None
-    kb_velocity: Velocity | None
-    kb_angle: float | None
-    final_kb_velocity: Velocity | None
-    final_kb_angle: float | None
-    start_pos: Position | None
-    end_pos: Position | None
-    di_efficacy: float | None
+    """
+    Contains all data for a single Take Hit Event.
 
-    def __init__(self):
-        self.frame_index = -1
-        self.grounded = None
-        self.percent = None
-        self.last_hit_by = None
-        self.state_before_hit = None
-        self.crouch_cancel = None
-        self.hitlag_frames = 0
-        self.stick_regions_during_hitlag = []
-        self.sdi_inputs = []
-        self.asdi = None
-        self.start_pos = None
-        self.end_pos = None
-        self.kb_angle = None
-        self.di_stick_pos = None
-        self.di_efficacy = None
-        self.final_kb_angle = None
-        self.kb_velocity = None
-        self.final_kb_velocity = None
+    Attributes:
+        frame_index : int
+            The frame the event began on (0-indexed)
+        last_hit_by : Attack
+            Likely the attack that caused the take hit event, but there are some exceptions
+        state_before_hit : ActionState
+            Character's state the frame before the Take Hit Event
+        grounded : bool
+            True if the character was grounded upon entering hitlag
+        crouch_cancel : bool
+            True if the character was in action state SQUAT or SQUAT_WAIT the frame before the hit
+        hitlag_frames : int
+            The total number of hitstun frames
+        stick_regions_during_hitlag : list[JoystickRegion]
+            A list of the character's general stick position on each frame of hitlag
+        sdi_inputs : list[JoystickRegion]
+            A list of all valid SDI inputs that occurred during hitlag
+        asdi : JoystickRegion
+            Character's general stick position on the last frame of hitlag, used for ASDI calculation. If the c-stick is
+            region is not DEAD_ZONE, the c-stick position is used. Otherwise, the joystick position is used.
+        di_stick_pos : Position
+            The coordinate position of the joystick on the last frame of hitlag, which is used for DI calculations
+        percent : float
+            The character's percent after the damage from the hit is applied
+        kb_velocity : Velocity
+            X,Y knockback velocity of the character upon entering hitlag, before DI is applied
+        kb_angle : float
+            Angle of knockback, in degrees, before DI is applied
+        final_kb_velocity : Velocity
+            X,Y knockback velocity of the character upon exiting hitlag, after DI is applied
+        final_kb_angle : float
+            Angle of knockback, in degrees, after DI is applied
+        start_pos : Position
+            Character's position upon entering hitlag, before any SDI or ASDI inputs.
+        end_pos : Position
+            Character's position upon exiting hitlag, after any SDI or ASDI inputs.
+        di_efficacy : float
+            Percentage. 0% = No change in KB angle, 100% = Maximum possible change in KB angle.
+
+    Methods:
+        distance() -> float:
+            Returns the math.dist() between start_pos and end_pos
+        change_in_position() -> Position:
+            Returns a Position value representing the change in X and change in Y from start_pos to end_pos
+    """
+    frame_index: int = -1
+    """The frame the event began on (0-indexed)"""
+    stocks_remaining: int | None = None
+    last_hit_by: Attack | None = None
+    """Likely the attack that caused the take hit event, but there are some exceptions"""
+    state_before_hit: ActionState | None = None
+    """Character's state the frame before the Take Hit Event"""
+    grounded: bool | None = None
+    """True if the character was grounded upon entering hitlag"""
+    crouch_cancel: bool | None = None
+    """True if the character was in action state SQUAT or SQUAT_WAIT the frame before the hit"""
+    hitlag_frames: int | None = 0
+    """The total number of hitlag frames"""
+    stick_regions_during_hitlag: list[JoystickRegion] = field(default_factory=list)
+    """A list of the character's general stick position on each frame of hitlag"""
+    sdi_inputs: list[JoystickRegion] = field(default_factory=list)
+    """A list of all valid SDI inputs that occurred during hitlag"""
+    asdi: JoystickRegion | None = None
+    """Character's general stick position on the last frame of hitlag, used for ASDI calculation. If the c-stick is
+        region is not DEAD_ZONE, the c-stick position is used. Otherwise, the joystick position is used."""
+    di_stick_pos: Position | None = None
+    """The coordinate position of the joystick on the last frame of hitlag, which is used for DI calculations"""
+    percent: float | None = None
+    """The character's percent after the damage from the hit is applied"""
+    kb_velocity: Velocity | None = None
+    """X,Y knockback velocity of the character upon entering hitlag, before DI is applied"""
+    kb_angle: float | None = None
+    """Angle of knockback, in degrees, before DI is applied"""
+    final_kb_velocity: Velocity | None = None
+    """X,Y knockback velocity of the character upon exiting hitlag, after DI is applied"""
+    final_kb_angle: float | None = None
+    """Angle of knockback, in degrees, after DI is applied"""
+    start_pos: Position | None = None
+    """Character's position upon entering hitlag, before any SDI or ASDI inputs."""
+    end_pos: Position | None = None
+    """Character's position upon exiting hitlag, after any SDI or ASDI inputs."""
+    di_efficacy: float | None = None
+    """Percentage. 0% = No change in KB angle, 100% = Maximum possible change in KB angle."""
 
     def _find_valid_sdi(self):
         """Populates self.sdi_inputs after all stick regions have been added. Automatically called by StatsComputer."""
@@ -249,7 +311,9 @@ class TakeHitData(Stat):
                 continue
 
             # Diagonal -> cardinal will NOT result in a second SDI input
-            # unless the cardinal borders the opposite quadrant
+            # unless the cardinal is not one of the composite values of the diagonal (i.e. UP_RIGHT -> UP means no SDI
+            # UP_RIGHT -> DOWN or UP_RIGHT -> LEFT will register an SDI input)
+
             if prev_stick_region % 2 == 1:
                 if stick_region % 2 == 1:
                     self.sdi_inputs.append(stick_region)
@@ -266,7 +330,7 @@ class TakeHitData(Stat):
 
         For distance, see .distance()
         """
-        return self.start_pos - self.end_pos
+        return self.end_pos - self.start_pos
 
     def distance(self) -> float:
         """Returns the calculated distance between the start and end position"""
@@ -432,10 +496,14 @@ class Wavedashes(StatList):
         if len(self.data) == 0:
             return pl.DataFrame([], schema=self._schema)
         else:
-            return pl.DataFrame(
-                [self._data_header | vars(stat) for stat in self.data if stat is not None],
-                schema=self._schema,
-            )
+            rows = []
+            for stat in self.data:
+                stat_dict = vars(stat).copy()
+                stat_dict["direction"] = stat.direction.name
+
+                rows.append(self._data_header | stat_dict)
+
+            return pl.DataFrame(rows, schema=self._schema)
 
 
 class Dashes(StatList):
@@ -487,12 +555,16 @@ class Dashes(StatList):
         if len(self.data) == 0:
             return pl.DataFrame([], schema=self._schema)
         else:
-            return pl.DataFrame(
-                [self.data_header | vars(stat) for stat in self.data if stat is not None], schema=self._schema
-            )
+            rows = []
+            for stat in self.data:
+                stat_dict = vars(stat).copy()
+                stat_dict["direction"] = stat.direction.name
 
-    # else:
-    #     return pl.DataFrame([], schema=self.schema)
+                rows.append(self._data_header | stat_dict)
+
+            return pl.DataFrame(rows, schema=self._schema)
+
+
 
 
 class Techs(StatList):
