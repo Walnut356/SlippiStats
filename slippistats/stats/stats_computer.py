@@ -195,12 +195,17 @@ class StatsComputer(ComputerBase):
                 if (
                     Buttons.Physical.R in past_frame.pre.buttons.physical.pressed()
                     or Buttons.Physical.L in past_frame.pre.buttons.physical.pressed()
+                ) and not (
+                    Buttons.Physical.R in player.frames[i - j - 1].pre.buttons.physical.pressed()
+                    or Buttons.Physical.L in player.frames[i - j - 1].pre.buttons.physical.pressed()
                 ):
+                    if past_frame.post.state == ActionState.ESCAPE_AIR and past_frame.post.state_age > 1.00:
+                        continue
                     self._wavedash_state = WavedashData(
                         frame_index=i,
                         stocks_remaining=player_frame.post.stocks_remaining,
                         trigger_frame=0,
-                        stick=player_frame.pre.joystick,
+                        stick=past_frame.pre.joystick,
                         airdodge_frames=j,
                     )
 
@@ -475,7 +480,7 @@ class StatsComputer(ComputerBase):
                     state_before_hit=player.frames[i - 1].post.state,
                     start_pos=player_frame.post.position,
                     percent=player_frame.post.percent,
-                    grounded=not player_frame.post.is_airborne
+                    grounded=not player_frame.post.is_airborne,
                 )
                 if knockback_check:
                     self._take_hit_state.kb_velocity = player_frame.post.knockback_velocity
@@ -601,6 +606,8 @@ class StatsComputer(ComputerBase):
             if move is None:
                 continue
 
+            if abs(trigger_input_frame) > 20:
+                trigger_input_frame = None
             player.stats.l_cancels.append(
                 LCancelData(
                     frame_index=i,
@@ -724,7 +731,7 @@ class StatsComputer(ComputerBase):
     # def track_
 
 
-def _eef(file, connect_code):
+def _eef(file, connect_code) -> tuple[Data | None, Path]:
     try:
         thing = StatsComputer(file).stats_compute(connect_code).stats
     except (IdentifierError, PlayerCountError):
@@ -744,9 +751,6 @@ def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
     Returns:
         NamedTuple[pl.DataFrame]
             Each element corresponds to a dataframe containing all stats for each processed replay.
-
-
-
     """
     thing = []
     for item in Data():
@@ -773,8 +777,9 @@ def get_stats(directory: os.PathLike | str, connect_code: str) -> NamedTuple:
             # dasdf = concurrent.futures.wait(futures, return_when=concurrent.futures.FIRST_EXCEPTION)
 
             # print("okay")
-
-            for future in concurrent.futures.as_completed(futures):
+            # concurrent.futures.wait(futures, timeout=240, return_when="FIRST_EXCEPTION")
+            # pass
+            for future in concurrent.futures.as_completed(futures, timeout=240):
                 if future.exception() is not None:
                     print(future.exception())
                     continue

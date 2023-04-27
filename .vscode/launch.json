@@ -13,7 +13,7 @@
             "justMyCode": true,
             "env": {
                 "PYTHONPATH": "${workspaceRoot}",
-                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "5",
+                "PYDEVD_WARN_SLOW_RESOLVE_TIMEOUT": "20",
             }
         }
     ]

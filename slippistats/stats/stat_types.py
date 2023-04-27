@@ -25,7 +25,7 @@ class Stat(ABC):
 # --------------------------------- Wavedash --------------------------------- #
 
 
-@dataclass(slots=True)
+@dataclass()
 class WavedashData(Stat):
     """Contains all data for a single Wavedash Event.
 
@@ -55,10 +55,10 @@ class WavedashData(Stat):
     stocks_remaining: int | None
     angle: float | None
     """Wavedash angle in degrees below horizontal"""
-    direction:  Direction | None
+    direction: Direction | None
     """Direction of the wavedash, can be LEFT, RIGHT, or DOWN"""
     trigger_frame: int
-    """If the event is not a waveland, the number of frames between the last jumpsquat frame and the trigger press""" # TODO
+    """If the event is not a waveland, the number of frames between the last jumpsquat frame and the trigger press"""  # TODO
     airdodge_frames: int
     """The number of frames the character was in airdodge between the trigger press and landing"""
     waveland: bool
@@ -81,18 +81,32 @@ class WavedashData(Stat):
             if self.angle < 270 and self.angle > 180:
                 self.angle -= 180
                 self.direction = Direction.LEFT
-            if self.angle > 270 and self.angle < 360:
+            elif self.angle > 270 and self.angle < 360:
                 self.angle -= 270
                 self.direction = Direction.RIGHT
-            if self.angle == 180:
+            elif self.angle == 180:
                 self.angle = 0
                 self.direction = Direction.LEFT
-            if self.angle == 0:
+            elif self.angle == 0:
                 self.direction = Direction.RIGHT
-            if self.angle == 270:
+            elif self.angle == 270:
                 self.angle = 90
                 self.direction = Direction.DOWN
-
+            elif self.angle > 0 and self.angle < 90:
+                self.angle *= -1
+                self.direction = Direction.RIGHT
+            elif self.angle > 90 and self.angle < 180:
+                self.angle *= -1
+                self.direction = Direction.LEFT
+            elif self.angle == 90:
+                self.angle *= -1
+                self.direction = Direction.DOWN
+            else:
+                self.angle = None
+                self.direction = None
+                raise ValueError(
+                    f"unexpected wavedash angle. Frame = {frame_index}, Stickpos = {stick}, angle = {degrees(get_angle(stick))}"
+                )
         else:
             self.angle = None
             self.direction = None
@@ -108,7 +122,7 @@ class WavedashData(Stat):
 # ----------------------------------- Dash ----------------------------------- #
 
 
-@dataclass(slots=True)
+@dataclass()
 class DashData(Stat):
     """Contains all data for a single Dash Event.
 
@@ -143,7 +157,7 @@ class DashData(Stat):
 # ----------------------------------- Tech ----------------------------------- #
 
 
-@dataclass(slots=True)
+@dataclass()
 class TechData(Stat):
     """Contains all data for a single Tech Event.
 
@@ -194,10 +208,11 @@ class TechData(Stat):
     last_hit_by: Attack | None = None
     """IntEnum of the attack that the player was most recently hit by"""
 
+
 # --------------------------------- Take hit --------------------------------- #
 
 
-@dataclass(slots=True)
+@dataclass()
 class TakeHitData(Stat):
     """
     Contains all data for a single Take Hit Event.
@@ -247,6 +262,7 @@ class TakeHitData(Stat):
         change_in_position() -> Position:
             Returns a Position value representing the change in X and change in Y from start_pos to end_pos
     """
+
     frame_index: int = -1
     """The frame the event began on (0-indexed)"""
     stocks_remaining: int | None = None
@@ -340,7 +356,7 @@ class TakeHitData(Stat):
 # --------------------------------- L cancel --------------------------------- #
 
 
-@dataclass(slots=True)
+@dataclass()
 class LCancelData(Stat):
     """
     Contains all data for a single L-Cancel Event.
@@ -377,7 +393,7 @@ class LCancelData(Stat):
 # ------------------------------- Shield Drop Data ------------------------------ #
 
 
-@dataclass(slots=True)
+@dataclass()
 class ShieldDropData(Stat):
     frame_index: int
     position: IntEnum | int
@@ -460,8 +476,8 @@ class Wavedashes(StatList):
 
     data: list[WavedashData]
 
-    def __init__(self, _data_header):
-        self._data_header = _data_header
+    def __init__(self, data_header):
+        self._data_header = data_header
         self.data = []
         self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
@@ -521,7 +537,7 @@ class Dashes(StatList):
     data: list[DashData]
 
     def __init__(self, data_header):
-        self.data_header = data_header
+        self._data_header = data_header
         self.data = []
         self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
@@ -565,8 +581,6 @@ class Dashes(StatList):
             return pl.DataFrame(rows, schema=self._schema)
 
 
-
-
 class Techs(StatList):
     """Iterable wrapper, treat as list[TechData].
 
@@ -581,8 +595,8 @@ class Techs(StatList):
 
     data: list[TechData]
 
-    def __init__(self, _data_header):
-        self._data_header = _data_header
+    def __init__(self, data_header):
+        self._data_header = data_header
         self.data = []
         self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
@@ -602,7 +616,6 @@ class Techs(StatList):
             "stocks_remaining": pl.Int64,
             "tech_type": pl.Utf8,
             "was_punished": pl.Boolean,
-            "direction": pl.Boolean,
             "position": pl.List(pl.Float64),
             "ground_id": pl.Int64,
             "is_on_platform": pl.Boolean,
@@ -626,9 +639,19 @@ class Techs(StatList):
             rows = []
 
             for stat in self.data:
+                try:
+                    name = stat.last_hit_by.name
+                except:
+                    name = None
+                try:
+                    ground_id = stat.ground_id.nameS
+                except:
+                    ground_id = None
                 stat_dict = vars(stat).copy()
                 stat_dict["position"] = list(stat.position)
                 stat_dict["tech_type"] = stat.tech_type.name
+                stat_dict["ground_id"] = ground_id
+                stat_dict["last_hit_by"] = name
                 rows.append(self._data_header | stat_dict)
 
             return pl.DataFrame(rows, schema=self._schema)
@@ -739,7 +762,7 @@ class LCancels(StatList):
     def __init__(self, data_header):
         self.percentage = None
         self.data = []
-        self.data_header = data_header
+        self._data_header = data_header
         self._schema = {
             "date_time": pl.Datetime(time_zone=get_localzone_name()),
             "slippi_version": pl.Utf8,
@@ -793,7 +816,7 @@ class LCancels(StatList):
                     stat_dict["position"] = "UNKNOWN"
                 stat_dict["move"] = stat.move.name
 
-                rows.append(self.data_header | stat_dict)
+                rows.append(self._data_header | stat_dict)
 
             return pl.DataFrame(rows, schema=self._schema)
 

@@ -1,30 +1,30 @@
-import os, concurrent.futures, json
+import os
+import concurrent.futures
+import json
 
-from slippi import *
-from slippi.combo import generate_clippi_header
+import slippistats as slp
 
-dolphin_queue = generate_clippi_header()
+dolphin_queue = slp.generate_clippi_header()
 
-def combo_from_file(file, connect_code: str) -> ComboComputer:
+
+def combo_from_file(file, connect_code: str) -> slp.ComboComputer:
     """Accept file path and connect code, process combos, and return"""
-    replay:ComboComputer = ComboComputer()
+    replay: slp.ComboComputer = slp.ComboComputer()
     replay.prime_replay(file)
     replay.combo_compute(connect_code)
     for c in replay.combos:
-        if(
-            c.minimum_length(5) and
-            c.did_kill and
-            c.minimum_damage(60)):
-            
+        if c.minimum_length(5) and c.did_kill and c.minimum_damage(60):
             replay.json_export(c)
-    
+
     return replay.queue
 
 
 def multi_find_combos(dir_path, connect_code: str):
     with os.scandir(dir_path) as thing:
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            futures = {executor.submit(combo_from_file, os.path.join(dir_path, entry.name), connect_code) for entry in thing}
+            futures = {
+                executor.submit(combo_from_file, os.path.join(dir_path, entry.name), connect_code) for entry in thing
+            }
 
             for future in concurrent.futures.as_completed(futures):
                 for result in future.result():
@@ -37,13 +37,12 @@ def multi_find_combos(dir_path, connect_code: str):
     print("Done")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # replay_dir = Path(input("Please enter the path to your directory of your replay files: "))
     # code_input = input("Please enter your connect code (TEST#123): ")
 
     replay_dir = r"E:\Slippi Replays\beep"
     code_input = "NUT#356"
-
 
     print("Processing...")
     with os.scandir(replay_dir) as thing:
@@ -58,7 +57,4 @@ if __name__ == '__main__':
 
     print("Done")
 
-
     # multi_find_combos(replay_dir, code_input)
-
-

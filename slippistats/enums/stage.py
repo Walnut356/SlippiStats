@@ -81,7 +81,7 @@ class PokemonStadium(GroundID):
 class FountainOfDreams(GroundID):
     LEFT_PLATFORM = 0
     RIGHT_PLATFORM = 1
-    TOP_PLATFOMR = 2
+    TOP_PLATFORM = 2
     LEFT_EDGE_OUTTER = 3
     LEFT_EDGE_INNER = 4
     MAIN_STAGE = 5
