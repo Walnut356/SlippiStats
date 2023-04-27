@@ -606,7 +606,7 @@ class StatsComputer(ComputerBase):
             if move is None:
                 continue
 
-            if abs(trigger_input_frame) > 20:
+            if trigger_input_frame and abs(trigger_input_frame) > 20:
                 trigger_input_frame = None
             player.stats.l_cancels.append(
                 LCancelData(
