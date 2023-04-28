@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "py-slippi-stats"
+name = "slippistats"
 authors = [
     {name = "Walnut356", email = "walnut356@gmail.com"}
 ]
