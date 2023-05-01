@@ -19,6 +19,7 @@ from ..event import Attack, Buttons
 from ..game import Game
 from ..util import Port, try_enum
 from .common import (
+    THROW_STATE_TO_ATTACK,
     JoystickRegion,
     TechType,
     get_angle,
@@ -406,8 +407,20 @@ class StatsComputer(ComputerBase):
         for i, player_frame in enumerate(player.frames):
             if i == 0:
                 continue
+            if i == 3073:
+                pass
             prev_player_frame = player.frames[i - 1]
             opponent_frame = opponent.frames[i]
+
+            # This is for the throw check, as we want the state before the grab rather than the state before the throw
+            # deals damage.
+            if (
+                (player_frame.post.state == ActionState.CAPTURE_PULLED_HI or
+                 player_frame.post.state == ActionState.CAPTURE_PULLED_LW) and
+                not (prev_player_frame.post.state == ActionState.CAPTURE_PULLED_HI or
+                 prev_player_frame.post.state == ActionState.CAPTURE_PULLED_LW)
+            ):
+                pre_grab_state = prev_player_frame.post.state
 
             # right now i don't care about shield SDI/ASDI but i may change this down the line
             # it requires slightly different logic
@@ -418,7 +431,32 @@ class StatsComputer(ComputerBase):
 
             # this whole block basically calculates DI and KB trajectories and outputs the event
             if not in_hitlag:
-                if was_in_hitlag and self._take_hit_state is not None:
+
+                # Not every throw puts the player in hitlag, so we need a bespoke check to catch them.
+                # TODO check how KB and DI velocities look just before/during/after the grabbed -> thrown transition
+                if (
+                    is_damaged(player_frame.post.state)
+                    and just_took_damage(player_frame.post.percent, player_frame.pre.percent)
+                    and (ActionRange.THROWN_START <= prev_player_frame.post.state <= ActionRange.THROWN_END)
+                ):
+                    self._take_hit_state = TakeHitData(
+                        frame_index=i,
+                        stocks_remaining=player_frame.post.stocks_remaining,
+                        last_hit_by=try_enum(Attack, opponent_frame.post.most_recent_hit),
+                        state_before_hit=pre_grab_state,
+                        start_pos=player_frame.post.position,
+                        percent=player_frame.post.percent,
+                        grounded=not player_frame.post.is_airborne,
+                    )
+                    if knockback_check:
+                        self._take_hit_state.kb_velocity = player_frame.post.knockback_velocity
+                        self._take_hit_state.kb_angle = degrees(get_angle(player_frame.post.knockback_velocity))
+                    else:
+                        self._take_hit_state.kb_velocity = None
+                        self._take_hit_state.kb_angle = None
+
+                    self._take_hit_state.crouch_cancel = False
+                if self._take_hit_state is not None:
                     self._take_hit_state.end_pos = prev_player_frame.post.position
 
                     effective_stick = player_frame.pre.joystick
@@ -431,7 +469,6 @@ class StatsComputer(ComputerBase):
                             effective_stick.y = 0
                         case JoystickRegion.RIGHT:
                             effective_stick.y = 0
-
                         case JoystickRegion.DEAD_ZONE:
                             effective_stick.x = 0
                             effective_stick.y = 0
@@ -472,7 +509,10 @@ class StatsComputer(ComputerBase):
                     self._take_hit_state = None
                 continue
 
-            if not was_in_hitlag and just_took_damage(player_frame.post.percent, prev_player_frame.post.percent):
+            if (not was_in_hitlag) and just_took_damage(player_frame.post.percent, player_frame.pre.percent):
+                if try_enum(Attack, opponent_frame.post.most_recent_hit) == 0:
+                    pass
+
                 self._take_hit_state = TakeHitData(
                     frame_index=i,
                     stocks_remaining=player_frame.post.stocks_remaining,
