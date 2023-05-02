@@ -125,11 +125,9 @@ class ComboComputer(ComputerBase):
         self.queue = []
 
     def to_json(self, combo: ComboData):
+        self.queue.append({})
         self.queue[-1]["path"] = self.replay_path
-        self.queue[-1]["gameStartAt"] = getattr(
-            getattr(self, "metadata"),
-            "date",
-        ).strftime("%m/%d/%y %I:%M %p")
+        self.queue[-1]["gameStartAt"] = self.replay.metadata.date.strftime("%m/%d/%y %I:%M %p")
         self.queue[-1]["startFrame"] = combo.start_frame - PRE_COMBO_BUFFER_FRAMES
         self.queue[-1]["endFrame"] = combo.end_frame + POST_COMBO_BUFFER_FRAMES
         return self.queue
@@ -301,7 +299,6 @@ class ComboComputer(ComputerBase):
             if should_terminate:
                 self.combo_state.combo.end_frame = i - 123
                 self.combo_state.combo.end_percent = prev_opponent_frame.post.percent
-
                 self.combo_state.combo = None
                 self.combo_state.move = None
 

@@ -11,11 +11,11 @@ def combo_from_file(file, connect_code: str) -> slp.ComboComputer:
     """Accept file path and connect code, process combos, and return"""
     replay: slp.ComboComputer = slp.ComboComputer()
     replay.prime_replay(file)
-    replay.combo_compute(connect_code)
+    combos = replay.combo_compute(connect_code)
 
-    for c in replay.combos:
+    for c in combos:
         if c.minimum_length(5) and c.did_kill and c.minimum_damage(60):
-            replay.json_export(c)
+            replay.to_json(c)
 
     return replay.queue
 
