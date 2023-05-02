@@ -77,7 +77,7 @@ def _parse_event_payloads(stream):
 
 
 # This essentially acts as a jump table in _parse_event,
-# saves a lot of processing on a potentially very hot match statement and enum call
+# saves a lot of processing (~15% over py-slippi) on a very hot match statement and enum call
 # If python was compiled, this would probably be unnecessary.
 EVENT_PARSE_DISPATCH = {
     EventType.GAME_START: lambda stream: Start._parse(stream),
@@ -284,6 +284,7 @@ def _game_end(
     return current_frame
 
 
+# _parse_events jump table
 BUILD_GAME_DISPATCH = {
     EventType.GAME_START: _game_start,
     EventType.FRAME_START: _start_frame,

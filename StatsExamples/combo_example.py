@@ -4,7 +4,7 @@ import json
 
 import slippistats as slp
 
-dolphin_queue = slp.generate_clippi_header()
+dolphin_queue = slp.get_playback_header()
 
 
 def combo_from_file(file, connect_code: str) -> slp.ComboComputer:
@@ -12,6 +12,7 @@ def combo_from_file(file, connect_code: str) -> slp.ComboComputer:
     replay: slp.ComboComputer = slp.ComboComputer()
     replay.prime_replay(file)
     replay.combo_compute(connect_code)
+
     for c in replay.combos:
         if c.minimum_length(5) and c.did_kill and c.minimum_damage(60):
             replay.json_export(c)
@@ -41,13 +42,16 @@ if __name__ == "__main__":
     # replay_dir = Path(input("Please enter the path to your directory of your replay files: "))
     # code_input = input("Please enter your connect code (TEST#123): ")
 
-    replay_dir = r"E:\Slippi Replays\beep"
+    replay_dir = r"E:\Slippi Replays\temp"
     code_input = "NUT#356"
 
     print("Processing...")
     with os.scandir(replay_dir) as thing:
         for entry in thing:
-            combos = combo_from_file(os.path.join(replay_dir, entry.name), code_input)
+            try:
+                combos = combo_from_file(os.path.join(replay_dir, entry.name), code_input)
+            except (slp.IdentifierError, slp.PlayerCountError):
+                continue
             for c in combos:
                 dolphin_queue["queue"].append(c)
             print(f"{entry.name} processed")

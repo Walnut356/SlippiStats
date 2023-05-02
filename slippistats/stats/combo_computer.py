@@ -127,7 +127,8 @@ class ComboComputer(ComputerBase):
     def to_json(self, combo: ComboData):
         self.queue[-1]["path"] = self.replay_path
         self.queue[-1]["gameStartAt"] = getattr(
-            getattr(self, "metadata"), "date"
+            getattr(self, "metadata"),
+            "date",
         ).strftime("%m/%d/%y %I:%M %p")
         self.queue[-1]["startFrame"] = combo.start_frame - PRE_COMBO_BUFFER_FRAMES
         self.queue[-1]["endFrame"] = combo.end_frame + POST_COMBO_BUFFER_FRAMES
@@ -152,9 +153,7 @@ class ComboComputer(ComputerBase):
         Output is also accessible as a list through ComboComputer.combos"""
 
         if connect_code is None and player is None:
-            raise ValueError(
-                "Combo compute functions require either a connect_code or player and opponent argument"
-            )
+            raise ValueError("Combo compute functions require either a connect_code or player and opponent argument")
 
         if connect_code is not None:
             player = self.get_player(connect_code)
@@ -170,12 +169,10 @@ class ComboComputer(ComputerBase):
 
             opnt_is_damaged = is_damaged(opnt_action_state)
             # Bitflags are used because the hitstun frame count is used for a bunch of other things as well
-            opnt_is_in_hitstun = (
-                is_in_hitstun(opponent_frame.post.flags) and hitstun_check
-            )
+            opnt_is_in_hitstun = is_in_hitstun(opponent_frame.post.flags) and hitstun_check
             opnt_is_grabbed = is_grabbed(opnt_action_state)
             opnt_is_cmd_grabbed = is_cmd_grabbed(opnt_action_state)
-            opnt_damage_taken = calc_damage_taken(opponent_frame, prev_opponent_frame)
+            opnt_damage_taken = calc_damage_taken(opponent_frame.post, prev_opponent_frame.post)
 
             # "Keep track of whether actionState changes after a hit. Used to compute move count
             # When purely using action state there was a bug where if you did two of the same
@@ -183,9 +180,7 @@ class ComboComputer(ComputerBase):
             # the actionStateCounter at this point which counts the number of frames since
             # an animation started. Should be more robust, for old files it should always be
             # null and null < null = false" - official parser
-            action_changed_since_hit = not (
-                player_state == self.combo_state.last_hit_animation
-            )
+            action_changed_since_hit = not (player_state == self.combo_state.last_hit_animation)
             action_frame_counter = player_frame.post.state_age
             prev_action_counter = prev_player_frame.post.state_age
             action_state_reset = action_frame_counter < prev_action_counter
@@ -195,12 +190,7 @@ class ComboComputer(ComputerBase):
             # I throw in the extra hitstun check to make it extra robust in case we're forgetting some animation.
             # Don't include hitlag check unless you want shield hits to start combo events.
             # There might be false positives on self damage like fully charged roy neutral b
-            if (
-                opnt_is_damaged
-                or opnt_is_grabbed
-                or opnt_is_cmd_grabbed
-                or opnt_is_in_hitstun
-            ):
+            if opnt_is_damaged or opnt_is_grabbed or opnt_is_cmd_grabbed or opnt_is_in_hitstun:
                 # if the opponent has been hit and there's no "active" combo, start a new combo
                 if self.combo_state.combo is None:
                     self.combo_state.combo = ComboData(
@@ -241,38 +231,29 @@ class ComboComputer(ComputerBase):
             opnt_is_teching = is_teching(opnt_action_state) and tech_check
             opnt_is_downed = is_downed(opnt_action_state) and downed_check
             opnt_is_dying = is_dying(opnt_action_state)
-            opnt_is_offstage = (
-                is_offstage(opponent_frame.post.position, self.replay.start.stage)
-                and offstage_check
-            )
+            opnt_is_offstage = is_offstage(opponent_frame.post.position, self.replay.start.stage) and offstage_check
             opnt_is_dodging = (
                 is_dodging(opnt_action_state)
                 and dodge_check
-                and not is_wavedashing(
-                    opnt_action_state, opponent.port, i, opponent.frames
-                )
+                and not is_wavedashing(opnt_action_state, i, opponent.frames)
             )
             opnt_is_shielding = is_shielding(opnt_action_state) and shield_check
-            opnt_is_shield_broken = (
-                is_shield_broken(opnt_action_state) and shield_break_check
-            )
-            opnt_did_lose_stock = did_lose_stock(opponent_frame, prev_opponent_frame)
+            opnt_is_shield_broken = is_shield_broken(opnt_action_state) and shield_break_check
+            opnt_did_lose_stock = did_lose_stock(opponent_frame.post, prev_opponent_frame.post)
             opnt_is_ledge_action = is_ledge_action(opnt_action_state) and ledge_check
             opnt_is_maybe_juggled = is_maybe_juggled(
                 opponent_frame.post.position,
-                getattr(opponent_frame, "is_airborne"),
+                getattr(opponent_frame.post, "is_airborne"),
                 self.replay.start.stage,
             )  # TODO and juggled check
             opnt_is_special_fall = is_special_fall(opnt_action_state)
-            opnt_is_upb_lag = is_upb_lag(
-                opnt_action_state, prev_opponent_frame.post.state
-            )
+            opnt_is_upb_lag = is_upb_lag(opnt_action_state, prev_opponent_frame.post.state)
             # opnt_is_recovery_lag = is_recovery_lag(opponent_frame.character, opnt_action_state)
 
             if not opnt_did_lose_stock:
                 self.combo_state.combo.current_percent = opponent_frame.post.percent
 
-            player_did_lose_stock = did_lose_stock(player_frame, prev_player_frame)
+            player_did_lose_stock = did_lose_stock(player_frame.post, prev_player_frame.post)
 
             # reset the combo timeout timer to 0 if the opponent meets the following conditions
             # list expanded from official parser to allow for higher combo variety
@@ -304,9 +285,7 @@ class ComboComputer(ComputerBase):
 
             # All combo termination checks below
             if opnt_is_dying:
-                self.combo_state.combo.death_direction = get_death_direction(
-                    opnt_action_state
-                )
+                self.combo_state.combo.death_direction = get_death_direction(opnt_action_state)
 
             if opnt_did_lose_stock:
                 self.combo_state.combo.did_kill = True
