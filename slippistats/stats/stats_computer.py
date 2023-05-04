@@ -28,6 +28,7 @@ from .common import (
     get_post_di_velocity,
     get_tech_type,
     is_damaged,
+    is_downed,
     is_dying,
     is_fastfalling,
     is_in_hitlag,
@@ -415,10 +416,11 @@ class StatsComputer(ComputerBase):
             # This is for the throw check, as we want the state before the grab rather than the state before the throw
             # deals damage.
             if (
-                (player_frame.post.state == ActionState.CAPTURE_PULLED_HI or
-                 player_frame.post.state == ActionState.CAPTURE_PULLED_LW) and
-                not (prev_player_frame.post.state == ActionState.CAPTURE_PULLED_HI or
-                 prev_player_frame.post.state == ActionState.CAPTURE_PULLED_LW)
+                player_frame.post.state == ActionState.CAPTURE_PULLED_HI
+                or player_frame.post.state == ActionState.CAPTURE_PULLED_LW
+            ) and not (
+                prev_player_frame.post.state == ActionState.CAPTURE_PULLED_HI
+                or prev_player_frame.post.state == ActionState.CAPTURE_PULLED_LW
             ):
                 pre_grab_state = prev_player_frame.post.state
 
@@ -431,11 +433,15 @@ class StatsComputer(ComputerBase):
 
             # this whole block basically calculates DI and KB trajectories and outputs the event
             if not in_hitlag:
-
                 # Not every throw puts the player in hitlag, so we need a bespoke check to catch them.
                 # TODO check how KB and DI velocities look just before/during/after the grabbed -> thrown transition
                 if (
-                    is_damaged(player_frame.post.state)
+                    (  # the downed and teching checks are necessary for things like fox's dthrow where the opponent goes
+                        # straight from capture throw -> downed/tech state
+                        is_damaged(player_frame.post.state)
+                        or is_downed(player_frame.post.state)
+                        or is_teching(player_frame.post.state)
+                    )
                     and just_took_damage(player_frame.post.percent, player_frame.pre.percent)
                     and (ActionRange.THROWN_START <= prev_player_frame.post.state <= ActionRange.THROWN_END)
                 ):
