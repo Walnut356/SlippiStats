@@ -400,6 +400,15 @@ class TestGame(unittest.TestCase):
                 }
             )
 
+    def test_throw_detection(self):
+        throws = StatsComputer(self._game(R"fox_throws")).stats_compute()[1].stats.take_hits.to_polars()
+        throws = throws.select(pl.col("character"), pl.col("opnt_character"), pl.col("frame_index"), pl.col("last_hit_by"))
+        assert(throws.frame_equal(pl.read_parquet(R"test/data/fox_throws.parquet")))
+        throws = StatsComputer(self._game(R"falcon_throws")).stats_compute()[1].stats.take_hits.to_polars()
+        throws = throws.select(pl.col("character"), pl.col("opnt_character"), pl.col("frame_index"), pl.col("last_hit_by"))
+        assert(throws.frame_equal(pl.read_parquet(R"test/data/falcon_throws.parquet")))
+
+
     # def test_wavedash_data(self):
     #     wavedashes = StatsComputer(self._game("wavedash"))
     #     wavedashes = wavedashes.wavedash_compute(player=wavedashes.players[0]).to_polars()
