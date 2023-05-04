@@ -20,6 +20,7 @@ from ..enums.state import (
     Field2,
     Field4,
 )
+from ..enums.attack import Attack
 from ..event import Frame, Position, Velocity
 from ..util import IntEnum
 
@@ -29,7 +30,7 @@ from ..util import IntEnum
 
 
 def just_entered_state(
-    action_state: int | Callable,
+    action_state: int | Callable[[int], bool],
     curr_state: ActionState | int,
     prev_state: ActionState | int,
 ) -> bool:
@@ -78,6 +79,7 @@ def is_damaged(action_state: int) -> bool:
     This includes all generic variants."""
     return (
         (ActionRange.DAMAGE_START <= action_state <= ActionRange.DAMAGE_END)
+        # TODO probably include DAMAGE_FALL as well?
         or action_state == ActionState.DOWN_DAMAGE_U
         or action_state == ActionState.DOWN_DAMAGE_D
     )  # Jab reset states, prevents combo counter from ignoring them if not checking hitstun
@@ -487,6 +489,12 @@ def calc_damage_taken(curr_frame: Frame.Port.Data.Post, prev_frame: Frame.Port.D
 
     return percent - prev_percent
 
+THROW_STATE_TO_ATTACK = {
+    ActionState.THROW_F : Attack.FORWARD_THROW,
+    ActionState.THROW_B : Attack.BACK_THROW,
+    ActionState.THROW_HI : Attack.UP_THROW,
+    ActionState.THROW_LW : Attack.DOWN_THROW,
+}
 
 # ---------------------------------------------------------------------------- #
 #                                Output Helpers                                #

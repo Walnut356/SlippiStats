@@ -222,6 +222,8 @@ class ActionRange(IntEnum):
     AERIAL_LAND_LAG_END = 74
     ACTIONABLE_AIR_START = 25
     ACTIONABLE_AIR_END = 34
+    THROWN_START = 239
+    THROWN_END = 243
 
     # Command Grabs
     COMMAND_GRAB_RANGE1_START = 266
