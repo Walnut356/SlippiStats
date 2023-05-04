@@ -7,7 +7,7 @@ name = "slippistats"
 authors = [
     {name = "Walnut356", email = "walnut356@gmail.com"}
 ]
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
     "py-ubjson~=0.16",
     "tzlocal~=4.3",
