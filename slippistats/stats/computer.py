@@ -6,7 +6,7 @@ from os import PathLike
 from ..enums.character import CSSCharacter
 from ..event import Frame, Start
 from ..game import Game
-from ..util import Base, Port
+from ..util import Base, IntEnum, Port
 from .stat_types import Data
 
 
@@ -33,24 +33,47 @@ class Player(Base):
     """Aggregates info from event.Start.Player and metadata.Player. Also contains all frames for the player's port.
 
     Stats and Combo output is stored here.
+
+    Attributes:
+        character : CSSCharacter
+            The character this player chose on the character select screen
+        post : Port
+            The physical port of the player P1-P4
+        connect_code : str
+            The slippi connect code of the player in the form "CODE#123" (if applicable)
+        display_name : str
+            The slippi display name of the player, max of 15 characters
+        costume : IntEnum
+            Enumerated value of the player's chosen character costume
+        did_win : bool
+            True if the player won
+        frames : tuple[Frame.Port.Data]
+            Tuple containing all of this player's frame events for convenience
+        stats : Data
+            Iterable container of stats calculated through StatsComputer object
+        combos : list[ComboData]
+            Iterable container of combos calculated through ComboComputer object
+        nana_frames : tuple[Frame.Port.Data] | None
+            Tuple containing all of nana's frames for convenience if applicable. Contains none if character is not IC's
+
     """
 
     character: CSSCharacter
     port: Port
     connect_code: str | None
     display_name: str | None
-    costume: int
+    costume: IntEnum
     did_win: bool | None
     frames: tuple[Frame.Port.Data]
     stats: Data
     combos: list
-    nana_frames: tuple[Frame.Port.Data] | None = None
+    nana_frames: tuple[Frame.Port.Data | None] | None = None
 
     def __init__(
         self,
         characters: tuple[CSSCharacter],
         port: Port,
-        costume: int,
+        costume: IntEnum,
         frames: tuple[Frame.Port.Data],
         stats_header: dict,
         nana_frames: tuple[Frame.Port.Data] | None = None,
@@ -174,7 +197,6 @@ class ComputerBase:
                         did_win = False
             else:
                 did_win = False
-
 
             temp.append(
                 Player(

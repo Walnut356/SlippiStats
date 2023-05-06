@@ -1,7 +1,7 @@
 from enum import IntFlag
 from functools import lru_cache
 from .character import InGameCharacter
-from ..util import IntEnum
+from ..util import IntEnum, try_enum
 
 # Use reference: https://docs.google.com/spreadsheets/d/1JX2w-r2fuvWuNgGb6D3Cs4wHQKLFegZe2jhbBuIhCG8/edit#gid=13
 
@@ -815,37 +815,6 @@ class ActionState(IntEnum):
 #                           Character Specific State                           #
 # ---------------------------------------------------------------------------- #
 
-CHARACTER_STATE_DICT = {
-    InGameCharacter.BOWSER: lambda x: Bowser(x),
-    InGameCharacter.CAPTAIN_FALCON: lambda x: CaptainFalcon(x),
-    InGameCharacter.DONKEY_KONG: lambda x: DonkeyKong(x),
-    InGameCharacter.DR_MARIO: lambda x: DrMario(x),
-    InGameCharacter.FALCO: lambda x: Falco(x),
-    InGameCharacter.FOX: lambda x: Fox(x),
-    InGameCharacter.GAME_AND_WATCH: lambda x: GameAndWatch(x),
-    InGameCharacter.GANONDORF: lambda x: Ganondorf(x),
-    InGameCharacter.JIGGLYPUFF: lambda x: Jigglypuff(x),
-    InGameCharacter.KIRBY: lambda x: Kirby(x),
-    InGameCharacter.LINK: lambda x: Link(x),
-    InGameCharacter.LUIGI: lambda x: Luigi(x),
-    InGameCharacter.MARIO: lambda x: Mario(x),
-    InGameCharacter.MARTH: lambda x: Marth(x),
-    InGameCharacter.MEWTWO: lambda x: Mewtwo(x),
-    InGameCharacter.NANA: lambda x: Nana(x),
-    InGameCharacter.NESS: lambda x: Ness(x),
-    InGameCharacter.PEACH: lambda x: Peach(x),
-    InGameCharacter.PICHU: lambda x: Pichu(x),
-    InGameCharacter.PIKACHU: lambda x: Pikachu(x),
-    InGameCharacter.POPO: lambda x: Popo(x),
-    InGameCharacter.ROY: lambda x: Roy(x),
-    InGameCharacter.SAMUS: lambda x: Samus(x),
-    InGameCharacter.SHEIK: lambda x: Sheik(x),
-    InGameCharacter.YOSHI: lambda x: Yoshi(x),
-    InGameCharacter.YOUNG_LINK: lambda x: YoungLink(x),
-    InGameCharacter.ZELDA: lambda x: Zelda(x),
-    None: lambda x: x,
-}
-
 
 @lru_cache
 def get_character_state(state: int, character: InGameCharacter | int | None = None) -> ActionState:
@@ -859,7 +828,7 @@ def get_character_state(state: int, character: InGameCharacter | int | None = No
         raise ValueError()
     if state < 341:
         return ActionState(state)
-    return CHARACTER_STATE_DICT[character](state)
+    return try_enum(CHARACTER_STATE_DICT[character], state)
 
 
 class Bowser(IntEnum):
@@ -1735,3 +1704,35 @@ class Zelda(IntEnum):
     TRANSFORM_GROUND_ENDING = 356
     TRANSFORM_AIR = 357
     TRANSFORM_AIR_ENDING = 358
+
+
+CHARACTER_STATE_DICT = {
+    InGameCharacter.BOWSER: Bowser,
+    InGameCharacter.CAPTAIN_FALCON: CaptainFalcon,
+    InGameCharacter.DONKEY_KONG: DonkeyKong,
+    InGameCharacter.DR_MARIO: DrMario,
+    InGameCharacter.FALCO: Falco,
+    InGameCharacter.FOX: Fox,
+    InGameCharacter.GAME_AND_WATCH: GameAndWatch,
+    InGameCharacter.GANONDORF: Ganondorf,
+    InGameCharacter.JIGGLYPUFF: Jigglypuff,
+    InGameCharacter.KIRBY: Kirby,
+    InGameCharacter.LINK: Link,
+    InGameCharacter.LUIGI: Luigi,
+    InGameCharacter.MARIO: Mario,
+    InGameCharacter.MARTH: Marth,
+    InGameCharacter.MEWTWO: Mewtwo,
+    InGameCharacter.NANA: Nana,
+    InGameCharacter.NESS: Ness,
+    InGameCharacter.PEACH: Peach,
+    InGameCharacter.PICHU: Pichu,
+    InGameCharacter.PIKACHU: Pikachu,
+    InGameCharacter.POPO: Popo,
+    InGameCharacter.ROY: Roy,
+    InGameCharacter.SAMUS: Samus,
+    InGameCharacter.SHEIK: Sheik,
+    InGameCharacter.YOSHI: Yoshi,
+    InGameCharacter.YOUNG_LINK: YoungLink,
+    InGameCharacter.ZELDA: Zelda,
+    None: ActionState,
+}

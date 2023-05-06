@@ -48,6 +48,7 @@ class Yoshis(GroundID):
     TOP_PLATFORM = 4
     RIGHT_PLATFORM = 5
     RIGHT_SLANT = 6
+    #TODO do the weird lips on the walls have ground IDs?
 
 
 class Battlefield(GroundID):
@@ -96,7 +97,7 @@ class FinalDestination(GroundID):
 
 
 @lru_cache(maxsize=16)
-def get_ground(stage: Stage, ground_id: int) -> IntEnum | None:
+def get_ground(stage: Stage, ground_id: int) -> GroundID | int | None:
     if stage is None or ground_id is None:
         return ground_id
 
