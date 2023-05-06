@@ -3,13 +3,13 @@ import os
 from pathlib import Path
 from typing import NamedTuple
 import warnings
-from collections import deque
+
 from itertools import permutations
 from math import degrees
 
 import polars as pl
 
-from ..enums.stage import Yoshis, get_ground
+from ..enums.stage import get_ground
 from ..enums.state import (
     ActionRange,
     ActionState,
@@ -19,7 +19,6 @@ from ..event import Attack, Buttons
 from ..game import Game
 from ..util import Port, try_enum
 from .common import (
-    THROW_STATE_TO_ATTACK,
     JoystickRegion,
     TechType,
     get_angle,
@@ -29,12 +28,8 @@ from .common import (
     get_tech_type,
     is_damaged,
     is_downed,
-    is_dying,
     is_fastfalling,
     is_in_hitlag,
-    is_in_hitstun,
-    is_ledge_action,
-    is_offstage,
     is_shielding,
     is_teching,
     just_entered_state,
@@ -137,7 +132,8 @@ class StatsComputer(ComputerBase):
 
         Returns:
             Player | tuple[Player]
-                Returns the Player object matching the identifier argument. If no identifier is given, returns a tuple containing both player objects.
+                Returns the Player object matching the identifier argument. If no identifier is given,
+                returns a tuple containing both player objects.
 
                 Stats can be accessed through Player.stats
         """
@@ -436,8 +432,8 @@ class StatsComputer(ComputerBase):
                 # Not every throw puts the player in hitlag, so we need a bespoke check to catch them.
                 # TODO check how KB and DI velocities look just before/during/after the grabbed -> thrown transition
                 if (
-                    (  # the downed and teching checks are necessary for things like fox's dthrow where the opponent goes
-                        # straight from capture throw -> downed/tech state
+                    (  # the downed and teching checks are necessary for things like fox's dthrow where
+                        # the opponent goes straight from capture throw -> downed/tech state
                         is_damaged(player_frame.post.state)
                         or is_downed(player_frame.post.state)
                         or is_teching(player_frame.post.state)

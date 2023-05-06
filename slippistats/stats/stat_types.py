@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import UserList
 from dataclasses import dataclass, field
-from datetime import tzinfo
 from math import degrees, dist
 from pathlib import Path
 
@@ -58,7 +57,8 @@ class WavedashData(Stat):
     direction: Direction | None
     """Direction of the wavedash, can be LEFT, RIGHT, or DOWN"""
     trigger_frame: int
-    """If the event is not a waveland, the number of frames between the last jumpsquat frame and the trigger press"""  # TODO
+    """If the event is not a waveland, the number of frames between the last jumpsquat frame and the trigger press"""
+    # TODO
     airdodge_frames: int
     """The number of frames the character was in airdodge between the trigger press and landing"""
     waveland: bool
@@ -105,7 +105,8 @@ class WavedashData(Stat):
                 self.angle = None
                 self.direction = None
                 raise ValueError(
-                    f"unexpected wavedash angle. Frame = {frame_index}, Stickpos = {stick}, angle = {degrees(get_angle(stick))}"
+                    f"""unexpected wavedash angle. Frame = {frame_index},
+                    Stickpos = {stick}, angle = {degrees(get_angle(stick))}"""
                 )
         else:
             self.angle = None
@@ -373,7 +374,8 @@ class LCancelData(Stat):
         position : GroundID
             IntEnum representing which platform/ground the player landed on
         trigger_input_frame : int
-            Relative timing of the L/R/Z press. Negative values occur before landing, positive values occur after landing
+            Relative timing of the L/R/Z press. Negative values occur before landing, positive values occur after
+            landing
         during_hitlag : bool
             True if the l-cancel input occurred during hitlag (thus extending the timing window)
         fastfall : bool
