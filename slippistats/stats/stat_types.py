@@ -641,11 +641,11 @@ class Techs(StatList):
             for stat in self.data:
                 try:
                     name = stat.last_hit_by.name
-                except:
+                except AttributeError:
                     name = None
                 try:
-                    ground_id = stat.ground_id.nameS
-                except:
+                    ground_id = stat.ground_id.name
+                except AttributeError:
                     ground_id = None
                 stat_dict = vars(stat).copy()
                 stat_dict["position"] = list(stat.position)
