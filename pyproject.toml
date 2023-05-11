@@ -22,3 +22,6 @@ license = {file = "LICENSE.txt"}
 description = "Stats library for SSBM replay files"
 readme = "README.md"
 requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+namespaces = false
