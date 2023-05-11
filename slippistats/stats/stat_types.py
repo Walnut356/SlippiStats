@@ -410,7 +410,9 @@ class ShieldDropData(Stat):
 #     frame_index: int
 
 
-# --------------------------------- Wrappers --------------------------------- #
+# ---------------------------------------------------------------------------- #
+#                                   Wrappers                                   #
+# ---------------------------------------------------------------------------- #
 
 # TODO ABC, protocol, mixin? for append, to_polars, etc.
 
@@ -445,6 +447,10 @@ class StatList(ABC, UserList):
             return pl.DataFrame(
                 [self._data_header | vars(stat) for stat in self.data if stat is not None], schema=self._schema
             )
+
+    # if it's stupid and it works, it's not stupid
+    def to_pandas(self):
+        self.to_polars().to_pandas()
 
     def write_excel(self, target: str | Path, utc_time: bool = False) -> None:
         """Writes excel file with target path.
