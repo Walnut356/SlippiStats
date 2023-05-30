@@ -614,7 +614,7 @@ class Frame(Base):
                 self._pre = None
                 self._post = None
 
-            # Makes pre/post frame write-only, also allows for lazy access. Pre and post frame are not parsed until
+            # Makes pre- / post-frame write-only, also allows for lazy access. Pre- and post-frame are not parsed until
             # requested, which saves about half of the total parsing time
             @property
             def pre(self) -> Frame.Port.Data.Pre | None:
@@ -797,7 +797,7 @@ class Frame(Base):
                         direction when using the Warp Star item
                     percent : float
                         The player's current percent (Min 0.0, Max ~999)
-                    shield_size : float
+                    shield_health : float
                         The remaining health of the player's shield (Max 60.0)
                     stocks_remaining : int
                         The number of stocks remaining. Will be 0 for 1 frame if player loses all stocks in 1v1

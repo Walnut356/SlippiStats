@@ -11,10 +11,13 @@ def combo_from_file(file, connect_code: str) -> slp.ComboComputer:
     """Accept file path and connect code, process combos, and return"""
     replay: slp.ComboComputer = slp.ComboComputer()
     replay.prime_replay(file)
-    combos = replay.combo_compute(connect_code)
+    try:
+        combos = replay.combo_compute(connect_code)
+    except (slp.IdentifierError, slp.PlayerCountError):
+        return []
 
     for c in combos:
-        if c.minimum_length(5) and c.did_kill and c.minimum_damage(60):
+        if c.minimum_length(6) and (not c.did_kill) and c.minimum_damage(60):
             replay.to_json(c)
 
     return replay.queue
@@ -24,7 +27,7 @@ def multi_find_combos(dir_path, connect_code: str):
     with os.scandir(dir_path) as thing:
         with concurrent.futures.ProcessPoolExecutor() as executor:
             futures = {
-                executor.submit(combo_from_file, os.path.join(dir_path, entry.name), connect_code) for entry in thing
+                executor.submit(combo_from_file, os.path.join(dir_path, entry.name), connect_code) for entry in thing if ".slp" in entry.name
             }
 
             for future in concurrent.futures.as_completed(futures):
@@ -42,23 +45,23 @@ if __name__ == "__main__":
     # replay_dir = Path(input("Please enter the path to your directory of your replay files: "))
     # code_input = input("Please enter your connect code (TEST#123): ")
 
-    replay_dir = r"E:\Slippi Replays\temp"
+    replay_dir = r"E:\Slippi Replays\Netplay"
     code_input = "NUT#356"
 
-    print("Processing...")
-    with os.scandir(replay_dir) as thing:
-        for entry in thing:
-            try:
-                combos = combo_from_file(os.path.join(replay_dir, entry.name), code_input)
-            except (slp.IdentifierError, slp.PlayerCountError):
-                continue
-            for c in combos:
-                dolphin_queue["queue"].append(c)
-            print(f"{entry.name} processed")
+    # print("Processing...")
+    # with os.scandir(replay_dir) as thing:
+    #     for entry in thing:
+    #         try:
+    #             combos = combo_from_file(os.path.join(replay_dir, entry.name), code_input)
+    #         except (slp.IdentifierError, slp.PlayerCountError):
+    #             continue
+    #         for c in combos:
+    #             dolphin_queue["queue"].append(c)
+    #         print(f"{entry.name} processed")
 
-    with open("py_clip_combos.json", "w") as write_file:
-        json.dump(dolphin_queue, write_file, indent=2)
+    # with open("py_clip_combos.json", "w") as write_file:
+    #     json.dump(dolphin_queue, write_file, indent=2)
 
-    print("Done")
+    # print("Done")
 
-    # multi_find_combos(replay_dir, code_input)
+    multi_find_combos(replay_dir, code_input)
